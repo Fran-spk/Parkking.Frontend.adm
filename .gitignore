@@ -1,0 +1,72 @@
+# ##############################################################################
+# Gitignore completo para Parkking Frontend (React + Vite)
+# ##############################################################################
+
+# Dependencias / Módulos de Node
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# Carpeta de Distribución / Compilación
+dist/
+dist-ssr/
+build/
+out/
+
+# Entorno y Secretos (¡IMPORTANTE! No subir claves de API ni contraseñas)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+*.env
+
+# Archivos de registro / Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Diagnóstico, Caché de compiladores e IDEs
+.eslintcache
+.stylelintcache
+.parcel-cache
+.cache/
+.next/
+.nuxt/
+.vuepress/dist
+.temp/
+.docusaurus/
+.turbo/
+.vercel/
+out-tsc/
+*.tsbuildinfo
+
+# Pruebas y Cobertura de Código
+coverage/
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+.cypress-cache/
+
+# Configuración de Editores y Sistemas Operativos
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
