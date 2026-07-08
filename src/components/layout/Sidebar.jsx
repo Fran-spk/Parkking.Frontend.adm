@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Car,
@@ -9,7 +10,15 @@ import {
   ParkingSquare,
   X,
   TrendingUp,
-  LogOut
+  LogOut,
+  RefreshCcw,
+  Map,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Building,
+  SlidersHorizontal,
+  DollarSign
 } from "lucide-react";
 import { authService } from "../../services/authService";
 
@@ -21,6 +30,7 @@ const sections = [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/cocheras", label: "Cocheras", icon: ParkingSquare },
       { to: "/clientes", label: "Clientes", icon: Users },
+      { to: "/plano-cochera", label: "Plano Estacionamiento", icon: Map },
     ]
   },
   {
@@ -33,9 +43,57 @@ const sections = [
   }
 ];
 
+const CONFIG_ITEMS = [
+  { to: "/configuracion/perfil", label: "Mi Perfil", icon: User },
+  { to: "/configuracion/categorias", label: "Categorías de Cochera", icon: Building },
+  { to: "/configuracion/tipos-vehiculo", label: "Tipos de Vehículo", icon: Car },
+  { to: "/configuracion/tarifas", label: "Tarifas Mensuales", icon: DollarSign },
+  { to: "/configuracion/general", label: "Parámetros Generales", icon: SlidersHorizontal },
+];
+
 export default function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = authService.getCurrentUser();
+  const [estacionamiento, setEstacionamiento] = useState(null);
+
+  const isConfigRoute = location.pathname.startsWith("/configuracion");
+  const [isConfigOpen, setIsConfigOpen] = useState(isConfigRoute);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("parkking_estacionamiento");
+    if (stored) {
+      try {
+        setEstacionamiento(JSON.parse(stored));
+      } catch(e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isConfigRoute) {
+      setIsConfigOpen(true);
+    }
+  }, [location.pathname, isConfigRoute]);
+
+  useEffect(() => {
+    const handleEstacionamientoChange = () => {
+      const stored = localStorage.getItem("parkking_estacionamiento");
+      if (stored) {
+        try {
+          setEstacionamiento(JSON.parse(stored));
+        } catch(e) {}
+      }
+    };
+    window.addEventListener("estacionamiento_changed", handleEstacionamientoChange);
+    return () => {
+      window.removeEventListener("estacionamiento_changed", handleEstacionamientoChange);
+    };
+  }, []);
+
+  const handleChangeEstacionamiento = () => {
+    navigate("/seleccion-estacionamientos");
+    if (onClose) onClose();
+  };
 
   const handleLogout = async () => {
     await authService.logout();
@@ -61,27 +119,43 @@ export default function Sidebar({ open, onClose }) {
         ${open ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0
       `}>
-        {/* Logo Corporativo */}
-        <div className="flex items-center justify-between px-6 py-6.5 border-b border-gray-50">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/10">
-              <ParkingSquare size={19} className="text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-black text-gray-900 leading-none tracking-tight">Parkking</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        {/* Estacionamiento Activo */}
+        <div className="flex flex-col px-5 py-5 border-b border-gray-50 bg-slate-50/50">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3 overflow-hidden">
+              <div className="w-9 h-9 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/10 shrink-0">
+                <ParkingSquare size={19} className="text-white" />
               </div>
-              <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-1">Gestión Central</p>
+              <div className="flex flex-col pr-2 overflow-hidden">
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-black text-gray-900 leading-tight truncate">
+                    {estacionamiento ? (estacionamiento.nombre || estacionamiento.Nombre) : "Parkking"}
+                  </span>
+                </div>
+                <p 
+                  className="text-[10px] font-medium text-gray-500 mt-0.5 truncate" 
+                  title={estacionamiento ? (estacionamiento.direccion || estacionamiento.Direccion) : "Gestión Central"}
+                >
+                  {estacionamiento ? (estacionamiento.direccion || estacionamiento.Direccion) : "Gestión Central"}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Cerrar en mobile */}
-          <button
-            onClick={onClose}
-            className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+            {/* Cerrar en mobile */}
+            <button
+              onClick={onClose}
+              className="lg:hidden p-1.5 -mr-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition-colors shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleChangeEstacionamiento}
+            className="mt-4 flex items-center justify-center gap-1.5 w-full py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:bg-gray-50 hover:text-indigo-600 transition-colors shadow-sm"
           >
-            <X size={16} />
+            <RefreshCcw size={12} />
+            Cambiar Sucursal
           </button>
         </div>
 
@@ -126,28 +200,63 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         {/* Panel de Configuración y Usuario en el Footer */}
-        <div className="px-4 py-4 border-t border-gray-100 bg-gray-50/20 space-y-4">
-          <NavLink
-            to="/configuracion"
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 py-2.5 rounded-xl text-xs transition-all group ${isActive
-                ? "bg-indigo-50/50 text-indigo-600 font-bold border-l-2 border-indigo-600 rounded-r-none pl-2.5"
-                : "text-gray-400 hover:bg-slate-50/60 hover:text-gray-800 pl-3"
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
+        <div className="px-4 py-4 border-t border-gray-100 bg-gray-50/20 space-y-3">
+          {/* Botón Configuración */}
+          <div>
+            <button
+              onClick={() => setIsConfigOpen(!isConfigOpen)}
+              className={`w-full flex items-center justify-between py-2.5 rounded-xl text-xs transition-all group pl-3 pr-2.5 ${
+                isConfigRoute
+                  ? "bg-indigo-50/50 text-indigo-600 font-bold"
+                  : "text-gray-400 hover:bg-slate-50/60 hover:text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-3">
                 <Settings
                   size={17}
-                  className={`transition-colors duration-200 group-hover:rotate-45 transition-transform ${isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
-                    }`}
+                  className={`transition-colors duration-200 group-hover:rotate-45 transition-transform ${
+                    isConfigRoute ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
+                  }`}
                 />
-                <span className="tracking-tight">Configuración</span>
-              </>
-            )}
-          </NavLink>
+                <span className="tracking-tight font-semibold">Configuración</span>
+              </div>
+              <div className="text-gray-400 group-hover:text-gray-600 transition-colors">
+                {isConfigOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </div>
+            </button>
+
+            {/* Submenú de Configuración */}
+            <div className={`mt-1 pl-4 space-y-1 overflow-hidden transition-all duration-300 ${
+              isConfigOpen ? "max-h-60 opacity-100 py-1" : "max-h-0 opacity-0 pointer-events-none"
+            }`}>
+              {CONFIG_ITEMS.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2.5 py-2 px-3 rounded-lg text-[11px] transition-all group ${
+                      isActive
+                        ? "bg-indigo-50/55 text-indigo-600 font-bold border-l-2 border-indigo-600 rounded-r-none pl-2"
+                        : "text-gray-400 hover:bg-slate-50/60 hover:text-gray-800"
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        size={14}
+                        className={`transition-colors duration-200 ${
+                          isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
+                        }`}
+                      />
+                      <span className="tracking-tight">{label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
 
           {/* Información del Usuario y Logout */}
           {user && (

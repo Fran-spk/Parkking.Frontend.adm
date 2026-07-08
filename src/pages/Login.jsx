@@ -33,8 +33,8 @@ export default function Login() {
 
     try {
       await authService.login(loginInput, password);
-      // Login exitoso -> Redirigir al dashboard
-      navigate("/dashboard");
+      // Login exitoso -> Redirigir a selección de estacionamiento
+      navigate("/seleccion-estacionamientos");
     } catch (err) {
       console.error(err);
       setError(err.message || "Usuario o contraseña incorrectos.");
@@ -45,10 +45,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-stretch overflow-hidden text-gray-800">
-      
+
       {/* PANEL IZQUIERDO: Formulario de Login */}
       <div className="w-full lg:w-[45%] flex flex-col justify-between p-8 lg:p-12 bg-white relative z-10 shadow-xl">
-        
+
         {/* Header - Logo */}
         <div className="flex items-center gap-3 animate-fade-in-up">
           <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
@@ -166,26 +166,26 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-[55%] bg-slate-900 relative items-center justify-center p-12 overflow-hidden">
         {/* Fondos Decorativos y Efecto de Luces */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900" />
-        
+
         {/* Circulos de luz flotantes */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
-        
+
         {/* Cuadrícula sutil */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]" 
-          style={{ 
-            backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", 
-            backgroundSize: "20px 20px" 
-          }} 
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: "radial-gradient(#fff 1px, transparent 1px)",
+            backgroundSize: "20px 20px"
+          }}
         />
 
         {/* Contenido Visual del Panel */}
         <div className="relative max-w-lg w-full text-center space-y-10 z-10">
-          
+
           {/* Ilustración de Dashboard o Mockup en Glassmorphism */}
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-2xl relative animate-fade-in-up">
-            
+
             {/* Cabecera del Mockup */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
               <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function Login() {
                   <span className="text-[10px] text-emerald-400 font-bold">+5% hoy</span>
                 </div>
               </div>
-              
+
               <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                 <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Ingreso Diario</span>
                 <div className="flex items-baseline gap-1 mt-1">

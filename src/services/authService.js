@@ -9,12 +9,9 @@ export const authService = {
   async login(login, password) {
     try {
       const response = await api.post("/Auth/login", { login, password });
-
       const data = response?.data ? response.data : response;
-      if (data && data.usuario) {
-        // Almacenamos la información del usuario en localStorage
-        localStorage.setItem("parkking_user", JSON.stringify(data.usuario));
-      }
+      // Guardar información mínima del usuario para el AuthGuard
+      localStorage.setItem("parkking_user", JSON.stringify(data || { isAuthenticated: true }));
       return data;
     } catch (error) {
       const message = error.response?.data || "Error de red o de servidor al iniciar sesión";
@@ -32,6 +29,34 @@ export const authService = {
       console.error("Error al notificar logout al backend:", error);
     } finally {
       localStorage.removeItem("parkking_user");
+      localStorage.removeItem("parkking_estacionamiento");
+    }
+  },
+
+  /**
+   * Obtiene los estacionamientos asignados al usuario.
+   */
+  async getEstacionamientos() {
+    try {
+      const response = await api.get("/Auth/estacionamientos");
+      const data = response?.data ? response.data : response;
+      return data;
+    } catch (error) {
+      const message = error.response?.data || "Error al obtener los estacionamientos";
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Selecciona el estacionamiento activo en el backend
+   */
+  async seleccionarEstacionamiento(estacionamientoId) {
+    try {
+      const response = await api.post("/Auth/seleccionar-estacionamiento", { estacionamientoId });
+      return response?.data ? response.data : response;
+    } catch (error) {
+      const message = error.response?.data || "Error al seleccionar el estacionamiento";
+      throw new Error(message);
     }
   },
 

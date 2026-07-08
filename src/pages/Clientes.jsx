@@ -6,9 +6,9 @@ import { abonoService } from "../services/abonoService";
 // ─── Modal alta/edición ───────────────────────────────────────────────────────
 function ModalCliente({ cliente, onClose, onGuardado }) {
   const [form, setForm] = useState({
-    nombre:      cliente?.nombre      ?? "",
-    telefono:    cliente?.telefono    ?? "",
-    email:       cliente?.email       ?? "",
+    nombre: cliente?.nombre ?? "",
+    telefono: cliente?.telefono ?? "",
+    email: cliente?.email ?? "",
     observacion: cliente?.observacion ?? "",
   });
   const [error, setError] = useState(null);
@@ -250,9 +250,9 @@ export default function Clientes() {
       ]);
       const mapa = {};
       abonos.forEach(a => { mapa[a.clienteId] = (mapa[a.clienteId] ?? 0) + 1; });
-    
+
       setClientes(clientes);
-      console.log(clientes);    
+      console.log(clientes);
       setAbonosPorCliente(mapa);
     } catch {
       setError("No se pudo conectar con el servidor");
@@ -364,9 +364,8 @@ export default function Clientes() {
                   return (
                     <tr
                       key={cliente.clienteId}
-                      className={`border-b border-gray-50 transition-colors cursor-pointer ${
-                        inactivo ? "opacity-50 bg-gray-50" : "hover:bg-gray-50"
-                      }`}
+                      className={`border-b border-gray-50 transition-colors cursor-pointer ${inactivo ? "opacity-50 bg-gray-50" : "hover:bg-gray-50"
+                        }`}
                       onClick={() => setPanelId(cliente.clienteId)}
                     >
                       {/* Nombre */}
