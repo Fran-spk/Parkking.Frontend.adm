@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "../services/authService";
 import { Building, MapPin, ArrowRight, AlertCircle } from "lucide-react";
+import { estacionamientoService } from "../services/estacionamientoService";
 
 export default function SeleccionEstacionamientos() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export default function SeleccionEstacionamientos() {
   useEffect(() => {
     const fetchEstacionamientos = async () => {
       try {
-        const data = await authService.getEstacionamientos();
+        const data = await estacionamientoService.getEstacionamientos();
         // Asumiendo que data es un array de objetos EstacionamientoUsuarioDto
         setEstacionamientos(data || []);
       } catch (err) {
@@ -34,11 +34,11 @@ export default function SeleccionEstacionamientos() {
 
     try {
       const estacionamientoId = estacionamiento.id || estacionamiento.Id;
-      await authService.seleccionarEstacionamiento(estacionamientoId);
+      await estacionamientoService.seleccionarEstacionamiento(estacionamientoId);
 
       // Guardar el estacionamiento seleccionado para que el resto de la app sepa en cuál está trabajando
       localStorage.setItem("parkking_estacionamiento", JSON.stringify(estacionamiento));
-      navigate("/dashboard");
+      navigate("/mi-estacionamiento");
     } catch (err) {
       console.error(err);
       setError(err.message || "No se pudo seleccionar el estacionamiento.");

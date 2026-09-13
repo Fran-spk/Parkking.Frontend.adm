@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   Calendar,
@@ -17,6 +18,7 @@ import GraficoVehiculos from '../components/layout/GraficoVehiculos';
 import { dashboardService } from '../services/dashboardService';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,43 +50,53 @@ const Dashboard = () => {
       })
       .catch((err) => {
         console.error("Error capturado en getSummary:", err);
-        setError(err.message || 'Error inesperado al cargar los datos.');
+        const data = err.response?.data;
+        const msg =
+          typeof data === "string"
+            ? data
+            : data?.title || data?.message || err.message || "Error inesperado al cargar los datos.";
+        setError(msg);
         setLoading(false);
       });
   }, []);
 
-  // 1. Estado de Carga Extendido: Asegura que el componente no se rompa si data aún es null
-  if (loading || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center space-y-4">
-        <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-        <div>
-          <h3 className="text-xl font-bold text-gray-800">
-            Cargando Dashboard
-          </h3>
-          <p className="text-sm text-gray-500">
-            Obteniendo métricas en tiempo real...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Estado de Interfaz ante Errores de API
+  // Error primero: si !data y loading=false, el spinner de abajo lo tapaba para siempre
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center max-w-md mx-auto">
-        <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-        <h3 className="text-xl font-bold text-gray-800">Error de conexión</h3>
-        <p className="text-sm text-gray-500 mb-4">{error}</p>
+        <AlertCircle className="w-10 h-10 text-danger mb-3" />
+        <h3 className="text-xl font-bold text-ink">Error de conexión</h3>
+        <p className="text-sm text-ink-muted mb-4">{error}</p>
 
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl shadow-md hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand text-brand-foreground font-medium rounded-xl shadow-md hover:bg-brand-strong transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Reintentar
         </button>
+        <button
+          onClick={() => (window.location.href = "/seleccion-estacionamientos")}
+          className="mt-3 text-sm font-semibold text-brand hover:text-brand-strong"
+        >
+          Elegir estacionamiento
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center space-y-4">
+        <div className="w-16 h-16 border-4 border-brand-soft border-t-brand rounded-full animate-spin" />
+        <div>
+          <h3 className="text-xl font-bold text-ink">
+            Cargando mi estacionamiento
+          </h3>
+          <p className="text-sm text-ink-muted">
+            Obteniendo métricas en tiempo real...
+          </p>
+        </div>
       </div>
     );
   }
@@ -97,9 +109,9 @@ const Dashboard = () => {
         <div>
           <div className="text-xs text-indigo-600 font-bold flex items-center gap-2 uppercase tracking-wider">
             <LayoutDashboard className="w-3.5 h-3.5" />
-            Sistema Administrativo
+            Vista general
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Dashboard General</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight mt-1">Mi estacionamiento</h1>
         </div>
 
         <div className="text-sm font-medium text-gray-700 flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 hover:border-indigo-200 transition-colors">
@@ -120,9 +132,18 @@ const Dashboard = () => {
           </h2>
 
           {data?.alertasDeudores?.length > 0 && (
-            <span className="text-xs font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full">
-              {data.alertasDeudores.length} pendientes
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full">
+                {data.alertasDeudores.length} pendientes
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate("/pagos-pendientes")}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+              >
+                Ver todos
+              </button>
+            </div>
           )}
         </div>
 

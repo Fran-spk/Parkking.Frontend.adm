@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { movimientoService } from "../../services/movimientoService";
+import { abonoIdOf, labelCocheras } from "../../utils/abonoHelpers";
 
-// TipoConcepto (backend): 0=PagoMensual, 1=ReintegroCliente, 2=CargoCliente, 3=GastoCochera
+// TipoConcepto (backend): 0=PagoAbono, 1=ReintegroCliente, 2=CargoCliente, 3=GastoCochera
 const TIPOS = [
   { value: 2, label: "Cargo",      desc: "El cliente debe pagar",          color: "border-red-400 bg-red-50 text-red-700"    },
   { value: 1, label: "Reintegro",  desc: "El estacionamiento devuelve",    color: "border-green-400 bg-green-50 text-green-700" },
@@ -26,7 +27,7 @@ export default function ModalCargoReintegro({ abono, onClose, onGuardado }) {
         ? movimientoService.registrarCargoCliente
         : movimientoService.registrarReintegroCliente;
       await fn(
-        abono.abonoCocheraId,
+        abonoIdOf(abono),
         descripcion.trim(),
         monto,
         responsable.trim() || null,
@@ -47,7 +48,7 @@ export default function ModalCargoReintegro({ abono, onClose, onGuardado }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Nuevo movimiento</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Cochera {abono.cochera?.numero} · {abono.cliente?.nombre}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Cochera {labelCocheras(abono)} · {abono.cliente?.nombre}</p>
           </div>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>

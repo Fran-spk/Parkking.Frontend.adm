@@ -55,7 +55,7 @@ const AlertasDeudores = ({ alertas }) => {
         
         return (
           <div 
-            key={alerta.abonoCocheraId} 
+            key={alerta.abonoId ?? alerta.abonoCocheraId} 
             className="p-4 bg-white border border-gray-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.015)] hover:border-gray-200/80 group"
           >
             {/* Detalles del Cliente */}
@@ -99,13 +99,18 @@ const AlertasDeudores = ({ alertas }) => {
 
             {/* Acción y Monto */}
             <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-50">
-              {alerta.precioAcordado != null && (
+              {alerta.saldoTotal > 0 || alerta.precioAcordado != null ? (
               <span className="text-sm font-black text-gray-900 tracking-tight">
-                Deuda estimada: ${alerta.precioAcordado.toLocaleString("es-AR")}
+                Deuda: ${(alerta.saldoTotal > 0 ? alerta.saldoTotal : alerta.precioAcordado).toLocaleString("es-AR")}
+                {alerta.periodosAdeudados > 1 && (
+                  <span className="block text-[10px] font-semibold text-gray-400">
+                    {alerta.periodosAdeudados} períodos
+                  </span>
+                )}
               </span>
-              )}
+              ) : null}
               <button
-                onClick={() => handleRegistrarPago(alerta.abonoCocheraId, alerta.clienteNombre, alerta.precioAcordado ?? null)}
+                onClick={() => handleRegistrarPago(alerta.abonoId ?? alerta.abonoCocheraId, alerta.clienteNombre, alerta.precioAcordado ?? null)}
                 className="text-[11px] flex items-center gap-1 bg-white text-indigo-600 border border-indigo-100 font-bold px-3 py-1.5 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.01)] hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300 active:scale-95 group-hover:shadow-md"
               >
                 <CreditCard className="w-3.5 h-3.5" />

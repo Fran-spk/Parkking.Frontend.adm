@@ -33,32 +33,7 @@ export const authService = {
     }
   },
 
-  /**
-   * Obtiene los estacionamientos asignados al usuario.
-   */
-  async getEstacionamientos() {
-    try {
-      const response = await api.get("/Auth/estacionamientos");
-      const data = response?.data ? response.data : response;
-      return data;
-    } catch (error) {
-      const message = error.response?.data || "Error al obtener los estacionamientos";
-      throw new Error(message);
-    }
-  },
 
-  /**
-   * Selecciona el estacionamiento activo en el backend
-   */
-  async seleccionarEstacionamiento(estacionamientoId) {
-    try {
-      const response = await api.post("/Auth/seleccionar-estacionamiento", { estacionamientoId });
-      return response?.data ? response.data : response;
-    } catch (error) {
-      const message = error.response?.data || "Error al seleccionar el estacionamiento";
-      throw new Error(message);
-    }
-  },
 
   /**
    * Retorna el usuario actual del localStorage si está autenticado.

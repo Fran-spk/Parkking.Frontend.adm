@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
-import { tipoVehiculoService } from "../../services/tipoVehiculoService";
+import { Plus, Pencil, Trash2, Check, X, RotateCcw, Banknote } from "lucide-react";
+import { metodoDePagoService } from "../../services/metodoDePagoService";
 
-export default function TiposVehiculo({ embedded = false }) {
-  const [tipos, setTipos] = useState([]);
+export default function MetodosDePago({ embedded = false }) {
+  const [metodos, setMetodos] = useState([]);
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,18 +12,18 @@ export default function TiposVehiculo({ embedded = false }) {
   const [editandoNombre, setEditandoNombre] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => { cargar(); }, [mostrarInactivos]);
+  useEffect(() => {
+    cargar();
+  }, [mostrarInactivos]);
 
   async function cargar() {
     try {
       setError(null);
-      const data = await tipoVehiculoService.getAll(mostrarInactivos);
-      setTipos(data);
-    } 
-    catch (e) {
-        setError("No se pudo cargar los tipos de vehículo");
-    }
-    finally {
+      const data = await metodoDePagoService.getAll(mostrarInactivos);
+      setMetodos(Array.isArray(data) ? data : []);
+    } catch {
+      setError("No se pudieron cargar los métodos de pago");
+    } finally {
       setLoading(false);
     }
   }
@@ -33,7 +33,7 @@ export default function TiposVehiculo({ embedded = false }) {
     try {
       setGuardando(true);
       setError(null);
-      await tipoVehiculoService.agregar(nuevoNombre.trim());
+      await metodoDePagoService.agregar(nuevoNombre.trim());
       setNuevoNombre("");
       await cargar();
     } catch (e) {
@@ -49,7 +49,7 @@ export default function TiposVehiculo({ embedded = false }) {
     try {
       setGuardando(true);
       setError(null);
-      await tipoVehiculoService.modificar(id, editandoNombre.trim());
+      await metodoDePagoService.modificar(id, editandoNombre.trim());
       setEditandoId(null);
       await cargar();
     } catch (e) {
@@ -60,11 +60,11 @@ export default function TiposVehiculo({ embedded = false }) {
     }
   }
 
-  async function handleDarDeBaja(tipo) {
-    if (!confirm(`¿Dar de baja "${tipo.nombre}"?`)) return;
+  async function handleDarDeBaja(metodo) {
+    if (!confirm(`¿Dar de baja "${metodo.nombre}"?`)) return;
     try {
       setError(null);
-      await tipoVehiculoService.darDeBaja(tipo.tipoVehiculoId);
+      await metodoDePagoService.darDeBaja(metodo.metodoDePagoId);
       await cargar();
     } catch (e) {
       const msg = e.response?.data;
@@ -72,10 +72,10 @@ export default function TiposVehiculo({ embedded = false }) {
     }
   }
 
-  async function handleReactivar(tipo) {
+  async function handleReactivar(metodo) {
     try {
       setError(null);
-      await tipoVehiculoService.reactivar(tipo.tipoVehiculoId);
+      await metodoDePagoService.reactivar(metodo.metodoDePagoId);
       await cargar();
     } catch (e) {
       const msg = e.response?.data;
@@ -83,9 +83,9 @@ export default function TiposVehiculo({ embedded = false }) {
     }
   }
 
-  function iniciarEdicion(tipo) {
-    setEditandoId(tipo.tipoVehiculoId);
-    setEditandoNombre(tipo.nombre);
+  function iniciarEdicion(metodo) {
+    setEditandoId(metodo.metodoDePagoId);
+    setEditandoNombre(metodo.nombre);
     setError(null);
   }
 
@@ -99,106 +99,111 @@ export default function TiposVehiculo({ embedded = false }) {
     <div className={embedded ? "space-y-4" : "space-y-6 animate-fade-in-up"}>
       {!embedded && (
         <div>
-          <h1 className="pk-title">Tipos de Vehículo</h1>
+          <h1 className="pk-title">Métodos de pago</h1>
           <p className="pk-desc mt-1">
-            Definí los tipos de vehículo que se pueden estacionar y abonar en la plataforma.
+            Definí cómo se pueden cobrar los abonos. La baja es lógica: los cobros ya hechos conservan el método.
           </p>
         </div>
       )}
 
       <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
-          <span className="pk-label">Listado de Vehículos</span>
-          <label className="flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <span className="pk-label flex items-center gap-2">
+            <Banknote size={13} /> Listado
+          </span>
+          <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none">
             <input
               type="checkbox"
               checked={mostrarInactivos}
-              onChange={e => setMostrarInactivos(e.target.checked)}
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5"
+              onChange={(e) => setMostrarInactivos(e.target.checked)}
+              className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
             />
             Mostrar dados de baja
           </label>
         </div>
 
         {error && (
-          <div className="px-4 py-2.5 bg-red-50 text-red-600 text-xs font-semibold rounded-xl border border-red-100">
+          <div className="px-4 py-2.5 bg-danger-muted text-danger text-xs font-semibold rounded-xl border border-danger/20">
             {error}
           </div>
         )}
 
-        {/* Lista */}
         {loading ? (
-          <div className="text-xs text-gray-400 font-semibold py-4">Cargando...</div>
+          <div className="text-xs text-ink-faint font-semibold py-4">Cargando...</div>
         ) : (
           <div className="space-y-2">
-            {tipos.length === 0 && (
-              <p className="text-xs text-gray-400 font-medium py-4">No hay tipos de vehículo cargados</p>
+            {metodos.length === 0 && (
+              <p className="text-xs text-ink-faint font-medium py-4">No hay métodos de pago cargados</p>
             )}
-            {tipos.map(tipo => {
-              const inactivo = !tipo.activo;
+            {metodos.map((metodo) => {
+              const inactivo = !metodo.activo;
               return (
                 <div
-                  key={tipo.tipoVehiculoId}
+                  key={metodo.metodoDePagoId}
                   className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-all ${
-                    inactivo ? "bg-gray-50/50 border-gray-100 opacity-60" : "bg-white border-gray-100 hover:border-gray-200"
+                    inactivo
+                      ? "bg-surface-muted/50 border-line-subtle opacity-60"
+                      : "bg-surface-card border-line-subtle hover:border-line"
                   }`}
                 >
-                  {editandoId === tipo.tipoVehiculoId ? (
+                  {editandoId === metodo.metodoDePagoId ? (
                     <>
                       <input
                         autoFocus
                         value={editandoNombre}
-                        onChange={e => setEditandoNombre(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") handleModificar(tipo.tipoVehiculoId);
+                        onChange={(e) => setEditandoNombre(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleModificar(metodo.metodoDePagoId);
                           if (e.key === "Escape") cancelarEdicion();
                         }}
-                        className="flex-1 text-xs font-medium border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-800"
+                        className="flex-1 text-xs font-medium border border-line rounded-xl px-3 py-2 focus:outline-none focus:border-brand focus:bg-surface-card text-ink"
                       />
                       <button
-                        onClick={() => handleModificar(tipo.tipoVehiculoId)}
+                        onClick={() => handleModificar(metodo.metodoDePagoId)}
                         disabled={guardando}
-                        className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        className="p-2 rounded-lg text-success hover:bg-success-muted transition-colors"
                       >
                         <Check size={16} />
                       </button>
                       <button
                         onClick={cancelarEdicion}
-                        className="p-2 rounded-lg text-gray-400 hover:bg-gray-50 transition-colors"
+                        className="p-2 rounded-lg text-ink-faint hover:bg-surface-muted transition-colors"
                       >
                         <X size={16} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <span className={`flex-1 text-xs font-bold ${inactivo ? "text-gray-400" : "text-gray-800"}`}>
-                        {tipo.nombre}
+                      <span
+                        className={`flex-1 text-xs font-bold ${inactivo ? "text-ink-faint" : "text-ink"}`}
+                      >
+                        {metodo.nombre}
                       </span>
                       {inactivo && (
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-[10px] bg-surface-muted text-ink-muted px-2 py-0.5 rounded-full font-bold">
                           Baja
                         </span>
                       )}
                       {inactivo ? (
                         <button
-                          onClick={() => handleReactivar(tipo)}
+                          onClick={() => handleReactivar(metodo)}
                           title="Reactivar"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                          className="p-1.5 rounded-lg text-ink-faint hover:text-success hover:bg-success-muted transition-colors"
                         >
                           <RotateCcw size={15} />
                         </button>
                       ) : (
                         <div className="flex gap-1">
                           <button
-                            onClick={() => iniciarEdicion(tipo)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                            onClick={() => iniciarEdicion(metodo)}
+                            className="p-1.5 rounded-lg text-ink-faint hover:text-warning hover:bg-warning-muted transition-colors"
                             title="Editar"
                           >
                             <Pencil size={15} />
                           </button>
                           <button
-                            onClick={() => handleDarDeBaja(tipo)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            onClick={() => handleDarDeBaja(metodo)}
+                            className="p-1.5 rounded-lg text-ink-faint hover:text-danger hover:bg-danger-muted transition-colors"
                             title="Dar de Baja"
                           >
                             <Trash2 size={15} />
@@ -213,21 +218,20 @@ export default function TiposVehiculo({ embedded = false }) {
           </div>
         )}
 
-        {/* Agregar nuevo */}
         {!mostrarInactivos && (
-          <div className="flex gap-2 pt-3 border-t border-gray-50">
+          <div className="flex gap-2 pt-3 border-t border-line-subtle">
             <input
               type="text"
               value={nuevoNombre}
-              onChange={e => setNuevoNombre(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleAgregar()}
-              placeholder="Ej: Auto, Moto, Camioneta..."
-              className="flex-1 text-xs font-semibold border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50/50 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-800"
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
+              placeholder="Ej: Mercado Pago, Cheque..."
+              className="flex-1 text-xs font-semibold border border-line rounded-xl px-4 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card transition-all text-ink"
             />
             <button
               onClick={handleAgregar}
               disabled={guardando || !nuevoNombre.trim()}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
             >
               <Plus size={15} />
               Agregar

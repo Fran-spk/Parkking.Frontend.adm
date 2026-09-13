@@ -42,10 +42,14 @@ export default function Cocheras() {
         categoriaCocheraService.getAll()
       ]);
       
+      const abonoIncluye = (a, cocheraId) =>
+        (Array.isArray(a.plazas) && a.plazas.some(p => p.activo !== false && (p.cocheraId === cocheraId || p.cochera?.cocheraId === cocheraId)))
+        || a.cocheraId === cocheraId;
+
       let detalle = cochData.map(c => ({
         ...c,
-        ocupada: abonosData.some(a => a.cocheraId === c.cocheraId),
-        abonos: abonosData.filter(a => a.cocheraId === c.cocheraId)
+        ocupada: abonosData.some(a => abonoIncluye(a, c.cocheraId)),
+        abonos: abonosData.filter(a => abonoIncluye(a, c.cocheraId))
       }));
 
       // Ordenar cocheras según la persistencia local de localStorage
@@ -128,7 +132,7 @@ export default function Cocheras() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Plano de Cocheras</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Cocheras</h1>
           <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5 font-medium">
             <span className="inline-block w-2 h-2 rounded-full bg-indigo-500"></span>
             <span>{resumen.ocupadas} Asignadas</span>
@@ -284,27 +288,34 @@ export default function Cocheras() {
                 {/* Detalles de Abono (Cuerpo de la Tarjeta) */}
                 {cochera.abonos.length > 0 ? (
                   <div className="pt-4 border-t border-indigo-100/50 space-y-3">
-                    {cochera.abonos.map(a => (
-                      <div key={a.abonoCocheraId} className="flex items-center justify-between bg-white border border-indigo-50/60 p-2.5 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.01)] hover:shadow-sm transition-shadow">
+                    {cochera.abonos.map(a => {
+                      const aid = a.abonoId ?? a.abonoCocheraId;
+                      const vehiculos = Array.isArray(a.vehiculos) && a.vehiculos.length > 0
+                        ? a.vehiculos
+                        : (a.patente || a.tipoVehiculo ? [{ patente: a.patente, tipoVehiculo: a.tipoVehiculo }] : []);
+                      const labelVeh = vehiculos
+                        .map(v => [v.tipoVehiculo?.nombre, v.patente].filter(Boolean).join(" "))
+                        .filter(Boolean)
+                        .join(" · ") || "Sin vehículos";
+                      return (
+                      <div key={aid} className="flex items-center justify-between bg-white border border-indigo-50/60 p-2.5 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.01)] hover:shadow-sm transition-shadow">
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-gray-800 truncate">{a.cliente?.nombre}</p>
                           <div className="flex items-center gap-1 mt-0.5 text-[10px] text-gray-400 font-semibold">
                             <Car size={11} className="text-indigo-400 shrink-0" />
-                            <span className="truncate">
-                              {[a.tipoVehiculo?.nombre, a.patente].filter(Boolean).join(" · ")}
-                            </span>
+                            <span className="truncate">{labelVeh}</span>
                           </div>
                         </div>
                         
                         <button
-                          onClick={() => navigate(`/pagosAbono/${a.abonoCocheraId}`)}
+                          onClick={() => navigate(`/pagosAbono/${aid}`)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:translate-x-0.5 shrink-0"
                           title="Ver Historial de Pagos"
                         >
                           <ChevronRight size={16} />
                         </button>
                       </div>
-                    ))}
+                    );})}
                   </div>
                 ) : (
                   <div className="pt-4 border-t border-gray-100/80 flex flex-col items-center justify-center py-2 bg-gray-50/30 rounded-xl border border-dashed border-gray-150">

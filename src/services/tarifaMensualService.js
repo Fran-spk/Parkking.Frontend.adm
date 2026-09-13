@@ -2,23 +2,26 @@ import api from "./api";
 
 export const tarifaMensualService = {
 
-  getVigentes: () =>
-    api.get("/tarifamensual/vigentes").then(r => r.data),
+  getVigentes: (periodicidadCobro) =>
+    api.get("/tarifamensual/vigentes", {
+      params: periodicidadCobro != null ? { periodicidadCobro } : undefined,
+    }).then(r => r.data),
 
-  getVigente: (tipoVehiculoId, categoriaCocheraId) =>
+  getVigente: (tipoVehiculoId, categoriaCocheraId, periodicidadCobro = 0) =>
     api.get("/tarifamensual/vigente", {
-      params: { tipoVehiculoId, categoriaCocheraId }
+      params: { tipoVehiculoId, categoriaCocheraId, periodicidadCobro },
     }).then(r => r.data),
 
-  getHistorial: (tipoVehiculoId, categoriaCocheraId) =>
+  getHistorial: (tipoVehiculoId, categoriaCocheraId, periodicidadCobro = 0) =>
     api.get("/tarifamensual/historial", {
-      params: { tipoVehiculoId, categoriaCocheraId }
+      params: { tipoVehiculoId, categoriaCocheraId, periodicidadCobro },
     }).then(r => r.data),
 
-  agregar: (tipoVehiculoId, categoriaCocheraId, precio) =>
+  agregar: (tipoVehiculoId, categoriaCocheraId, periodicidadCobro, precio) =>
     api.post("/tarifamensual", {
       tipoVehiculoId,
       categoriaCocheraId: Number(categoriaCocheraId),
+      periodicidadCobro: Number(periodicidadCobro),
       precio: Number(precio),
     }).then(r => r.data),
 };

@@ -10,6 +10,10 @@ export const clienteService = {
   getById: (id) =>
     api.get(`/cliente/${id}`).then(r => r.data),
 
+  /** Vehículos del cliente. soloDisponibles = libres (no en abono activo). */
+  getVehiculos: (clienteId, soloDisponibles = false) =>
+    api.get(`/cliente/${clienteId}/vehiculos`, { params: { soloDisponibles } }).then(r => r.data),
+
   // Crear cliente
   agregar: (data) =>
     api.post("/cliente", data).then(r => r.data),

@@ -197,25 +197,42 @@ function PanelDetalle({ clienteId, onClose, onEditar }) {
               </p>
               {detalle.abonos?.length > 0 ? (
                 <div className="space-y-2">
-                  {detalle.abonos.map(abono => (
-                    <div key={abono.abonoCocheraId} className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-                      <div className="flex items-center justify-between">
+                  {detalle.abonos.map(abono => {
+                    const aid = abono.abonoId ?? abono.abonoCocheraId;
+                    const plazas = Array.isArray(abono.plazas) && abono.plazas.length > 0
+                      ? abono.plazas.filter(p => p.activo !== false)
+                      : (abono.cochera ? [{ cochera: abono.cochera }] : []);
+                    const vehiculos = Array.isArray(abono.vehiculos) && abono.vehiculos.length > 0
+                      ? abono.vehiculos
+                      : (abono.patente || abono.tipoVehiculo
+                        ? [{ patente: abono.patente, modeloVehiculo: abono.modeloVehiculo, tipoVehiculo: abono.tipoVehiculo }]
+                        : []);
+                    const cocherasLabel = plazas.map(p => p.cochera?.numero).filter(Boolean).join(", ") || "—";
+                    return (
+                    <div key={aid} className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-lg font-bold text-indigo-700">
-                          Cochera {abono.cochera?.numero}
+                          {plazas.length > 1 ? `Cocheras ${cocherasLabel}` : `Cochera ${cocherasLabel}`}
                         </span>
-                        {abono.patente && (
-                          <span className="font-mono text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
-                            {abono.patente}
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {vehiculos.filter(v => v.patente).map((v, i) => (
+                            <span key={v.abonoVehiculoId ?? `${v.patente}-${i}`} className="font-mono text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
+                              {v.patente}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-xs text-indigo-500">
                         <Car size={11} />
-                        <span>{[abono.tipoVehiculo?.nombre, abono.modeloVehiculo].filter(Boolean).join(" · ")}</span>
+                        <span>
+                          {vehiculos.length === 0
+                            ? "Sin vehículos"
+                            : vehiculos.map(v => [v.tipoVehiculo?.nombre, v.modeloVehiculo].filter(Boolean).join(" ")).filter(Boolean).join(" · ") || `${vehiculos.length} vehículo(s)`}
+                        </span>
                       </div>
                       <p className="text-xs text-indigo-400 mt-1">Desde {formatFecha(abono.fechaInicio)}</p>
                     </div>
-                  ))}
+                  );})}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">Sin abonos activos</p>

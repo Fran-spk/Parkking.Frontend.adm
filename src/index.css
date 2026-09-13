@@ -2,22 +2,179 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Fallbacks si applyParkkingTheme() aún no corrió.
+ * Los valores reales viven en src/theme/parkking.theme.js
+ */
+:root {
+  --pk-brand: #1d4ed8;
+  --pk-brand-muted: #eff6ff;
+  --pk-brand-soft: #bfdbfe;
+  --pk-brand-strong: #1e3a8a;
+  --pk-brand-fg: #ffffff;
+
+  --pk-ink: #0f172a;
+  --pk-ink-muted: #64748b;
+  --pk-ink-faint: #94a3b8;
+
+  --pk-surface-page: #f8fafc;
+  --pk-surface-card: #ffffff;
+  --pk-surface-elevated: #ffffff;
+  --pk-surface-muted: #f1f5f9;
+  --pk-surface-overlay: rgba(15, 23, 42, 0.55);
+
+  --pk-line: #e2e8f0;
+  --pk-line-subtle: #f1f5f9;
+  --pk-line-strong: #cbd5e1;
+
+  --pk-success: #059669;
+  --pk-success-muted: #ecfdf5;
+  --pk-success-ink: #047857;
+
+  --pk-warning: #d97706;
+  --pk-warning-muted: #fffbeb;
+  --pk-warning-ink: #b45309;
+
+  --pk-danger: #e11d48;
+  --pk-danger-muted: #fff1f2;
+  --pk-danger-ink: #be123c;
+
+  --pk-info: #2563eb;
+  --pk-info-muted: #eff6ff;
+  --pk-info-ink: #1d4ed8;
+
+  --pk-type-title: 1.25rem;
+  --pk-type-title-weight: 800;
+  --pk-type-title-lh: 1.25;
+  --pk-type-title-tracking: -0.02em;
+
+  --pk-type-heading: 1rem;
+  --pk-type-heading-weight: 700;
+  --pk-type-heading-lh: 1.3;
+  --pk-type-heading-tracking: -0.01em;
+
+  --pk-type-subhead: 0.875rem;
+  --pk-type-subhead-weight: 600;
+  --pk-type-subhead-lh: 1.35;
+
+  --pk-type-body: 0.8125rem;
+  --pk-type-body-weight: 500;
+  --pk-type-body-lh: 1.45;
+
+  --pk-type-desc: 0.75rem;
+  --pk-type-desc-weight: 500;
+  --pk-type-desc-lh: 1.45;
+
+  --pk-type-label: 0.625rem;
+  --pk-type-label-weight: 700;
+  --pk-type-label-lh: 1.2;
+  --pk-type-label-tracking: 0.12em;
+
+  --pk-type-caption: 0.6875rem;
+  --pk-type-caption-weight: 500;
+  --pk-type-caption-lh: 1.35;
+
+  --pk-type-amount: 1.5rem;
+  --pk-type-amount-weight: 800;
+  --pk-type-amount-lh: 1.15;
+  --pk-type-amount-tracking: -0.02em;
+
+  --pk-radius-sm: 0.5rem;
+  --pk-radius-md: 0.75rem;
+  --pk-radius-lg: 1rem;
+  --pk-radius-xl: 1.25rem;
+  --pk-radius-2xl: 1.5rem;
+  --pk-radius-3xl: 1.75rem;
+  --pk-radius-pill: 9999px;
+
+  --pk-shadow-card: 0 8px 30px rgb(0, 0, 0, 0.015);
+  --pk-shadow-modal: 0 25px 50px -12px rgb(0, 0, 0, 0.25);
+  --pk-shadow-soft: 0 1px 12px rgba(0, 0, 0, 0.03);
+
+  --pk-font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
 @layer base {
   body {
-    @apply text-gray-800 antialiased;
+    @apply bg-surface-page text-ink antialiased font-sans;
+    font-size: var(--pk-type-body);
+    line-height: var(--pk-type-body-lh);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Custom Slim Scrollbars for modern dashboards */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-200 rounded-full hover:bg-gray-300 transition-colors;
+    @apply bg-line rounded-full hover:bg-line-strong transition-colors;
+  }
+}
+
+@layer components {
+  .pk-title {
+    font-size: var(--pk-type-title);
+    font-weight: var(--pk-type-title-weight);
+    line-height: var(--pk-type-title-lh);
+    letter-spacing: var(--pk-type-title-tracking);
+    @apply text-ink tracking-tight;
+  }
+
+  .pk-heading {
+    font-size: var(--pk-type-heading);
+    font-weight: var(--pk-type-heading-weight);
+    line-height: var(--pk-type-heading-lh);
+    letter-spacing: var(--pk-type-heading-tracking);
+    @apply text-ink;
+  }
+
+  .pk-subhead {
+    font-size: var(--pk-type-subhead);
+    font-weight: var(--pk-type-subhead-weight);
+    line-height: var(--pk-type-subhead-lh);
+    @apply text-ink;
+  }
+
+  .pk-body {
+    font-size: var(--pk-type-body);
+    font-weight: var(--pk-type-body-weight);
+    line-height: var(--pk-type-body-lh);
+    @apply text-ink;
+  }
+
+  .pk-desc {
+    font-size: var(--pk-type-desc);
+    font-weight: var(--pk-type-desc-weight);
+    line-height: var(--pk-type-desc-lh);
+    @apply text-ink-muted;
+  }
+
+  .pk-label {
+    font-size: var(--pk-type-label);
+    font-weight: var(--pk-type-label-weight);
+    line-height: var(--pk-type-label-lh);
+    letter-spacing: var(--pk-type-label-tracking);
+    @apply uppercase text-ink-faint;
+  }
+
+  .pk-caption {
+    font-size: var(--pk-type-caption);
+    font-weight: var(--pk-type-caption-weight);
+    line-height: var(--pk-type-caption-lh);
+    @apply text-ink-muted;
+  }
+
+  .pk-amount {
+    font-size: var(--pk-type-amount);
+    font-weight: var(--pk-type-amount-weight);
+    line-height: var(--pk-type-amount-lh);
+    letter-spacing: var(--pk-type-amount-tracking);
+    @apply tabular-nums tracking-tight;
   }
 }
 
@@ -25,14 +182,17 @@
   .animate-fade-in-up {
     animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+
   .animate-pulse-glow {
     animation: pulseGlow 2s infinite ease-in-out;
   }
+
   .glass-card {
-    @apply bg-white/85 backdrop-blur-md border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)];
+    @apply bg-surface-card/85 backdrop-blur-md border border-white/40 shadow-pk-card;
   }
+
   .glass-card-hover {
-    @apply hover:bg-white hover:shadow-[0_20px_50px_rgba(99,102,241,0.06)] hover:-translate-y-0.5 transition-all duration-300;
+    @apply hover:bg-surface-card hover:shadow-[0_20px_50px_rgba(29,78,216,0.08)] hover:-translate-y-0.5 transition-all duration-300;
   }
 }
 
@@ -41,6 +201,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -48,12 +209,14 @@
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pk-success) 40%, transparent);
   }
+
   50% {
     opacity: 1;
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--pk-success) 15%, transparent);
   }
 }

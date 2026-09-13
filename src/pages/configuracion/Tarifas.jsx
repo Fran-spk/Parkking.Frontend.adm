@@ -3,6 +3,7 @@ import { Pencil, Check, X, Clock } from "lucide-react";
 import { tarifaMensualService } from "../../services/tarifaMensualService";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
 import { categoriaCocheraService } from "../../services/categoriaCocheraService";
+import { PERIODICIDAD, PERIODICIDAD_OPTIONS } from "../../utils/periodicidadHelpers";
 
 function formatPrecio(precio) {
   return new Intl.NumberFormat("es-AR", {
@@ -17,17 +18,23 @@ function formatFecha(fecha) {
   });
 }
 
+function tarifaKey(tipoId, catId, periodicidad) {
+  return `${tipoId}_${catId}_${periodicidad}`;
+}
+
 // ─── Modal historial ──────────────────────────────────────────────────────────
-function ModalHistorial({ tipo, categoria, onClose }) {
+function ModalHistorial({ tipo, categoria, periodicidadCobro, onClose }) {
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
+  const periodicidadLabel =
+    PERIODICIDAD_OPTIONS.find(o => o.value === Number(periodicidadCobro))?.label || "Mensual";
 
   useEffect(() => {
     tarifaMensualService
-      .getHistorial(tipo.tipoVehiculoId, categoria.categoriaCocheraId)
+      .getHistorial(tipo.tipoVehiculoId, categoria.categoriaCocheraId, periodicidadCobro)
       .then(setHistorial)
       .finally(() => setLoading(false));
-  }, []);
+  }, [tipo.tipoVehiculoId, categoria.categoriaCocheraId, periodicidadCobro]);
 
   return (
     <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
@@ -35,7 +42,9 @@ function ModalHistorial({ tipo, categoria, onClose }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-bold text-gray-900">Historial de precios</h2>
-            <p className="text-[10px] text-gray-400 font-bold mt-0.5">{tipo.nombre} — {categoria.nombre}</p>
+            <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+              {tipo.nombre} — {categoria.nombre} · {periodicidadLabel}
+            </p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-50 rounded-lg text-gray-400 transition-colors">
             <X size={16} />
@@ -76,7 +85,7 @@ function ModalHistorial({ tipo, categoria, onClose }) {
 }
 
 // ─── Celda editable ───────────────────────────────────────────────────────────
-function CeldaTarifa({ tipo, categoria, tarifaVigente, onActualizar }) {
+function CeldaTarifa({ tipo, categoria, periodicidadCobro, tarifaVigente, onActualizar }) {
   const [editando, setEditando] = useState(false);
   const [precio, setPrecio] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -93,9 +102,10 @@ function CeldaTarifa({ tipo, categoria, tarifaVigente, onActualizar }) {
       const nueva = await tarifaMensualService.agregar(
         tipo.tipoVehiculoId,
         categoria.categoriaCocheraId,
+        periodicidadCobro,
         precio,
       );
-      onActualizar(tipo.tipoVehiculoId, categoria.categoriaCocheraId, nueva);
+      onActualizar(tipo.tipoVehiculoId, categoria.categoriaCocheraId, periodicidadCobro, nueva);
       setEditando(false);
     } catch (e) {
       const msg = e.response?.data;
@@ -162,7 +172,12 @@ function CeldaTarifa({ tipo, categoria, tarifaVigente, onActualizar }) {
       )}
 
       {verHistorial && (
-        <ModalHistorial tipo={tipo} categoria={categoria} onClose={() => setVerHistorial(false)} />
+        <ModalHistorial
+          tipo={tipo}
+          categoria={categoria}
+          periodicidadCobro={periodicidadCobro}
+          onClose={() => setVerHistorial(false)}
+        />
       )}
     </td>
   );
@@ -173,10 +188,31 @@ export default function Tarifas() {
   const [tipos, setTipos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [tarifasMap, setTarifasMap] = useState({});
+  const [periodicidad, setPeriodicidad] = useState(PERIODICIDAD.MENSUAL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => { cargar(); }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    tarifaMensualService
+      .getVigentes(periodicidad)
+      .then(vigentes => {
+        const mapa = {};
+        (vigentes || []).forEach(t => {
+          mapa[tarifaKey(t.tipoVehiculoId, t.categoriaCocheraId, t.periodicidadCobro)] = t;
+        });
+        setTarifasMap(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(k => {
+            if (k.endsWith(`_${periodicidad}`)) delete next[k];
+          });
+          return { ...next, ...mapa };
+        });
+      })
+      .catch(() => setError("No se pudo cargar las tarifas de esta periodicidad"));
+  }, [periodicidad]);
 
   async function cargar() {
     try {
@@ -184,13 +220,12 @@ export default function Tarifas() {
       const [tiposData, categoriasData, vigentes] = await Promise.all([
         tipoVehiculoService.getAll(),
         categoriaCocheraService.getAll(),
-        tarifaMensualService.getVigentes(),
+        tarifaMensualService.getVigentes(PERIODICIDAD.MENSUAL),
       ]);
 
       const mapa = {};
-      vigentes.forEach(t => {
-        const key = `${t.tipoVehiculoId}_${t.categoriaCocheraId}`;
-        mapa[key] = t;
+      (vigentes || []).forEach(t => {
+        mapa[tarifaKey(t.tipoVehiculoId, t.categoriaCocheraId, t.periodicidadCobro ?? PERIODICIDAD.MENSUAL)] = t;
       });
 
       setTipos(tiposData);
@@ -204,11 +239,14 @@ export default function Tarifas() {
   }
 
   function getTarifa(tipoId, catId) {
-    return tarifasMap[`${tipoId}_${catId}`] ?? null;
+    return tarifasMap[tarifaKey(tipoId, catId, periodicidad)] ?? null;
   }
 
-  function onActualizar(tipoId, catId, nuevaTarifa) {
-    setTarifasMap(prev => ({ ...prev, [`${tipoId}_${catId}`]: nuevaTarifa }));
+  function onActualizar(tipoId, catId, periodicidadCobro, nuevaTarifa) {
+    setTarifasMap(prev => ({
+      ...prev,
+      [tarifaKey(tipoId, catId, periodicidadCobro)]: nuevaTarifa,
+    }));
   }
 
   if (loading) return <div className="text-xs text-gray-400 font-semibold p-6">Cargando...</div>;
@@ -228,12 +266,28 @@ export default function Tarifas() {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* Encabezado */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tarifas Mensuales</h1>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tarifas</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Hover sobre cada celda para actualizar los precios o ver su historial de cambios.
+          Precio de lista por tipo de vehículo, categoría de cochera y periodicidad de cobro.
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {PERIODICIDAD_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setPeriodicidad(opt.value)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors ${
+              periodicidad === opt.value
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -265,9 +319,10 @@ export default function Tarifas() {
                   </td>
                   {categorias.map(cat => (
                     <CeldaTarifa
-                      key={cat.categoriaCocheraId}
+                      key={`${cat.categoriaCocheraId}_${periodicidad}`}
                       tipo={tipo}
                       categoria={cat}
+                      periodicidadCobro={periodicidad}
                       tarifaVigente={getTarifa(tipo.tipoVehiculoId, cat.categoriaCocheraId)}
                       onActualizar={onActualizar}
                     />

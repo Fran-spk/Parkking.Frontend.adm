@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { categoriaCocheraService } from "../../services/categoriaCocheraService";
 
-export default function CategoriasCochera() {
+export default function CategoriasCochera({ embedded = false }) {
   const [categorias, setCategorias] = useState([]);
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -94,21 +94,20 @@ export default function CategoriasCochera() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Categorías de Cochera</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Ej: Techada, Descubierta, Dueño — para diferenciar tarifas por tipo de espacio
-        </p>
-      </div>
+    <div className={embedded ? "space-y-4" : "space-y-6 animate-fade-in-up"}>
+      {!embedded && (
+        <div>
+          <h1 className="pk-title">Categorías de Cochera</h1>
+          <p className="pk-desc mt-1">
+            Ej: Techada, Descubierta, Dueño — para diferenciar tarifas por tipo de espacio
+          </p>
+        </div>
+      )}
 
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-gray-50">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            Listado de Categorías
-          </span>
-          <label className="flex items-center gap-2 text-xs font-semibold text-gray-500 cursor-pointer select-none">
+      <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
+          <span className="pk-label">Listado de Categorías</span>
+          <label className="flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
             <input
               type="checkbox"
               checked={mostrarInactivos}
