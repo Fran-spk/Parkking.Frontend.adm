@@ -1,9 +1,14 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Pencil, Check, X, Clock } from "lucide-react";
 import { tarifaMensualService } from "../../services/tarifaMensualService";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
 import { categoriaCocheraService } from "../../services/categoriaCocheraService";
 import { PERIODICIDAD, PERIODICIDAD_OPTIONS } from "../../utils/periodicidadHelpers";
+
+/** @typedef {import("../../types").TarifaVigente} TarifaVigente */
+/** @typedef {import("../../types").TarifaHistorial} TarifaHistorial */
+/** @typedef {import("../../types").TipoVehiculo} TipoVehiculo */
+/** @typedef {import("../../types").CategoriaCochera} CategoriaCochera */
 
 function formatPrecio(precio) {
   return new Intl.NumberFormat("es-AR", {
@@ -24,7 +29,7 @@ function tarifaKey(tipoId, catId, periodicidad) {
 
 // ─── Modal historial ──────────────────────────────────────────────────────────
 function ModalHistorial({ tipo, categoria, periodicidadCobro, onClose }) {
-  const [historial, setHistorial] = useState([]);
+  const [historial, setHistorial] = useState(/** @type {TarifaHistorial[]} */ ([]));
   const [loading, setLoading] = useState(true);
   const periodicidadLabel =
     PERIODICIDAD_OPTIONS.find(o => o.value === Number(periodicidadCobro))?.label || "Mensual";
@@ -38,7 +43,7 @@ function ModalHistorial({ tipo, categoria, periodicidadCobro, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 w-full max-w-sm">
+      <div className="bg-white rounded-2xl border border-transparent  p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-bold text-gray-900">Historial de precios</h2>
@@ -185,9 +190,9 @@ function CeldaTarifa({ tipo, categoria, periodicidadCobro, tarifaVigente, onActu
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 export default function Tarifas() {
-  const [tipos, setTipos] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [tarifasMap, setTarifasMap] = useState({});
+  const [tipos, setTipos] = useState(/** @type {TipoVehiculo[]} */ ([]));
+  const [categorias, setCategorias] = useState(/** @type {CategoriaCochera[]} */ ([]));
+  const [tarifasMap, setTarifasMap] = useState(/** @type {Record<string, TarifaVigente>} */ ({}));
   const [periodicidad, setPeriodicidad] = useState(PERIODICIDAD.MENSUAL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -252,14 +257,14 @@ export default function Tarifas() {
   if (loading) return <div className="text-xs text-gray-400 font-semibold p-6">Cargando...</div>;
 
   if (categorias.length === 0) return (
-    <div className="text-center py-10 bg-white border border-gray-100 rounded-2xl p-6">
+    <div className="text-center py-10 bg-white border border-transparent rounded-2xl p-6">
       <p className="text-xs font-bold text-gray-400">No hay categorías de cochera configuradas</p>
       <p className="text-[10px] text-gray-300 font-bold mt-1">Agregá categorías en la pestaña correspondiente para configurar tarifas.</p>
     </div>
   );
 
   if (tipos.length === 0) return (
-    <div className="text-center py-10 bg-white border border-gray-100 rounded-2xl p-6">
+    <div className="text-center py-10 bg-white border border-transparent rounded-2xl p-6">
       <p className="text-xs font-bold text-gray-400">No hay tipos de vehículo configurados</p>
     </div>
   );
@@ -296,7 +301,7 @@ export default function Tarifas() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-transparent  overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

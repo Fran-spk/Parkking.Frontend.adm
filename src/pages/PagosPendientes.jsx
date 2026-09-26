@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Search,
   AlertTriangle,
   CreditCard,
   Phone,
@@ -12,6 +11,10 @@ import {
 import { pagoService } from "../services/pagoService";
 import { abonoService } from "../services/abonoService";
 import ModalRegistrarPago from "../components/layout/ModalRegistrarPago";
+import PageHeader from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
+
+/** @typedef {import("../types").DeudaPendiente} DeudaPendiente */
 
 function formatPrecio(precio) {
   return new Intl.NumberFormat("es-AR", {
@@ -35,7 +38,7 @@ const FILTROS = [
 
 export default function PagosPendientes() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(/** @type {DeudaPendiente[]} */ ([]));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busqueda, setBusqueda] = useState("");
@@ -129,53 +132,34 @@ export default function PagosPendientes() {
 
   return (
     <div className="space-y-5 animate-fade-in-up">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Pagos pendientes</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Todas las cuotas con saldo: cobrá una o entrá al abono para combinar varias.
-          </p>
-        </div>
-        {!loading && (
-          <div className="flex gap-3">
-            <div className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 min-w-[110px]">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Deudas</p>
-              <p className="text-lg font-semibold text-gray-900">{filtrados.length}</p>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-xl px-4 py-2.5 min-w-[110px]">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Abonos</p>
-              <p className="text-lg font-semibold text-gray-900">{abonosUnicos}</p>
-            </div>
-            <div className="bg-rose-50 border border-rose-100 rounded-xl px-4 py-2.5 min-w-[130px]">
-              <p className="text-[10px] uppercase tracking-wider text-rose-400 font-bold">A cobrar</p>
-              <p className="text-lg font-semibold text-rose-700">{formatPrecio(totalSaldo)}</p>
-            </div>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Pagos pendientes"
+        description="Todas las cuotas con saldo: cobrá una o entrá al abono para combinar varias."
+        loading={loading}
+        stats={[
+          { label: "Deudas", value: filtrados.length },
+          { label: "Abonos", value: abonosUnicos },
+          { label: "A cobrar", value: formatPrecio(totalSaldo), tone: "danger" },
+        ]}
+      />
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Cliente, cochera, patente, período…"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-400 focus:bg-white"
-            />
-          </div>
+      <div className="bg-surface-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-line flex items-center gap-2 flex-wrap">
+          <SearchField
+            value={busqueda}
+            onChange={setBusqueda}
+            placeholder="Cliente, cochera, patente, período…"
+          />
           <div className="flex gap-1 flex-wrap">
             {FILTROS.map((f) => (
               <button
                 key={f.id}
                 type="button"
                 onClick={() => setFiltro(f.id)}
-                className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+                className={`px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
                   filtro === f.id
-                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                    ? "bg-brand text-brand-foreground"
+                    : "bg-surface-muted text-ink-muted hover:text-ink"
                 }`}
               >
                 {f.label}

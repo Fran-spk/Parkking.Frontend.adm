@@ -1,13 +1,17 @@
 import api from "./api";
 
+/** @typedef {import("../types").Usuario} Usuario */
+/** @typedef {import("../types").UsuarioResumen} UsuarioResumen */
+
 export const usuarioService = {
 
-  /**
-   * Obtiene el perfil del usuario autenticado.
-   * @returns {{ usuario, mail, nombre, telefono }}
-   */
+  /** @returns {Promise<Usuario>} */
   getPerfil: () =>
     api.get("/Usuario").then(r => r.data),
+
+  /** @returns {Promise<UsuarioResumen[]>} */
+  listarDelEstacionamiento: () =>
+    api.get("/Usuario/del-estacionamiento").then(r => r.data),
 
   /**
    * Modifica nombre y teléfono del usuario autenticado.

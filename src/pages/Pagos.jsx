@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Eye } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { pagoService } from "../services/pagoService";
+import ModalDetallePago from "../components/layout/ModalDetallePago";
+import PageHeader from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
+
+/** @typedef {import("../types").Pago} Pago */
 
 function formatFecha(fecha) {
   if (!fecha) return "-";
@@ -37,12 +42,13 @@ function formatPrecio(precio) {
 }
 
 export default function Pagos() {
-  const [pagos, setPagos] = useState([]);
+  const [pagos, setPagos] = useState(/** @type {Pago[]} */ ([]));
   const [busqueda, setBusqueda] = useState("");
   const [desde, setDesde] = useState(null);
   const [hasta, setHasta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pagoDetalle, setPagoDetalle] = useState(null);
 
   useEffect(() => {
     cargarPagos();
@@ -84,7 +90,6 @@ export default function Pagos() {
 
   const totalMonto = pagosFiltrados.reduce((acc, p) => acc + Number(p.monto || 0), 0);
   const totalRecargo = pagosFiltrados.reduce((acc, p) => acc + Number(p.recargo || 0), 0);
-  const totalGeneral = totalMonto + totalRecargo;
 
   function limpiarFiltros() {
     setDesde(null);
@@ -93,32 +98,33 @@ export default function Pagos() {
   }
 
   return (
-    <div>
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Pagos</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {pagosFiltrados.length} {pagosFiltrados.length === 1 ? "transacción" : "transacciones"}
-            {" · "}cada pago puede cubrir uno o varios períodos
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader
+        title="Pagos"
+        description="Cada pago puede cubrir uno o varios períodos."
+        loading={loading}
+        stats={[
+          { label: "Transacciones", value: pagosFiltrados.length },
+          { label: "Cobrado", value: formatPrecio(totalMonto) },
+          {
+            label: "Recargos",
+            value: formatPrecio(totalRecargo),
+            tone: totalRecargo > 0 ? "warning" : "default",
+          },
+        ]}
+      />
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{error}</div>
+        <div className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</div>
       )}
 
-      <div className="flex flex-wrap gap-3 mb-5">
-        <div className="relative flex-1 min-w-48">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar cochera, cliente o período..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-white"
-          />
-        </div>
+      <div className="flex flex-wrap gap-3">
+        <SearchField
+          value={busqueda}
+          onChange={setBusqueda}
+          placeholder="Buscar cochera, cliente o período..."
+          className="flex-1 min-w-48 max-w-sm"
+        />
 
         <DatePicker
           selected={desde}
@@ -129,7 +135,7 @@ export default function Pagos() {
           showFullMonthYearPicker
           placeholderText="Desde"
           isClearable
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 w-36"
+          className="text-sm border border-line-strong bg-surface-card px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand w-36"
         />
 
         <DatePicker
@@ -142,90 +148,97 @@ export default function Pagos() {
           placeholderText="Hasta"
           isClearable
           minDate={desde}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 w-36"
+          className="text-sm border border-line-strong bg-surface-card px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand w-36"
         />
 
         {(desde || hasta || busqueda) && (
-          <button onClick={limpiarFiltros} className="text-sm text-gray-400 hover:text-gray-600 px-3 py-2.5 transition-colors">
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="text-sm text-ink-faint hover:text-ink px-3 py-2.5 transition-colors"
+          >
             Limpiar
           </button>
         )}
       </div>
 
-      {pagosFiltrados.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {[
-            { label: "Total cobrado", value: totalMonto, color: "text-gray-900" },
-            { label: "Total recargos", value: totalRecargo, color: "text-amber-600" },
-            { label: "Total general", value: totalGeneral, color: "text-indigo-600" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-              <p className="text-xs text-gray-400">{label}</p>
-              <p className={`text-xl font-semibold mt-0.5 ${color}`}>{formatPrecio(value)}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
       {loading ? (
-        <div className="text-sm text-gray-400">Cargando...</div>
+        <div className="pk-caption">Cargando...</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-surface-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Fecha pago</th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Cochera</th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Cliente</th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Período(s)</th>
-                  <th className="text-right text-xs font-medium text-gray-400 px-4 py-3">Monto</th>
-                  <th className="text-right text-xs font-medium text-gray-400 px-4 py-3">Recargo</th>
+                <tr className="border-b border-line">
+                  <th className="text-left pk-label px-4 py-3">Fecha pago</th>
+                  <th className="text-left pk-label px-4 py-3">Cochera</th>
+                  <th className="text-left pk-label px-4 py-3">Cliente</th>
+                  <th className="text-left pk-label px-4 py-3">Período(s)</th>
+                  <th className="text-right pk-label px-4 py-3">Monto</th>
+                  <th className="text-right pk-label px-4 py-3">Recargo</th>
+                  <th className="text-right pk-label px-4 py-3 w-12"></th>
                 </tr>
               </thead>
               <tbody>
                 {pagosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-gray-400 py-10 text-sm">
+                    <td colSpan={7} className="text-center text-ink-faint py-10 text-sm">
                       No hay pagos para los filtros seleccionados
                     </td>
                   </tr>
                 ) : (
                   pagosFiltrados.map((pago) => (
-                    <tr key={pago.pagoId} className="border-b border-gray-50 hover:bg-gray-50 transition-colors align-top">
-                      <td className="px-4 py-3 text-gray-500">{formatFecha(pago.fechaHoraCarga)}</td>
+                    <tr
+                      key={pago.pagoId}
+                      className="border-b border-line hover:bg-surface-muted transition-colors align-top cursor-pointer"
+                      onClick={() => setPagoDetalle(pago)}
+                    >
+                      <td className="px-4 py-3 text-ink-muted">{formatFecha(pago.fechaHoraCarga)}</td>
                       <td className="px-4 py-3">
-                        <span className="font-semibold text-gray-800">{pago.numeroCochera ?? "-"}</span>
+                        <span className="font-semibold text-ink">{pago.numeroCochera ?? "-"}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-800">{pago.clienteNombre ?? "-"}</p>
+                        <p className="font-medium text-ink">{pago.clienteNombre ?? "-"}</p>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 capitalize">
+                      <td className="px-4 py-3 text-ink-muted capitalize">
                         <p>{formatPeriodo(pago)}</p>
                         {(pago.detalles || []).length > 1 && (
                           <div className="mt-1 space-y-0.5">
                             {pago.detalles.map((d) => (
-                              <p key={d.detallePagoId} className="text-xs text-gray-400">
+                              <p key={d.detallePagoId} className="text-xs text-ink-faint">
                                 {d.periodoLabel}: {formatPrecio(d.monto)}
                               </p>
                             ))}
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                      <td className="px-4 py-3 text-right font-medium text-ink">
                         {formatPrecio(Number(pago.monto || 0) + Number(pago.recargo || 0))}
                         {(pago.detalles || []).length > 1 && (
-                          <p className="text-[10px] font-normal text-gray-400">
+                          <p className="text-[10px] font-normal text-ink-faint">
                             {pago.detalles.length} períodos
                           </p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {pago.recargo > 0 ? (
-                          <span className="text-amber-600">{formatPrecio(pago.recargo)}</span>
+                          <span className="text-warning-ink">{formatPrecio(pago.recargo)}</span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-ink-faint">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          title="Ver detalle"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPagoDetalle(pago);
+                          }}
+                          className="p-2 text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors"
+                        >
+                          <Eye size={15} />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -234,6 +247,14 @@ export default function Pagos() {
             </table>
           </div>
         </div>
+      )}
+
+      {pagoDetalle && (
+        <ModalDetallePago
+          pago={pagoDetalle}
+          pagoId={pagoDetalle.pagoId}
+          onClose={() => setPagoDetalle(null)}
+        />
       )}
     </div>
   );

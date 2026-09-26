@@ -1,20 +1,43 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Car, Calendar, User, Check, AlertCircle, Loader2, Pencil, Plus,
-  TrendingUp, TrendingDown, Ban, Wallet, ChevronDown, ChevronRight, Receipt, Search, Banknote,
+  ArrowLeft,
+  Car,
+  Calendar,
+  User,
+  Check,
+  AlertCircle,
+  Loader2,
+  Pencil,
+  Plus,
+  Ban,
+  Wallet,
+  ChevronDown,
+  ChevronRight,
+  Receipt,
+  Banknote,
+  FileText,
+  Eye,
+  ParkingSquare,
 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import { pagoService } from "../services/pagoService";
-import { cajaMensualService } from "../services/cajaMensualService";
 import { reciboService } from "../services/reciboService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { imprimirReciboPdf } from "../utils/imprimirRecibo";
 import ModalRegistrarPago from "../components/layout/ModalRegistrarPago";
 import ModalEditarAbono from "../components/layout/ModalEditarAbono";
-import ModalCargoReintegro from "../components/layout/ModalCargoReintegro";
+import ModalDetallePago from "../components/layout/ModalDetallePago";
+import DocumentosAbono from "../components/layout/DocumentosAbono";
+import CargosReintegrosAbono from "../components/layout/CargosReintegrosAbono";
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
 import { labelCocheras, plazasDe, vehiculosDe, modalidadLabel, MODALIDAD } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
+
+/** @typedef {import("../types").Abono} Abono */
+/** @typedef {import("../types").Cuota} Cuota */
+/** @typedef {import("../types").Pago} Pago */
 
 function parseLocal(fechaInput) {
   if (!fechaInput) return null;
@@ -61,14 +84,10 @@ const ESTADO = {
   3: "Anulada",
 };
 
-const TABS = [
-  { id: "pagos", label: "Cuotas y pagos" },
-  { id: "cargos", label: "Cargos y reintegros" },
-];
-
 const VISTAS = [
   { id: "cuotas", label: "Ver cuotas" },
   { id: "pagos", label: "Ver pagos" },
+  { id: "extras", label: "Cargos y reintegros" },
 ];
 
 const FILTROS_CUOTA = [
@@ -131,6 +150,7 @@ function CuotaTimelineItem({
   onToggle,
   onCobrar,
   onVerRecibo,
+  onVerDetalle,
   reciboBusyId,
   modoMulti,
   seleccionada,
@@ -281,7 +301,8 @@ function CuotaTimelineItem({
                 return (
                   <div
                     key={cobro.detallePagoId}
-                    className="rounded-lg bg-white border border-gray-100 px-3 py-2.5 space-y-1.5"
+                    className="rounded-lg bg-white border border-transparent px-3 py-2.5 space-y-1.5 cursor-pointer hover:bg-slate-50/80"
+                    onClick={() => onVerDetalle?.(pago || { pagoId: cobro.pagoId })}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -293,17 +314,27 @@ function CuotaTimelineItem({
                           {pago?.metodoDePagoNombre ? ` · ${pago.metodoDePagoNombre}` : ""}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        title="Ver recibo del pago"
-                        onClick={() => onVerRecibo?.(pago || cobro)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand-muted disabled:opacity-40 transition-colors shrink-0"
-                      >
-                        {busy ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          title="Ver detalle"
+                          onClick={() => onVerDetalle?.(pago || { pagoId: cobro.pagoId })}
+                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          title="Ver recibo del pago"
+                          onClick={() => onVerRecibo?.(pago || cobro)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand-muted disabled:opacity-40 transition-colors"
+                        >
+                          {busy ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
+                        </button>
+                      </div>
                     </div>
-                    <div className="rounded-md bg-gray-50 border border-gray-100 px-2.5 py-1.5">
+                    <div className="rounded-md bg-gray-50 border border-transparent px-2.5 py-1.5">
                       <p className="text-[11px] text-gray-600">
                         <span className="font-semibold text-gray-800">Pago #{cobro.pagoId}</span>
                         {cobro.reciboNumero || pago?.reciboNumero
@@ -343,7 +374,7 @@ function CuotaTimelineItem({
 }
 
 /** Lista de pagos = transacciones (no filas por período). */
-function PagosTransaccionList({ pagos, onVerRecibo, reciboBusyId }) {
+function PagosTransaccionList({ pagos, onVerRecibo, onVerDetalle, reciboBusyId }) {
   if (pagos.length === 0) {
     return <div className="py-10 text-center text-sm text-gray-400">Sin pagos registrados</div>;
   }
@@ -355,7 +386,11 @@ function PagosTransaccionList({ pagos, onVerRecibo, reciboBusyId }) {
         const detalles = pago.detalles || [];
         const total = Number(pago.monto || 0) + Number(pago.recargo || 0);
         return (
-          <div key={pago.pagoId} className="px-5 py-3.5 hover:bg-slate-50/50">
+          <div
+            key={pago.pagoId}
+            className="px-5 py-3.5 hover:bg-slate-50/50 cursor-pointer"
+            onClick={() => onVerDetalle?.(pago)}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -379,8 +414,8 @@ function PagosTransaccionList({ pagos, onVerRecibo, reciboBusyId }) {
                   <p className="text-[11px] text-gray-400 mt-0.5">{pago.observacion}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="text-right">
+              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="text-right mr-1">
                   <p className="text-sm font-semibold text-gray-900">{formatPrecio(total)}</p>
                   {Number(pago.recargo) > 0 && (
                     <p className="text-[10px] text-amber-600">
@@ -388,6 +423,14 @@ function PagosTransaccionList({ pagos, onVerRecibo, reciboBusyId }) {
                     </p>
                   )}
                 </div>
+                <button
+                  type="button"
+                  title="Ver detalle"
+                  onClick={() => onVerDetalle?.(pago)}
+                  className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <Eye size={14} />
+                </button>
                 <button
                   type="button"
                   disabled={busy}
@@ -424,19 +467,19 @@ function PagosTransaccionList({ pagos, onVerRecibo, reciboBusyId }) {
 export default function PagosAbono() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("pagos");
-  const [abono, setAbono] = useState(null);
-  const [cuotas, setCuotas] = useState([]);
-  const [pagos, setPagos] = useState([]);
-  const [movimientos, setMovimientos] = useState([]);
+  const [abono, setAbono] = useState(/** @type {Abono | null} */ (null));
+  const [cuotas, setCuotas] = useState(/** @type {Cuota[]} */ ([]));
+  const [pagos, setPagos] = useState(/** @type {Pago[]} */ ([]));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalPago, setModalPago] = useState(null);
   const [modalEditar, setModalEditar] = useState(false);
-  const [modalCargo, setModalCargo] = useState(false);
+  const [pagoDetalle, setPagoDetalle] = useState(null);
   const [expandidas, setExpandidas] = useState(() => new Set());
   const [reciboBusyId, setReciboBusyId] = useState(null);
   const [avisoRecibo, setAvisoRecibo] = useState(null);
+  const [contratoBusy, setContratoBusy] = useState(false);
+  const [avisoContrato, setAvisoContrato] = useState(null);
   const [vista, setVista] = useState("cuotas");
   const [filtroCuota, setFiltroCuota] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
@@ -450,20 +493,17 @@ export default function PagosAbono() {
   async function cargarDatos() {
     try {
       setLoading(true);
-      const [abonoData, cuotasData, pagosData, movsData] = await Promise.all([
+      const [abonoData, cuotasData, pagosData] = await Promise.all([
         abonoService.getById(id),
         pagoService.getCuotas(id),
         pagoService.getByAbono(id),
-        cajaMensualService.getMovimientosByAbono(id),
       ]);
       setAbono(abonoData);
       setCuotas(cuotasData || []);
       setPagos(Array.isArray(pagosData) ? pagosData : []);
-      setMovimientos(movsData);
       setSeleccionCuotas(new Set());
       setModoMultiPago(false);
 
-      // Expandir parciales por defecto
       const parciales = new Set(
         (cuotasData || [])
           .filter((c) => c.estado === 1 || (c.cobros || []).length > 0)
@@ -579,9 +619,6 @@ export default function PagosAbono() {
     (acc, p) => acc + Number(p.monto || 0) + Number(p.recargo || 0),
     0
   );
-  const totalCargos = movimientos.filter((m) => m.tipoConcepto === 2).reduce((acc, m) => acc + m.monto, 0);
-  const totalReintegros = movimientos.filter((m) => m.tipoConcepto === 1).reduce((acc, m) => acc + m.monto, 0);
-  const balance = totalCargos - totalReintegros;
 
   function toggleExpand(key) {
     setExpandidas((prev) => {
@@ -615,16 +652,28 @@ export default function PagosAbono() {
     }
   }
 
+  async function handleDescargarContrato() {
+    try {
+      setContratoBusy(true);
+      setAvisoContrato(null);
+      await abonoService.descargarContrato(id);
+    } catch (err) {
+      setAvisoContrato(err.message || "No se pudo generar el contrato");
+    } finally {
+      setContratoBusy(false);
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-400 text-sm p-8">
+      <div className="flex items-center gap-2 text-ink-faint text-sm p-8">
         <Loader2 size={16} className="animate-spin" /> Cargando...
       </div>
     );
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-red-500 text-sm p-8">
+      <div className="flex items-center gap-2 text-danger text-sm p-8">
         <AlertCircle size={16} /> {typeof error === "string" ? error : "Error al cargar"}
       </div>
     );
@@ -634,247 +683,234 @@ export default function PagosAbono() {
   const plazas = plazasDe(abono);
   const vehiculos = vehiculosDe(abono);
   const primeraCat = plazas[0]?.cochera?.categoriaCochera?.nombre;
+  const tituloPlaza =
+    plazas.length > 1
+      ? `Cocheras ${labelCocheras(abono)}`
+      : `Cochera ${labelCocheras(abono)}`;
 
   return (
-    <div>
+    <div className="space-y-5 animate-fade-in-up">
       <button
+        type="button"
         onClick={() => navigate("/abonos")}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors"
+        className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors"
       >
         <ArrowLeft size={16} /> Volver a abonos
       </button>
 
       {!esActivo && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 text-sm rounded-lg border border-gray-200 font-medium">
-          <Ban size={16} className="text-gray-500" />
+        <div className="flex items-center gap-2 px-4 py-3 bg-surface-muted text-ink text-sm font-medium">
+          <Ban size={16} className="text-ink-muted" />
           <span>
-            Este abono se encuentra <strong>Inactivo / Dado de baja</strong>. No se pueden registrar nuevos movimientos.
+            Este abono se encuentra <strong>inactivo / dado de baja</strong>. No se pueden
+            registrar nuevos movimientos.
           </span>
         </div>
       )}
 
-      {avisoRecibo && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">
-          <AlertCircle size={16} />
-          <span className="flex-1">{avisoRecibo}</span>
-          <button type="button" onClick={() => setAvisoRecibo(null)} className="text-xs font-semibold underline">
-            Cerrar
-          </button>
+      {(avisoRecibo || avisoContrato) && (
+        <div className="space-y-2">
+          {avisoRecibo && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-danger-muted text-danger-ink text-sm">
+              <AlertCircle size={16} />
+              <span className="flex-1">{avisoRecibo}</span>
+              <button
+                type="button"
+                onClick={() => setAvisoRecibo(null)}
+                className="text-xs font-semibold underline"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
+          {avisoContrato && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-danger-muted text-danger-ink text-sm">
+              <AlertCircle size={16} />
+              <span className="flex-1">{avisoContrato}</span>
+              <button
+                type="button"
+                onClick={() => setAvisoContrato(null)}
+                className="text-xs font-semibold underline"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Cabecera */}
-      <div
-        className={`bg-white rounded-xl border p-5 mb-6 ${
-          !esActivo ? "border-gray-200 bg-gray-50/30" : "border-gray-100"
-        }`}
-      >
-        <div className="flex items-start justify-between mb-4 gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className={`text-2xl font-bold ${esActivo ? "text-indigo-700" : "text-gray-500 line-through"}`}>
-                {plazas.length > 1 ? `Cocheras ${labelCocheras(abono)}` : `Cochera ${labelCocheras(abono)}`}
-              </span>
-              {primeraCat && (
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{primeraCat}</span>
-              )}
-              {esActivo ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
-                  Activo
-                </span>
+      <PageHeader
+        title={tituloPlaza}
+        description={[
+          abono.cliente?.nombre,
+          periodicidadLabel(abono.periodicidadCobro),
+          primeraCat,
+          esActivo ? "Activo" : "De baja",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        loading={false}
+        action={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => navigate(`/pagosAbono/${abono.abonoId ?? abono.abonoCocheraId}/cargo`)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors"
+            >
+              Cargo
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/pagosAbono/${abono.abonoId ?? abono.abonoCocheraId}/reintegro`)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors"
+            >
+              Reintegro
+            </button>
+            {esActivo && (
+              <button
+                type="button"
+                onClick={() => setModalEditar(true)}
+                title="Editar abono"
+                className="p-2.5 text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleDescargarContrato}
+              disabled={contratoBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors disabled:opacity-60"
+            >
+              {contratoBusy ? (
+                <Loader2 size={13} className="animate-spin" />
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100">
-                  De baja
-                </span>
+                <FileText size={13} />
               )}
-              {esActivo && (
-                <button
-                  onClick={() => setModalEditar(true)}
-                  title="Editar abono"
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                >
-                  <Pencil size={14} />
-                </button>
-              )}
-            </div>
+              Contrato
+            </button>
+            {esActivo && cuotasCobrables.length > 0 && !modoMultiPago && (
+              <PageHeaderAction
+                onClick={() => setModalPago({ cuota: cuotasCobrables[0], cuotas: null })}
+              >
+                <Wallet size={14} /> Cobrar deuda
+              </PageHeaderAction>
+            )}
+          </div>
+        }
+        stats={[
+          { label: "Cobrado", value: formatPrecio(totalRecaudado) },
+          {
+            label: "Deuda",
+            value: formatPrecio(deudaMonto),
+            tone: deudaMonto > 0 ? "danger" : "default",
+          },
+          { label: "Pagos", value: pagos.length },
+        ]}
+      />
 
-            {cuotasCobrables.length > 0 && esActivo && (
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 text-sm text-red-600 bg-red-50 border border-red-100 px-2.5 py-1 rounded-lg">
-                  <AlertCircle size={13} />
-                  {cuotasCobrables.length} {cuotasCobrables.length === 1 ? "período" : "períodos"} ·{" "}
-                  {formatPrecio(deudaMonto)}
-                </span>
+      <div className="bg-surface-card px-4 py-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="flex items-start gap-2">
+          <User size={14} className="text-ink-faint mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="pk-label">Cliente</p>
+            <p className="text-sm font-semibold text-ink truncate">
+              {abono.cliente?.nombre || "—"}
+            </p>
+            {abono.cliente?.telefono && (
+              <p className="text-xs text-ink-faint">{abono.cliente.telefono}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <Car size={14} className="text-ink-faint mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="pk-label">Vehículos</p>
+            {vehiculos.length === 0 ? (
+              <p className="text-sm text-ink-faint">Sin vehículos</p>
+            ) : (
+              <div className="space-y-1 mt-0.5">
+                {vehiculos.map((v, i) => (
+                  <div
+                    key={v.abonoVehiculoId ?? `${v.patente}-${i}`}
+                    className="flex items-center gap-1 flex-wrap"
+                  >
+                    <span className="font-mono text-[11px] font-bold bg-surface-muted px-1.5 py-0.5">
+                      {v.patente || "S/PAT"}
+                    </span>
+                    <span className="text-[9px] font-bold text-ink-muted">
+                      {modalidadLabel(v.modalidad)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-
-          <div className="text-right shrink-0">
-            <p className="text-xs text-gray-400">Total cobrado</p>
-            <p className="text-xl font-bold text-gray-900">{formatPrecio(totalRecaudado)}</p>
-            {esActivo && cuotasCobrables.length > 0 && !modoMultiPago && (
-              <button
-                onClick={() => setModalPago({ cuota: cuotasCobrables[0], cuotas: null })}
-                className="mt-2 inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
-              >
-                <Wallet size={13} /> Cobrar deuda
-              </button>
-            )}
+        </div>
+        <div className="flex items-start gap-2">
+          <Calendar size={14} className="text-ink-faint mt-0.5 shrink-0" />
+          <div>
+            <p className="pk-label">Ingreso / cobro</p>
+            <p className="text-sm font-semibold text-ink">{formatFecha(abono.fechaInicio)}</p>
+            <p className="text-[11px] text-ink-muted mt-0.5">
+              Cobro {formatFecha(abono.fechaInicioCobro || abono.fechaInicio)}
+            </p>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 pt-4 border-t border-gray-100">
-          <div className="flex items-start gap-2">
-            <User size={14} className="text-gray-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs text-gray-400">Cliente</p>
-              <p className={`text-sm font-medium ${esActivo ? "text-gray-800" : "text-gray-500"}`}>
-                {abono.cliente?.nombre}
-              </p>
-              {abono.cliente?.telefono && <p className="text-xs text-gray-400">{abono.cliente.telefono}</p>}
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Car size={14} className="text-gray-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs text-gray-400">Vehículos ({vehiculos.length})</p>
-              {vehiculos.length === 0 ? (
-                <p className="text-sm text-gray-400">Sin vehículos</p>
-              ) : (
-                <div className="space-y-1.5 mt-0.5">
-                  {vehiculos.map((v, i) => (
-                    <div key={v.abonoVehiculoId ?? `${v.patente}-${i}`}>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                          {v.patente || "S/PAT"}
-                        </span>
-                        <span
-                          className={`text-[9px] font-bold px-1 py-0.5 rounded ${
-                            Number(v.modalidad) === MODALIDAD.FLEXIBLE
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-indigo-50 text-indigo-600"
-                          }`}
-                        >
-                          {modalidadLabel(v.modalidad)}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {[v.tipoVehiculo?.nombre, v.modeloVehiculo].filter(Boolean).join(" · ") || "—"}
-                        {Number(v.modalidad) === MODALIDAD.FIJO && v.plaza?.numero
-                          ? ` · Plaza ${v.plaza.numero}`
-                          : ""}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Plazas</p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {plazas.map((p) => (
-                <span
-                  key={p.abonoPlazaId ?? p.cocheraId}
-                  className="text-xs font-semibold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded"
-                >
-                  {p.cochera?.numero ?? p.cocheraId}
-                </span>
-              ))}
-            </div>
-            {plazas.length === 1 && primeraCat && (
-              <p className="text-[11px] text-gray-400 mt-0.5">{primeraCat}</p>
-            )}
-          </div>
-          <div className="flex items-start gap-2">
-            <Calendar size={14} className="text-gray-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs text-gray-400">Ingreso / cobro</p>
-              <p className="text-sm font-medium text-gray-800">{formatFecha(abono.fechaInicio)}</p>
-              <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
-                Cobro {formatFecha(abono.fechaInicioCobro || abono.fechaInicio)}
-              </p>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Periodicidad</p>
-            <p className="text-sm font-medium text-gray-800">
-              {periodicidadLabel(abono.periodicidadCobro)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Precio del período</p>
-            <p className="text-sm font-medium text-gray-800">
-              {abono.precioAcordado
-                ? formatPrecio(abono.precioAcordado)
-                : desgloseTarifas
-                  ? formatPrecio(desgloseTarifas.total)
-                  : "Tarifa de lista"}
-            </p>
-            {abono.precioAcordado ? (
-              <p className="text-[11px] text-gray-400 mt-0.5">Precio acordado</p>
-            ) : desgloseTarifas ? (
-              <ul className="mt-1.5 space-y-0.5">
-                {desgloseTarifas.componentes.map((c, i) => (
-                  <li key={`${c.vehiculoId}_${i}`} className="text-[11px] text-gray-500">
-                    <span className="font-mono font-semibold text-gray-700">{c.patente}</span>
-                    {c.cocheraNumero ? ` · Plaza ${c.cocheraNumero}` : ""}
-                    {c.tipoVehiculoNombre ? ` · ${c.tipoVehiculoNombre}` : ""}
-                    {c.categoriaNombre ? ` · ${c.categoriaNombre}` : ""}
-                    {" · "}
-                    <span className="font-semibold text-gray-700">{formatPrecio(c.precio)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[11px] text-gray-400 mt-0.5">Tarifa de lista</p>
-            )}
-            {abono.cobrador && <p className="text-xs text-gray-400 mt-0.5">Cobrador: {abono.cobrador}</p>}
-          </div>
+        <div>
+          <p className="pk-label">Periodicidad</p>
+          <p className="text-sm font-semibold text-ink">
+            {periodicidadLabel(abono.periodicidadCobro)}
+          </p>
+        </div>
+        <div>
+          <p className="pk-label">Precio período</p>
+          <p className="text-sm font-semibold text-ink">
+            {abono.precioAcordado
+              ? formatPrecio(abono.precioAcordado)
+              : desgloseTarifas
+                ? formatPrecio(desgloseTarifas.total)
+                : "Tarifa de lista"}
+          </p>
+          {abono.cobrador && (
+            <p className="text-[11px] text-ink-faint mt-0.5">Cobrador: {abono.cobrador}</p>
+          )}
         </div>
       </div>
 
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-        {TABS.map(({ id: tid, label }) => (
-          <button
-            key={tid}
-            onClick={() => setTab(tid)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === tid ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "pagos" && (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 space-y-3">
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        <div className="flex-1 min-w-0 bg-surface-card overflow-hidden w-full">
+          <div className="px-4 sm:px-5 py-4 border-b border-line space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <h2 className="text-sm font-semibold text-gray-800">
-                  {vista === "cuotas" ? "Línea de períodos" : "Historial de pagos"}
+                <h2 className="text-sm font-bold text-ink">
+                  {vista === "cuotas"
+                    ? "Línea de períodos"
+                    : vista === "pagos"
+                      ? "Historial de pagos"
+                      : "Cargos y reintegros"}
                 </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-ink-faint mt-0.5">
                   {vista === "cuotas"
                     ? modoMultiPago
                       ? `${cuotasFiltradas.length} de ${cuotas.length} períodos · seleccioná cuotas y generá el pago`
                       : `${cuotasFiltradas.length} de ${cuotas.length} períodos`
-                    : `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"} (transacciones)`}
+                    : vista === "pagos"
+                      ? `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"}`
+                      : "Obligaciones y devoluciones de este abono"}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex gap-0.5 p-0.5 bg-gray-100 rounded-lg">
+                <div className="flex gap-0.5 p-0.5 bg-surface-muted">
                   {VISTAS.map((v) => (
                     <button
                       key={v.id}
                       type="button"
                       onClick={() => setVista(v.id)}
-                      className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                         vista === v.id
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-500 hover:text-gray-700"
+                          ? "bg-brand text-brand-foreground"
+                          : "text-ink-muted hover:text-ink"
                       }`}
                     >
                       {v.label}
@@ -885,30 +921,31 @@ export default function PagosAbono() {
                   <button
                     type="button"
                     onClick={toggleModoMultiPago}
-                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition-colors ${
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 transition-colors ${
                       modoMultiPago
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                        ? "bg-brand-muted text-ink"
+                        : "bg-surface-muted text-ink-muted hover:text-ink"
                     }`}
                   >
                     <Banknote size={13} />
-                    {modoMultiPago ? "Cancelar múltiple" : "Pagar múltiples cuotas"}
+                    {modoMultiPago ? "Cancelar múltiple" : "Pagar múltiples"}
                   </button>
                 )}
                 {esActivo && modoMultiPago && cuotasSeleccionadas.length > 0 && (
                   <button
                     type="button"
                     onClick={generarPagoMultiple}
-                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-medium px-3 py-2 transition-colors"
                   >
                     <Wallet size={13} />
                     Generar pago ({cuotasSeleccionadas.length}) · {formatPrecio(totalSeleccion)}
                   </button>
                 )}
-                {esActivo && !modoMultiPago && cuotasCobrables.length > 0 && (
+                {esActivo && !modoMultiPago && vista === "cuotas" && cuotasCobrables.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => setModalPago({ cuota: cuotasCobrables[0], cuotas: null })}
-                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-medium px-3 py-2 transition-colors"
                   >
                     <Plus size={13} /> Cobrar
                   </button>
@@ -916,40 +953,44 @@ export default function PagosAbono() {
               </div>
             </div>
 
+            {vista !== "extras" && (
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="relative flex-1 min-w-[180px] max-w-xs">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="search"
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder={vista === "cuotas" ? "Buscar período, pago…" : "Buscar pago, recibo, período…"}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-400 focus:bg-white"
-                />
-              </div>
+              <SearchField
+                value={busqueda}
+                onChange={setBusqueda}
+                placeholder={
+                  vista === "cuotas"
+                    ? "Buscar período, pago…"
+                    : "Buscar pago, recibo, período…"
+                }
+                className="flex-1 min-w-[180px] max-w-xs"
+              />
               {vista === "cuotas" &&
                 FILTROS_CUOTA.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     onClick={() => setFiltroCuota(f.id)}
-                    className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+                    className={`px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
                       filtroCuota === f.id
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                        ? "bg-brand text-brand-foreground"
+                        : "bg-surface-muted text-ink-muted hover:text-ink"
                     }`}
                   >
                     {f.label}
                   </button>
                 ))}
             </div>
+            )}
           </div>
 
           {vista === "cuotas" ? (
             cuotas.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">Sin períodos de cobro</div>
+              <div className="py-10 text-center text-sm text-ink-faint">Sin períodos de cobro</div>
             ) : cuotasFiltradas.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">Sin períodos para este filtro</div>
+              <div className="py-10 text-center text-sm text-ink-faint">
+                Sin períodos para este filtro
+              </div>
             ) : (
               <div>
                 {cuotasFiltradas.map((c) => {
@@ -963,6 +1004,7 @@ export default function PagosAbono() {
                       onToggle={() => toggleExpand(key)}
                       onCobrar={(cuota) => setModalPago({ cuota, cuotas: null })}
                       onVerRecibo={handleVerRecibo}
+                      onVerDetalle={setPagoDetalle}
                       reciboBusyId={reciboBusyId}
                       modoMulti={modoMultiPago}
                       seleccionada={seleccionCuotas.has(key)}
@@ -973,114 +1015,95 @@ export default function PagosAbono() {
                 })}
               </div>
             )
-          ) : (
+          ) : vista === "pagos" ? (
             <PagosTransaccionList
               pagos={pagosFiltrados}
               onVerRecibo={handleVerRecibo}
+              onVerDetalle={setPagoDetalle}
               reciboBusyId={reciboBusyId}
             />
+          ) : (
+            abono && <CargosReintegrosAbono abono={abono} />
           )}
         </div>
-      )}
 
-      {tab === "cargos" && (
-        <div>
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={13} className="text-red-400" />
-                <p className="text-xs text-gray-400">Cargos</p>
-              </div>
-              <p className="text-xl font-semibold text-red-500">{formatPrecio(totalCargos)}</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingDown size={13} className="text-green-500" />
-                <p className="text-xs text-gray-400">Reintegros</p>
-              </div>
-              <p className="text-xl font-semibold text-green-600">{formatPrecio(totalReintegros)}</p>
-            </div>
-            <div
-              className={`rounded-xl border px-4 py-3 ${
-                balance > 0
-                  ? "bg-red-50 border-red-100"
-                  : balance < 0
-                    ? "bg-green-50 border-green-100"
-                    : "bg-white border-gray-100"
-              }`}
-            >
-              <p className="text-xs text-gray-400 mb-1">Balance</p>
-              <p
-                className={`text-xl font-semibold ${
-                  balance > 0 ? "text-red-500" : balance < 0 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
-                {balance > 0 ? "+" : ""}
-                {formatPrecio(balance)}
-              </p>
-            </div>
-          </div>
+        <div className="w-full lg:w-72 shrink-0 lg:sticky lg:top-20 space-y-3">
+          <DocumentosAbono abono={abono} />
 
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-800">Cargos y reintegros</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{movimientos.length} movimientos</p>
+          <aside className="bg-surface-card border border-line overflow-hidden">
+            <div className="px-3.5 py-3 border-b border-line flex items-center gap-2">
+              <ParkingSquare size={15} className="text-ink-faint shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-xs font-bold text-ink tracking-tight">Cocheras</h2>
+                <p className="text-[10px] text-ink-faint">
+                  {plazas.length} vinculada{plazas.length === 1 ? "" : "s"}
+                </p>
               </div>
-              {esActivo && (
-                <button
-                  onClick={() => setModalCargo(true)}
-                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
-                >
-                  <Plus size={13} /> Agregar
-                </button>
-              )}
             </div>
-
-            {movimientos.length === 0 ? (
-              <div className="py-10 text-center text-sm text-gray-400">Sin movimientos</div>
+            {plazas.length === 0 ? (
+              <p className="px-3.5 py-4 text-xs text-ink-faint text-center">Sin plazas</p>
             ) : (
-              <div className="divide-y divide-gray-50">
-                {movimientos.map((mov) => (
-                  <div key={mov.movimientoCajaId} className="flex items-center justify-between px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          mov.tipoConcepto === 2 ? "bg-red-400" : "bg-green-400"
-                        }`}
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-gray-800">{mov.descripcion}</p>
-                          <span
-                            className={`text-xs px-1.5 py-0.5 rounded-full ${
-                              mov.tipoConcepto === 2 ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"
-                            }`}
-                          >
-                            {mov.tipoConceptoDescripcion}
-                          </span>
+              <ul className="divide-y divide-line">
+                {plazas.map((p) => {
+                  const num = p.cochera?.numero ?? p.cocheraId;
+                  const cat =
+                    p.cochera?.categoriaCochera?.nombre ||
+                    p.cochera?.categoriaNombre ||
+                    null;
+                  const vehiculoFijo = vehiculos.find((v) => {
+                    if (Number(v.modalidad) === MODALIDAD.FLEXIBLE) return false;
+                    if (p.abonoPlazaId && v.abonoPlazaId === p.abonoPlazaId) return true;
+                    const vCocheraId = v.plaza?.cocheraId ?? v.cocheraId;
+                    const pCocheraId = p.cocheraId ?? p.cochera?.cocheraId;
+                    if (vCocheraId && pCocheraId && Number(vCocheraId) === Number(pCocheraId)) {
+                      return true;
+                    }
+                    const vNum = v.plaza?.numero ?? v.plaza?.cochera?.numero;
+                    if (vNum != null && String(vNum) === String(num)) return true;
+                    return false;
+                  });
+                  const vinculo = vehiculoFijo
+                    ? vehiculoFijo.patente || "Sin patente"
+                    : "Flexible";
+
+                  return (
+                    <li key={p.abonoPlazaId ?? p.cocheraId ?? num}>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/cocheras")}
+                        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-surface-muted transition-colors group"
+                        title="Ir a cocheras"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-ink tabular-nums leading-none">
+                            {num}
+                          </p>
+                          <p className="text-[10px] text-ink-muted mt-1 truncate">
+                            {vehiculoFijo ? (
+                              <span className="font-mono font-semibold text-ink">
+                                {vinculo}
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-warning-ink">Flexible</span>
+                            )}
+                            {cat ? (
+                              <span className="text-ink-faint"> · {cat}</span>
+                            ) : null}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-400">
-                          {formatFechaHora(mov.fechaHora)}
-                          {mov.responsable && ` · ${mov.responsable}`}
-                        </p>
-                      </div>
-                    </div>
-                    <p
-                      className={`text-sm font-medium ${
-                        mov.tipoConcepto === 2 ? "text-red-500" : "text-green-600"
-                      }`}
-                    >
-                      {mov.tipoConcepto === 2 ? "+" : "-"}
-                      {formatPrecio(mov.monto)}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                        <ChevronRight
+                          size={14}
+                          className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
+                        />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-          </div>
+          </aside>
         </div>
-      )}
+      </div>
 
       {modalPago && (
         <ModalRegistrarPago
@@ -1107,13 +1130,14 @@ export default function PagosAbono() {
           }}
         />
       )}
-      {modalCargo && (
-        <ModalCargoReintegro
-          abono={abono}
-          onClose={() => setModalCargo(false)}
-          onGuardado={() => {
-            setModalCargo(false);
-            cargarDatos();
+      {pagoDetalle && (
+        <ModalDetallePago
+          pago={pagoDetalle}
+          pagoId={pagoDetalle.pagoId}
+          onClose={() => setPagoDetalle(null)}
+          onVerRecibo={(pago) => {
+            setPagoDetalle(null);
+            handleVerRecibo(pago);
           }}
         />
       )}

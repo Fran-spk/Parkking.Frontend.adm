@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw, Banknote } from "lucide-react";
 import { metodoDePagoService } from "../../services/metodoDePagoService";
 
+/** @typedef {import("../../types").MetodoDePago} MetodoDePago */
+
 export default function MetodosDePago({ embedded = false }) {
-  const [metodos, setMetodos] = useState([]);
+  const [metodos, setMetodos] = useState(/** @type {MetodoDePago[]} */ ([]));
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,7 +108,7 @@ export default function MetodosDePago({ embedded = false }) {
         </div>
       )}
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
           <span className="pk-label flex items-center gap-2">
             <Banknote size={13} /> Listado

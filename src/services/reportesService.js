@@ -68,4 +68,22 @@ export const reportesService = {
       { desde, hasta },
       `pagos-${desde || "desde"}-${hasta || "hasta"}.xlsx`
     ),
+
+  enviarDashboardEmail: ({ destino, usuarioId } = {}) =>
+    api
+      .post("/reportes/dashboard/enviar-email", {
+        destino: destino || "estacionamiento",
+        usuarioId: usuarioId || null,
+      })
+      .then((r) => r.data),
+
+  enviarPagosEmail: ({ destino, usuarioId, desde, hasta } = {}) =>
+    api
+      .post("/reportes/pagos/enviar-email", {
+        destino: destino || "estacionamiento",
+        usuarioId: usuarioId || null,
+        desde: desde || null,
+        hasta: hasta || null,
+      })
+      .then((r) => r.data),
 };

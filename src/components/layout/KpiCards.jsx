@@ -25,8 +25,8 @@ const KpiCards = ({ data }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Tarjeta 1: Ocupación Actual */}
-      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(99,102,241,0.08)] hover:-translate-y-1 group">
-        <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all duration-500"></div>
+      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-transparent">
+        <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl"></div>
         
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -42,7 +42,7 @@ const KpiCards = ({ data }) => {
               </span>
             </div>
           </div>
-          <div className="p-3 bg-indigo-50/80 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-sm">
+          <div className="p-3 bg-indigo-50/80 text-indigo-600 rounded-xl">
             <Percent className="w-5 h-5" />
           </div>
         </div>
@@ -70,8 +70,8 @@ const KpiCards = ({ data }) => {
       </div>
 
       {/* Tarjeta 2: Abonos Activos */}
-      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(16,185,129,0.08)] hover:-translate-y-1 group">
-        <div className="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500"></div>
+      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-transparent">
+        <div className="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
 
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -88,7 +88,7 @@ const KpiCards = ({ data }) => {
               </span>
             </div>
           </div>
-          <div className="p-3 bg-emerald-50/80 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
+          <div className="p-3 bg-emerald-50/80 text-emerald-600 rounded-xl">
             <Users className="w-5 h-5" />
           </div>
         </div>
@@ -100,8 +100,8 @@ const KpiCards = ({ data }) => {
       </div>
 
       {/* Tarjeta 3: Recaudación Real vs Estimada Desacoplada */}
-      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(245,158,11,0.08)] hover:-translate-y-1 group">
-        <div className="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
+      <div className="relative overflow-hidden bg-white rounded-2xl p-6 border border-transparent">
+        <div className="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl"></div>
 
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -114,7 +114,7 @@ const KpiCards = ({ data }) => {
               </span>
             </div>
           </div>
-          <div className="p-3 bg-amber-50/80 text-amber-600 rounded-xl group-hover:bg-amber-500 group-hover:text-white transition-all duration-300 shadow-sm">
+          <div className="p-3 bg-amber-50/80 text-amber-600 rounded-xl">
             <DollarSign className="w-5 h-5" />
           </div>
         </div>
@@ -151,4 +151,3 @@ const KpiCards = ({ data }) => {
 };
 
 export default KpiCards;
-

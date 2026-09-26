@@ -1,14 +1,20 @@
 import api from "./api";
 
+/** @typedef {import("../types").Estacionamiento} Estacionamiento */
+/** @typedef {import("../types").EstacionamientoAcceso} EstacionamientoAcceso */
+
 export const estacionamientoService = {
 
+  /** @returns {Promise<Estacionamiento>} */
   get: () =>
     api.get("/estacionamiento").then(r => r.data),
 
+  /** @param {Partial<Estacionamiento>} data @returns {Promise<Estacionamiento>} */
   modificar: (data) =>
     api.put("/estacionamiento", data).then(r => r.data),
 
 
+  /** @returns {Promise<EstacionamientoAcceso[]>} */
   async getEstacionamientos() {
     try {
       const response = await api.get("/estacionamiento/misEstacionamientos");

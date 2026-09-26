@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Car, User, ParkingSquare, CreditCard, AlertCircle, Loader2 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
 import {
   abonoIdOf,
   labelCocheras,
@@ -11,6 +13,8 @@ import {
   MODALIDAD,
 } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
+
+/** @typedef {import("../types").Abono} Abono */
 
 function formatFecha(fecha) {
   if (!fecha) return "—";
@@ -39,9 +43,10 @@ function periodicidadLabel(value) {
 export default function BuscarPatente() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [resultados, setResultados] = useState(null);
+  const [resultados, setResultados] = useState(/** @type {Abono[] | null} */ (null));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [busquedas, setBusquedas] = useState(0);
 
   async function buscar(e) {
     e?.preventDefault();
@@ -56,7 +61,9 @@ export default function BuscarPatente() {
       setLoading(true);
       setError(null);
       const data = await abonoService.buscarPorPatente(q);
-      setResultados(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setResultados(list);
+      setBusquedas((n) => n + 1);
     } catch (err) {
       const msg = err.response?.data;
       setError(typeof msg === "string" ? msg : "No se pudo buscar");
@@ -66,63 +73,68 @@ export default function BuscarPatente() {
     }
   }
 
-  return (
-    <div className="max-w-3xl animate-fade-in-up">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Buscar patente</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Encontrá abonos por patente (parcial o completa) y entrá al detalle de cobros.
-        </p>
-      </div>
+  const activos = resultados?.filter((a) => a.activo === true || a.activo === "true").length ?? 0;
+  const bajas = resultados ? resultados.length - activos : 0;
 
-      <form
-        onSubmit={buscar}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 mb-6"
-      >
-        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-2">
-          Patente
-        </label>
+  return (
+    <div className="max-w-3xl space-y-5 animate-fade-in-up">
+      <PageHeader
+        title="Buscar patente"
+        description="Encontrá abonos por patente (parcial o completa) y entrá al detalle de cobros."
+        loading={loading && !resultados}
+        stats={
+          resultados
+            ? [
+                { label: "Resultados", value: resultados.length },
+                { label: "Activos", value: activos, tone: "success" },
+                { label: "Baja", value: bajas, tone: "warning" },
+              ]
+            : busquedas === 0
+              ? [
+                  { label: "Resultados", value: "—" },
+                  { label: "Activos", value: "—" },
+                  { label: "Baja", value: "—" },
+                ]
+              : null
+        }
+      />
+
+      <form onSubmit={buscar} className="bg-surface-card p-4 sm:p-5">
+        <label className="pk-label block mb-2">Patente</label>
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value.toUpperCase())}
-              placeholder="Ej. AB123 / AB123CD"
-              autoFocus
-              className="w-full pl-10 pr-4 py-3 text-sm font-mono font-bold tracking-wider border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-gray-50/50"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors"
-          >
+          <SearchField
+            value={query}
+            onChange={(v) => setQuery(v.toUpperCase())}
+            placeholder="Ej. AB123 / AB123CD"
+            autoFocus
+            className="flex-1"
+            inputClassName="font-mono font-bold tracking-wider uppercase"
+          />
+          <PageHeaderAction type="submit" disabled={loading}>
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
             Buscar
-          </button>
+          </PageHeaderAction>
         </div>
       </form>
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+        <div className="flex items-center gap-2 px-4 py-3 bg-danger-muted text-danger-ink text-sm">
           <AlertCircle size={15} className="shrink-0" /> {error}
         </div>
       )}
 
       {resultados && resultados.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-6 py-12 text-center">
-          <Car className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-gray-700">Sin abonos para esa patente</p>
-          <p className="text-xs text-gray-400 mt-1">Probá con otra búsqueda o revisá si el vehículo está cargado.</p>
+        <div className="border border-dashed border-line-strong bg-surface-muted/60 px-6 py-12 text-center">
+          <Car className="w-10 h-10 text-ink-faint mx-auto mb-3" />
+          <p className="text-sm font-semibold text-ink">Sin abonos para esa patente</p>
+          <p className="text-xs text-ink-faint mt-1">
+            Probá con otra búsqueda o revisá si el vehículo está cargado.
+          </p>
         </div>
       )}
 
       {resultados && resultados.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            {resultados.length} resultado{resultados.length !== 1 ? "s" : ""}
-          </p>
           {resultados.map((abono) => {
             const id = abonoIdOf(abono);
             const esActivo = abono.activo === true || abono.activo === "true";
@@ -132,31 +144,29 @@ export default function BuscarPatente() {
             return (
               <div
                 key={id}
-                className={`bg-white rounded-2xl border p-5 transition-shadow hover:shadow-md ${
-                  esActivo ? "border-gray-100" : "border-gray-100 opacity-80"
-                }`}
+                className={`bg-surface-card p-5 ${esActivo ? "" : "opacity-80"}`}
               >
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 text-lg font-bold text-gray-900">
-                        <ParkingSquare size={18} className="text-indigo-500" />
+                      <span className="inline-flex items-center gap-1.5 text-lg font-bold text-ink">
+                        <ParkingSquare size={18} className="text-ink-muted" />
                         {labelCocheras(abono)}
                       </span>
                       {esActivo ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-success-muted text-success-ink">
                           ACTIVO
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-surface-muted text-ink-muted">
                           BAJA
                         </span>
                       )}
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-brand-muted text-ink">
                         {periodicidadLabel(abono.periodicidadCobro)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-ink-faint mt-1">
                       {plazas[0]?.cochera?.categoriaCochera?.nombre || "Sin categoría"}
                       {" · "}
                       Desde {formatFecha(abono.fechaInicio)}
@@ -165,43 +175,43 @@ export default function BuscarPatente() {
                   <button
                     type="button"
                     onClick={() => navigate(`/pagosAbono/${id}`)}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-brand text-brand-foreground hover:bg-brand-strong transition-colors"
                   >
                     <CreditCard size={14} />
                     Ver abono
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-line">
                   <div className="flex items-start gap-2">
-                    <User size={14} className="text-gray-400 mt-0.5 shrink-0" />
+                    <User size={14} className="text-ink-faint mt-0.5 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Cliente</p>
-                      <p className="text-sm font-semibold text-gray-800 truncate">
+                      <p className="pk-label">Cliente</p>
+                      <p className="text-sm font-semibold text-ink truncate">
                         {abono.cliente?.nombre || "—"}
                       </p>
                       {abono.cliente?.telefono && (
-                        <p className="text-xs text-gray-400">{abono.cliente.telefono}</p>
+                        <p className="text-xs text-ink-faint">{abono.cliente.telefono}</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Vehículos</p>
+                    <p className="pk-label mb-1">Vehículos</p>
                     <div className="space-y-1">
                       {vehiculos.map((v, i) => (
                         <div
                           key={v.abonoVehiculoId ?? `${v.patente}-${i}`}
                           className="flex items-center gap-1.5 flex-wrap"
                         >
-                          <span className="font-mono text-xs font-bold bg-gray-100 px-1.5 py-0.5 rounded">
+                          <span className="font-mono text-xs font-bold bg-surface-muted px-1.5 py-0.5">
                             {v.patente || "S/PAT"}
                           </span>
                           <span
-                            className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                            className={`text-[9px] font-bold px-1 py-0.5 ${
                               Number(v.modalidad) === MODALIDAD.FLEXIBLE
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-indigo-50 text-indigo-600"
+                                ? "bg-warning-muted text-warning-ink"
+                                : "bg-brand-muted text-ink"
                             }`}
                           >
                             {modalidadLabel(v.modalidad)}
@@ -212,12 +222,12 @@ export default function BuscarPatente() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] text-gray-400 uppercase font-semibold">Precio</p>
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="pk-label">Precio</p>
+                    <p className="text-sm font-semibold text-ink">
                       {formatPrecio(abono.precioAcordado)}
                     </p>
                     {abono.cobrador && (
-                      <p className="text-xs text-gray-400 mt-0.5">Cobrador: {abono.cobrador}</p>
+                      <p className="text-xs text-ink-faint mt-0.5">Cobrador: {abono.cobrador}</p>
                     )}
                   </div>
                 </div>

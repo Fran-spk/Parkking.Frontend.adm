@@ -1,10 +1,13 @@
 import api from "./api";
 
+/** @typedef {import("../types").LoginResponse} LoginResponse */
+
 export const authService = {
   /**
    * Realiza el inicio de sesión del usuario.
    * @param {string} login Nombre de usuario o correo electrónico.
    * @param {string} password Contraseña.
+   * @returns {Promise<LoginResponse>}
    */
   async login(login, password) {
     try {
@@ -37,6 +40,7 @@ export const authService = {
 
   /**
    * Retorna el usuario actual del localStorage si está autenticado.
+   * @returns {LoginResponse | null}
    */
   getCurrentUser() {
     try {

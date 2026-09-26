@@ -7,10 +7,10 @@
  * Los valores reales viven en src/theme/parkking.theme.js
  */
 :root {
-  --pk-brand: #1d4ed8;
-  --pk-brand-muted: #eff6ff;
-  --pk-brand-soft: #bfdbfe;
-  --pk-brand-strong: #1e3a8a;
+  --pk-brand: #0f172a;
+  --pk-brand-muted: #f1f5f9;
+  --pk-brand-soft: #cbd5e1;
+  --pk-brand-strong: #020617;
   --pk-brand-fg: #ffffff;
 
   --pk-ink: #0f172a;
@@ -23,9 +23,9 @@
   --pk-surface-muted: #f1f5f9;
   --pk-surface-overlay: rgba(15, 23, 42, 0.55);
 
-  --pk-line: #e2e8f0;
-  --pk-line-subtle: #f1f5f9;
-  --pk-line-strong: #cbd5e1;
+  --pk-line: #eef2f7;
+  --pk-line-subtle: #f8fafc;
+  --pk-line-strong: #e2e8f0;
 
   --pk-success: #059669;
   --pk-success-muted: #ecfdf5;
@@ -39,9 +39,9 @@
   --pk-danger-muted: #fff1f2;
   --pk-danger-ink: #be123c;
 
-  --pk-info: #2563eb;
-  --pk-info-muted: #eff6ff;
-  --pk-info-ink: #1d4ed8;
+  --pk-info: #334155;
+  --pk-info-muted: #f1f5f9;
+  --pk-info-ink: #0f172a;
 
   --pk-type-title: 1.25rem;
   --pk-type-title-weight: 800;
@@ -79,19 +79,19 @@
   --pk-type-amount-lh: 1.15;
   --pk-type-amount-tracking: -0.02em;
 
-  --pk-radius-sm: 0.5rem;
-  --pk-radius-md: 0.75rem;
-  --pk-radius-lg: 1rem;
-  --pk-radius-xl: 1.25rem;
-  --pk-radius-2xl: 1.5rem;
-  --pk-radius-3xl: 1.75rem;
+  --pk-radius-sm: 0;
+  --pk-radius-md: 0;
+  --pk-radius-lg: 0;
+  --pk-radius-xl: 0;
+  --pk-radius-2xl: 0;
+  --pk-radius-3xl: 0;
   --pk-radius-pill: 9999px;
 
-  --pk-shadow-card: 0 8px 30px rgb(0, 0, 0, 0.015);
+  --pk-shadow-card: none;
   --pk-shadow-modal: 0 25px 50px -12px rgb(0, 0, 0, 0.25);
-  --pk-shadow-soft: 0 1px 12px rgba(0, 0, 0, 0.03);
+  --pk-shadow-soft: none;
 
-  --pk-font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --pk-font-sans: "Plus Jakarta Sans", ui-sans-serif, sans-serif;
 }
 
 @layer base {
@@ -100,6 +100,17 @@
     font-size: var(--pk-type-body);
     line-height: var(--pk-type-body-lh);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Look global: cuadrado / plano (avatares siguen con rounded-full) */
+  .rounded,
+  .rounded-sm,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl {
+    border-radius: 0 !important;
   }
 
   ::-webkit-scrollbar {
@@ -112,7 +123,8 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-line rounded-full hover:bg-line-strong transition-colors;
+    @apply bg-line hover:bg-line-strong transition-colors;
+    border-radius: 0;
   }
 }
 
@@ -176,6 +188,15 @@
     letter-spacing: var(--pk-type-amount-tracking);
     @apply tabular-nums tracking-tight;
   }
+
+  /* Cards: plano, cuadrado, sin borde */
+  .pk-card {
+    @apply bg-surface-card rounded-none border-0 shadow-none;
+  }
+
+  .pk-panel {
+    @apply bg-surface-card rounded-none border-0 shadow-none;
+  }
 }
 
 @layer utilities {
@@ -188,11 +209,11 @@
   }
 
   .glass-card {
-    @apply bg-surface-card/85 backdrop-blur-md border border-white/40 shadow-pk-card;
+    @apply bg-surface-card/90 backdrop-blur-md border-0 shadow-none rounded-none;
   }
 
   .glass-card-hover {
-    @apply hover:bg-surface-card hover:shadow-[0_20px_50px_rgba(29,78,216,0.08)] hover:-translate-y-0.5 transition-all duration-300;
+    /* Sin elevación / translate en hover (look plano) */
   }
 }
 

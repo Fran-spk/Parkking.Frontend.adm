@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { 
   PieChart, 
   Pie, 
@@ -21,7 +21,7 @@ const CustomTooltip = ({ active, payload }) => {
     const data = payload[0].payload;
     const color = COLORES[data.tipoVehiculo] || COLORES['Otros'];
     return (
-      <div className="bg-white/90 backdrop-blur-md px-3.5 py-3 rounded-xl border border-gray-100/90 shadow-[0_12px_24px_rgba(0,0,0,0.04)] text-xs">
+      <div className="bg-white/90 backdrop-blur-md px-3.5 py-3 rounded-xl border border-transparent/90 shadow-[0_12px_24px_rgba(0,0,0,0.04)] text-xs">
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></span>
           <span className="font-bold text-gray-800">{data.tipoVehiculo}</span>

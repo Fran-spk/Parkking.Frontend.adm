@@ -4,7 +4,6 @@ import {
   Pencil,
   Trash2,
   CreditCard,
-  Search,
   Car,
   AlertTriangle,
   ChevronRight,
@@ -12,6 +11,10 @@ import {
 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import ModalEditarAbono from "../components/layout/ModalEditarAbono";
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
+
+/** @typedef {import("../types").Abono} Abono */
 import { useNavigate } from "react-router-dom";
 import {
   abonoIdOf,
@@ -87,7 +90,7 @@ function PlazaMark({ label, muted, debt }) {
 }
 
 export default function Abonos() {
-  const [abonos, setAbonos] = useState([]);
+  const [abonos, setAbonos] = useState(/** @type {Abono[]} */ ([]));
   const [busqueda, setBusqueda] = useState("");
   const [verHistoricos, setVerHistoricos] = useState(false);
   const [modalEditar, setModalEditar] = useState(null);
@@ -148,81 +151,39 @@ export default function Abonos() {
 
   return (
     <div className="space-y-5 animate-fade-in-up">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="pk-title">Abonos</h1>
-          <p className="pk-desc mt-1">
-            Contratos activos, plazas y vehículos habilitados.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate("/abonos/nuevo")}
-          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
-        >
-          <Plus size={16} />
-          Nuevo abono
-        </button>
-      </div>
-
-      {/* Mini resumen */}
-      {!loading && (
-        <div className="grid grid-cols-3 gap-3 max-w-lg">
-          <div className="rounded-2xl bg-white border border-slate-200/80 px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-            <p className="pk-label">Listados</p>
-            <p className="text-xl font-black text-slate-900 tracking-tight mt-1 tabular-nums">
-              {stats.total}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white border border-slate-200/80 px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-            <p className="pk-label">Activos</p>
-            <p className="text-xl font-black text-slate-900 tracking-tight mt-1 tabular-nums">
-              {stats.activos}
-            </p>
-          </div>
-          <div
-            className={`rounded-2xl border px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] ${
-              stats.deudores > 0
-                ? "bg-rose-50 border-rose-100"
-                : "bg-white border-slate-200/80"
-            }`}
-          >
-            <p className={`pk-label ${stats.deudores > 0 ? "text-rose-400" : ""}`}>Con deuda</p>
-            <p
-              className={`text-xl font-black tracking-tight mt-1 tabular-nums ${
-                stats.deudores > 0 ? "text-rose-700" : "text-slate-900"
-              }`}
-            >
-              {stats.deudores}
-            </p>
-          </div>
-        </div>
-      )}
+      <PageHeader
+        title="Abonos"
+        description="Contratos activos, plazas y vehículos habilitados."
+        loading={loading}
+        action={
+          <PageHeaderAction onClick={() => navigate("/abonos/nuevo")}>
+            <Plus size={16} />
+            Nuevo abono
+          </PageHeaderAction>
+        }
+        stats={[
+          { label: "Listados", value: stats.total },
+          { label: "Activos", value: stats.activos },
+          { label: "Con deuda", value: stats.deudores, tone: "danger" },
+        ]}
+      />
 
       {error && (
-        <div className="px-4 py-3 bg-rose-50 text-rose-700 text-sm rounded-xl border border-rose-100 flex items-center gap-2">
+        <div className="px-4 py-3 bg-danger-muted text-danger-ink text-sm flex items-center gap-2">
           <AlertTriangle size={15} className="shrink-0" />
           {error}
         </div>
       )}
 
       {/* Toolbar + lista */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] overflow-hidden">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search
-              size={15}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="search"
-              placeholder="Cochera, cliente, patente o cobrador…"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 focus:bg-white transition-all placeholder:text-slate-300"
-            />
-          </div>
+      <div className="bg-surface-card overflow-hidden">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-line flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <SearchField
+            value={busqueda}
+            onChange={setBusqueda}
+            placeholder="Cochera, cliente, patente o cobrador…"
+            className="relative flex-1 max-w-md"
+          />
 
           <label className="flex items-center gap-2.5 cursor-pointer select-none shrink-0">
             <div className="relative">
@@ -279,7 +240,16 @@ export default function Abonos() {
               return (
                 <li
                   key={id}
-                  className={`group relative transition-colors ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/pagosAbono/${id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate(`/pagosAbono/${id}`);
+                    }
+                  }}
+                  className={`group relative transition-colors cursor-pointer ${
                     !esActivo
                       ? "bg-slate-50/40"
                       : esDeudor
@@ -431,7 +401,30 @@ export default function Abonos() {
                       )}
                       <button
                         type="button"
-                        onClick={() => navigate(`/pagosAbono/${id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/pagosAbono/${id}/cargo`);
+                        }}
+                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        Cargo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/pagosAbono/${id}/reintegro`);
+                        }}
+                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        Reintegro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/pagosAbono/${id}`);
+                        }}
                         className={`inline-flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all ${
                           esDeudor && esActivo
                             ? "bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/20"
@@ -446,7 +439,10 @@ export default function Abonos() {
                         <>
                           <button
                             type="button"
-                            onClick={() => setModalEditar(abono)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalEditar(abono);
+                            }}
                             title="Editar"
                             className="p-2.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                           >
@@ -454,7 +450,10 @@ export default function Abonos() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDarDeBaja(abono)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDarDeBaja(abono);
+                            }}
                             title="Dar de baja"
                             className="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                           >

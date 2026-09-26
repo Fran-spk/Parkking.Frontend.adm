@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { categoriaCocheraService } from "../../services/categoriaCocheraService";
 
+/** @typedef {import("../../types").CategoriaCochera} CategoriaCochera */
+
 export default function CategoriasCochera({ embedded = false }) {
-  const [categorias, setCategorias] = useState([]);
+  const [categorias, setCategorias] = useState(/** @type {CategoriaCochera[]} */ ([]));
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -104,7 +106,7 @@ export default function CategoriasCochera({ embedded = false }) {
         </div>
       )}
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
           <span className="pk-label">Listado de Categorías</span>
           <label className="flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">

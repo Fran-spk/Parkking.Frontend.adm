@@ -1,32 +1,20 @@
 import api from "./api";
 
+/** @typedef {import("../types").Movimiento} Movimiento */
+
 export const movimientoService = {
-  registrarCargoCliente: (abonoId, descripcion, monto, responsable) =>
-    api
-      .post("/movimientos/cargo-cliente", {
-        abonoId: Number(abonoId),
-        descripcion,
-        monto: Number(monto),
-        responsable: responsable || null,
-      })
-      .then((r) => r.data),
+  /** @returns {Promise<Movimiento[]>} */
+  listar: ({ desde, hasta, tipo, clienteId, usuarioId, grupoFinancieroId } = {}) => {
+    const params = {};
+    if (desde) params.desde = desde;
+    if (hasta) params.hasta = hasta;
+    if (tipo !== undefined && tipo !== null && tipo !== "") params.tipo = tipo;
+    if (clienteId) params.clienteId = clienteId;
+    if (usuarioId) params.usuarioId = usuarioId;
+    if (grupoFinancieroId) params.grupoFinancieroId = grupoFinancieroId;
+    return api.get("/movimientos", { params }).then((r) => r.data);
+  },
 
-  registrarReintegroCliente: (abonoId, descripcion, monto, responsable) =>
-    api
-      .post("/movimientos/reintegro-cliente", {
-        abonoId: Number(abonoId),
-        descripcion,
-        monto: Number(monto),
-        responsable: responsable || null,
-      })
-      .then((r) => r.data),
-
-  registrarGastoEstacionamiento: (descripcion, monto, responsable) =>
-    api
-      .post("/movimientos/gasto-estacionamiento", {
-        descripcion,
-        monto: Number(monto),
-        responsable: responsable || null,
-      })
-      .then((r) => r.data),
+  /** @returns {Promise<Movimiento>} */
+  getById: (id) => api.get(`/movimientos/${id}`).then((r) => r.data),
 };

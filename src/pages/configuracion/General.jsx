@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, CheckCircle, Info, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building } from "lucide-react";
+import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building } from "lucide-react";
 import { estacionamientoService } from "../../services/estacionamientoService";
+
+/** @typedef {import("../../types").Estacionamiento} Estacionamiento */
 import CategoriasCochera from "./CategoriasCochera";
 import TiposVehiculo from "./TiposVehiculo";
 import MetodosDePago from "./MetodosDePago";
@@ -17,11 +19,18 @@ function GeneralForm() {
   const [form, setForm] = useState({
     nombre: "",
     direccion: "",
+    locadorNombre: "",
+    locadorDocumento: "",
+    locadorDomicilio: "",
     diaVencimientoAbono: 10,
     aplicaRecargo: false,
     porcentajeRecargo: 0,
-    diasUmbralProporcional: null,
     imprimirReciboAlCobrar: true,
+    enviarReciboPorEmail: false,
+    contratoSeguroObligatorio: true,
+    contratoPlazoMeses: 12,
+    generarContratoAlCrearAbono: true,
+    emailAvisos: "",
   });
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -39,11 +48,21 @@ function GeneralForm() {
       setForm({
         nombre: data.nombre ?? "",
         direccion: data.direccion ?? "",
+        locadorNombre: data.locadorNombre ?? "",
+        locadorDocumento: data.locadorDocumento ?? "",
+        locadorDomicilio: data.locadorDomicilio ?? "",
         diaVencimientoAbono: data.diaVencimientoAbono,
         aplicaRecargo: data.aplicaRecargo,
         porcentajeRecargo: data.porcentajeRecargo,
-        diasUmbralProporcional: data.diasUmbralProporcional ?? "",
         imprimirReciboAlCobrar: data.imprimirReciboAlCobrar !== false,
+        enviarReciboPorEmail: !!data.enviarReciboPorEmail,
+        contratoSeguroObligatorio: data.contratoSeguroObligatorio !== false,
+        contratoPlazoMeses:
+          data.contratoPlazoMeses && Number(data.contratoPlazoMeses) > 0
+            ? data.contratoPlazoMeses
+            : 12,
+        generarContratoAlCrearAbono: data.generarContratoAlCrearAbono !== false,
+        emailAvisos: data.emailAvisos ?? "",
       });
     } catch {
       setError("No se pudo cargar la configuración");
@@ -72,18 +91,32 @@ function GeneralForm() {
       setError("El porcentaje de recargo debe estar entre 1 y 100");
       return;
     }
+    if (!form.emailAvisos.trim()) {
+      setError("El email de avisos es obligatorio");
+      return;
+    }
+    if (form.contratoPlazoMeses < 1 || form.contratoPlazoMeses > 120) {
+      setError("El plazo del contrato debe estar entre 1 y 120 meses");
+      return;
+    }
     try {
       setGuardando(true);
       setError(null);
       await estacionamientoService.modificar({
         nombre: form.nombre.trim(),
         direccion: form.direccion.trim(),
+        locadorNombre: form.locadorNombre.trim() || null,
+        locadorDocumento: form.locadorDocumento.trim() || null,
+        locadorDomicilio: form.locadorDomicilio.trim() || null,
         diaVencimientoAbono: Number(form.diaVencimientoAbono),
         aplicaRecargo: form.aplicaRecargo,
         porcentajeRecargo: Number(form.porcentajeRecargo),
-        diasUmbralProporcional:
-          form.diasUmbralProporcional !== "" ? Number(form.diasUmbralProporcional) : null,
         imprimirReciboAlCobrar: form.imprimirReciboAlCobrar,
+        enviarReciboPorEmail: form.enviarReciboPorEmail,
+        contratoSeguroObligatorio: form.contratoSeguroObligatorio,
+        contratoPlazoMeses: Number(form.contratoPlazoMeses),
+        generarContratoAlCrearAbono: form.generarContratoAlCrearAbono,
+        emailAvisos: form.emailAvisos.trim(),
       });
       setExito(true);
       setTimeout(() => setExito(false), 3000);
@@ -111,7 +144,7 @@ function GeneralForm() {
         </div>
       )}
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
         <h3 className="pk-label pb-2 border-b border-line-subtle">Identidad</h3>
 
         <div className="space-y-3">
@@ -150,7 +183,47 @@ function GeneralForm() {
         </div>
       </div>
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-line-subtle shadow-pk-card space-y-4">
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
+        <h3 className="pk-label pb-2 border-b border-line-subtle">Locador (contrato)</h3>
+        <p className="pk-caption -mt-2">
+          Datos del titular en el PDF. Si el domicilio queda vacío, se usa la dirección del
+          estacionamiento.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="pk-caption font-semibold block mb-1">Nombre / razón social</label>
+            <input
+              type="text"
+              value={form.locadorNombre}
+              onChange={(e) => set("locadorNombre", e.target.value)}
+              placeholder="Ej: Silvina Persig"
+              className="w-full pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
+            />
+          </div>
+          <div>
+            <label className="pk-caption font-semibold block mb-1">DNI / CUIT</label>
+            <input
+              type="text"
+              value={form.locadorDocumento}
+              onChange={(e) => set("locadorDocumento", e.target.value)}
+              placeholder="Documento del locador"
+              className="w-full max-w-xs pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
+            />
+          </div>
+          <div>
+            <label className="pk-caption font-semibold block mb-1">Domicilio del locador</label>
+            <input
+              type="text"
+              value={form.locadorDomicilio}
+              onChange={(e) => set("locadorDomicilio", e.target.value)}
+              placeholder="Opcional — si vacío usa la dirección del estacionamiento"
+              className="w-full pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
         <h3 className="pk-label pb-2 border-b border-line-subtle">Reglas de cobro</h3>
 
         <div className="space-y-3">
@@ -194,30 +267,6 @@ function GeneralForm() {
           </div>
 
           <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <label className="pk-caption font-semibold">Umbral proporcional (días)</label>
-              <div className="group relative text-ink-faint hover:text-ink-muted cursor-pointer">
-                <Info size={12} />
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-52 p-2 bg-ink text-[10px] text-white rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg leading-normal z-10">
-                  Si el cliente ingresa después de este día del mes, la 1ª cuota se prorratea.
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={1}
-                max={31}
-                value={form.diasUmbralProporcional}
-                onChange={(e) => set("diasUmbralProporcional", e.target.value)}
-                placeholder="Sin umbral"
-                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
-              />
-              <span className="pk-caption">días desde inicio del mes</span>
-            </div>
-          </div>
-
-          <div>
             <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
               <input
                 type="checkbox"
@@ -230,6 +279,92 @@ function GeneralForm() {
             <p className="pk-caption mt-1 ml-6">
               Si está activo, al cobrar se abre la vista previa del recibo.
             </p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={form.enviarReciboPorEmail}
+                onChange={(e) => set("enviarReciboPorEmail", e.target.checked)}
+                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
+              />
+              <span>Enviar recibo por email al cobrar</span>
+            </label>
+            <p className="pk-caption mt-1 ml-6">
+              Si está activo, al registrar un pago se manda el recibo al email del abono o del
+              cliente. Si no hay destinatario, el cobro igual se confirma.
+            </p>
+          </div>
+
+          <div>
+            <label className="pk-caption font-semibold block mb-1.5">Email de avisos</label>
+            <input
+              type="email"
+              value={form.emailAvisos}
+              onChange={(e) => set("emailAvisos", e.target.value)}
+              placeholder="avisos@tu-estacionamiento.com"
+              className="w-full max-w-md pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
+            />
+            <p className="pk-caption mt-1.5">
+              Casilla del estacionamiento para mails a clientes (remitente / responder a). El SMTP
+              global de Parkking se configura en el servidor.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
+        <h3 className="pk-label pb-2 border-b border-line-subtle">Contrato de abono (PDF)</h3>
+        <p className="pk-caption -mt-2">
+          Configura el texto del contrato y si se descarga automáticamente al dar de alta un abono.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={form.generarContratoAlCrearAbono}
+                onChange={(e) => set("generarContratoAlCrearAbono", e.target.checked)}
+                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
+              />
+              <span>Generar contrato automáticamente al crear un abono</span>
+            </label>
+            <p className="pk-caption mt-1 ml-6">
+              Si está activo, al finalizar el alta se descarga el PDF. Siempre se puede volver a
+              descargar desde el abono.
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={form.contratoSeguroObligatorio}
+                onChange={(e) => set("contratoSeguroObligatorio", e.target.checked)}
+                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
+              />
+              <span>Seguro del vehículo obligatorio</span>
+            </label>
+            <p className="pk-caption mt-1 ml-6">
+              Si está activo, el PDF incluye la cláusula de seguro vigente.
+            </p>
+          </div>
+
+          <div>
+            <label className="pk-caption font-semibold block mb-1">Plazo del contrato</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                max={120}
+                value={form.contratoPlazoMeses}
+                onChange={(e) => set("contratoPlazoMeses", e.target.value)}
+                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
+              />
+              <span className="pk-caption">meses (igual para todas las plazas)</span>
+            </div>
           </div>
         </div>
       </div>

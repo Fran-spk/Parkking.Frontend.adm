@@ -31,6 +31,7 @@ export function vehiculosDe(abono) {
   if (Array.isArray(abono?.abonoVehiculos) && abono.abonoVehiculos.length > 0) {
     return abono.abonoVehiculos.map((av) => ({
       abonoVehiculoId: av.abonoVehiculoId,
+      vehiculoId: av.vehiculoId ?? av.vehiculo?.vehiculoId,
       patente: av.patente ?? av.vehiculo?.patente,
       modeloVehiculo: av.modeloVehiculo ?? av.vehiculo?.modeloVehiculo,
       tipoVehiculoId: av.tipoVehiculoId ?? av.vehiculo?.tipoVehiculoId,

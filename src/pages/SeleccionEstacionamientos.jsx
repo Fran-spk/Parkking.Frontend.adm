@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Building, MapPin, ArrowRight, AlertCircle } from "lucide-react";
 import { estacionamientoService } from "../services/estacionamientoService";
 
+/** @typedef {import("../types").EstacionamientoAcceso} EstacionamientoAcceso */
+
 export default function SeleccionEstacionamientos() {
   const navigate = useNavigate();
-  const [estacionamientos, setEstacionamientos] = useState([]);
+  const [estacionamientos, setEstacionamientos] = useState(/** @type {EstacionamientoAcceso[]} */ ([]));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);

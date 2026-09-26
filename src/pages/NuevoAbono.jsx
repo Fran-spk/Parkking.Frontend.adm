@@ -6,14 +6,12 @@ import "react-datepicker/dist/react-datepicker.css";
 import {
   ArrowLeft,
   User,
-  ParkingSquare,
   Car,
   FileText,
   Plus,
   Trash2,
   AlertCircle,
   Check,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 
@@ -24,27 +22,33 @@ import { tarifaMensualService } from "../services/tarifaMensualService";
 import { abonoService } from "../services/abonoService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { clienteService } from "../services/clienteService";
+
+/** @typedef {import("../types").Cliente} Cliente */
+/** @typedef {import("../types").Vehiculo} Vehiculo */
+/** @typedef {import("../types").Cochera} Cochera */
+/** @typedef {import("../types").TipoVehiculo} TipoVehiculo */
 import { MODALIDAD, modalidadLabel } from "../utils/abonoHelpers";
 import {
   PERIODICIDAD,
   PERIODICIDAD_OPTIONS,
-  calcularFechaInicioCobro,
-  calcularMontoPrimeraCuota,
+  POLITICA_PRIMER_PERIODO,
+  DIA_MAX_SIN_PRORRATEO,
+  resolverPrimerPeriodo,
+  opcionesPoliticaPrimerPeriodo,
   formatearPeriodoLabel,
   formatDateYmd,
-  periodoQueContiene,
 } from "../utils/periodicidadHelpers";
 
 const SECTIONS = [
-  { id: "cliente", label: "Cliente", icon: User, hint: "Titular del contrato" },
-  { id: "plazas", label: "Plazas", icon: ParkingSquare, hint: "Cocheras incluidas" },
-  { id: "vehiculos", label: "Vehículos", icon: Car, hint: "Fijos o flexibles" },
-  { id: "condiciones", label: "Condiciones", icon: FileText, hint: "Fechas y precio" },
+  { id: "cliente", label: "Cliente", icon: User },
+  { id: "estructura", label: "Plazas y vehículos", icon: Car },
+  { id: "condiciones", label: "Condiciones", icon: FileText },
 ];
 
 const ORIGEN_VEHICULO = { EXISTENTE: "existente", NUEVO: "nuevo" };
+const MENU_ESTRUCTURA = { FIJOS: "fijos", FLEXIBLES: "flexibles" };
 
-function emptyVehiculo() {
+function emptyVehiculo(modalidad = MODALIDAD.FIJO) {
   return {
     key: crypto.randomUUID(),
     origen: ORIGEN_VEHICULO.NUEVO,
@@ -52,7 +56,7 @@ function emptyVehiculo() {
     patente: "",
     modeloVehiculo: "",
     tipoVehiculoId: "",
-    modalidad: MODALIDAD.FIJO,
+    modalidad,
     cocheraId: "",
   };
 }
@@ -62,7 +66,7 @@ function formatMoney(n) {
   return `$${Number(n).toLocaleString("es-AR")}`;
 }
 
-function SectionHeader({ index, title, subtitle, done }) {
+function SectionHeader({ index, title, done }) {
   return (
     <div className="flex items-start gap-4 mb-6">
       <div
@@ -76,7 +80,6 @@ function SectionHeader({ index, title, subtitle, done }) {
       </div>
       <div>
         <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
       </div>
     </div>
   );
@@ -84,25 +87,28 @@ function SectionHeader({ index, title, subtitle, done }) {
 
 export default function NuevoAbono() {
   const navigate = useNavigate();
-  const [cliente, setCliente] = useState(null);
-  const [plazasSeleccionadas, setPlazasSeleccionadas] = useState([]);
+  const [cliente, setCliente] = useState(/** @type {Cliente | null} */ (null));
+  const [menuEstructura, setMenuEstructura] = useState(MENU_ESTRUCTURA.FIJOS);
+  const [plazasFlexibles, setPlazasFlexibles] = useState([]);
   const [plazaParaAgregar, setPlazaParaAgregar] = useState("");
-  const [vehiculos, setVehiculos] = useState([emptyVehiculo()]);
-  const [vehiculosCliente, setVehiculosCliente] = useState([]);
+  const [vehiculos, setVehiculos] = useState([emptyVehiculo(MODALIDAD.FIJO)]);
+  const [vehiculosCliente, setVehiculosCliente] = useState(/** @type {Vehiculo[]} */ ([]));
   const [cargandoVehiculos, setCargandoVehiculos] = useState(false);
   const [cobrador, setCobrador] = useState("");
   const [fechaInicio, setFechaInicio] = useState(new Date());
   const [periodicidad, setPeriodicidad] = useState(PERIODICIDAD.MENSUAL);
-  const [comenzarPeriodoSiguiente, setComenzarPeriodoSiguiente] = useState(false);
+  const [politicaPrimerPeriodo, setPoliticaPrimerPeriodo] = useState(
+    POLITICA_PRIMER_PERIODO.COMPLETO
+  );
   const [precioAcordado, setPrecioAcordado] = useState("");
   const [precioSugerido, setPrecioSugerido] = useState(null);
   const [esFallback, setEsFallback] = useState(false);
-  const [cocherasDisponibles, setCocherasDisponibles] = useState([]);
-  const [tipos, setTipos] = useState([]);
+  const [cocherasDisponibles, setCocherasDisponibles] = useState(/** @type {Cochera[]} */ ([]));
+  const [tipos, setTipos] = useState(/** @type {TipoVehiculo[]} */ ([]));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState("cliente");
-  const [diasUmbralProporcional, setDiasUmbralProporcional] = useState(null);
+  const [generarContratoAlCrearAbono, setGenerarContratoAlCrearAbono] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -115,7 +121,7 @@ export default function NuevoAbono() {
         setCocherasDisponibles(
           (cocherasData || []).filter(c => c.activo !== false && c.estaDisponible !== false)
         );
-        setDiasUmbralProporcional(estacionamiento?.diasUmbralProporcional ?? null);
+        setGenerarContratoAlCrearAbono(estacionamiento?.generarContratoAlCrearAbono !== false);
       })
       .catch(() => setError("No se pudieron cargar cocheras o tipos de vehículo"));
   }, []);
@@ -143,77 +149,79 @@ export default function NuevoAbono() {
     };
   }, [cliente?.clienteId]);
 
-  // Si cambia la fecha/periodicidad y el ingreso es al inicio del período, el check pierde sentido
+  // Día 1–2: no prorratear
   useEffect(() => {
     if (!fechaInicio) return;
-    const { inicio } = periodoQueContiene(fechaInicio, periodicidad);
-    const mismoDia =
-      fechaInicio.getFullYear() === inicio.getFullYear() &&
-      fechaInicio.getMonth() === inicio.getMonth() &&
-      fechaInicio.getDate() === inicio.getDate();
-    if (mismoDia) setComenzarPeriodoSiguiente(false);
-  }, [fechaInicio, periodicidad]);
+    if (
+      fechaInicio.getDate() <= DIA_MAX_SIN_PRORRATEO &&
+      politicaPrimerPeriodo === POLITICA_PRIMER_PERIODO.PRORRATEAR
+    ) {
+      setPoliticaPrimerPeriodo(POLITICA_PRIMER_PERIODO.COMPLETO);
+    }
+  }, [fechaInicio, politicaPrimerPeriodo]);
 
   const planCobro = useMemo(() => {
     if (!fechaInicio) return null;
-    const cobroInicio = calcularFechaInicioCobro(fechaInicio, periodicidad, comenzarPeriodoSiguiente);
-    const periodo = periodoQueContiene(cobroInicio, periodicidad);
+    const hayFlexible = vehiculos.some(
+      v =>
+        Number(v.modalidad) === MODALIDAD.FLEXIBLE &&
+        (v.origen === ORIGEN_VEHICULO.EXISTENTE ? !!v.vehiculoId : !!v.patente.trim())
+    );
     const montoBase =
       precioAcordado !== "" && precioAcordado != null
         ? Number(precioAcordado)
-        : precioSugerido != null
+        : !hayFlexible && precioSugerido != null
           ? Number(precioSugerido)
           : null;
-    const montoPrimera =
+    const resolved =
       montoBase != null && !Number.isNaN(montoBase)
-        ? calcularMontoPrimeraCuota({
-            montoBase,
+        ? resolverPrimerPeriodo({
             fechaIngreso: fechaInicio,
-            fechaInicioCobro: cobroInicio,
             periodicidad,
-            diasUmbralProporcional,
+            politica: politicaPrimerPeriodo,
+            montoBaseCiclo: montoBase,
           })
-        : null;
-    const prorratea =
-      montoPrimera != null &&
-      montoBase != null &&
-      montoPrimera < montoBase;
+        : resolverPrimerPeriodo({
+            fechaIngreso: fechaInicio,
+            periodicidad,
+            politica: politicaPrimerPeriodo,
+            montoBaseCiclo: 0,
+          });
 
     return {
-      fechaInicioCobro: cobroInicio,
-      periodo,
-      label: formatearPeriodoLabel(periodo.inicio, periodo.fin, periodicidad),
-      prorratea,
+      fechaInicioCobro: resolved.periodo.inicio,
+      periodo: resolved.periodo,
+      label: formatearPeriodoLabel(
+        resolved.periodo.inicio,
+        resolved.periodo.fin,
+        periodicidad
+      ),
+      prorratea: resolved.fueProrrateado,
       montoBase,
-      montoPrimera,
+      montoPrimera:
+        montoBase != null && !Number.isNaN(montoBase) ? resolved.monto : null,
       periodicidadLabel:
         PERIODICIDAD_OPTIONS.find(o => o.value === Number(periodicidad))?.label || "Mensual",
     };
-  }, [
-    fechaInicio,
-    periodicidad,
-    comenzarPeriodoSiguiente,
-    precioAcordado,
-    precioSugerido,
-    diasUmbralProporcional,
-  ]);
+  }, [fechaInicio, periodicidad, politicaPrimerPeriodo, precioAcordado, precioSugerido, vehiculos]);
 
-  const mostrarCheckDiferir = useMemo(() => {
+  const puedeProrratear = useMemo(() => {
     if (!fechaInicio) return false;
-    const { inicio } = periodoQueContiene(fechaInicio, periodicidad);
-    return !(
-      fechaInicio.getFullYear() === inicio.getFullYear() &&
-      fechaInicio.getMonth() === inicio.getMonth() &&
-      fechaInicio.getDate() === inicio.getDate()
-    );
-  }, [fechaInicio, periodicidad]);
+    return fechaInicio.getDate() > DIA_MAX_SIN_PRORRATEO;
+  }, [fechaInicio]);
+
+  const opcionesPolitica = useMemo(
+    () => opcionesPoliticaPrimerPeriodo(periodicidad),
+    [periodicidad]
+  );
 
   useEffect(() => {
     const completos = vehiculos.filter(v =>
       v.origen === ORIGEN_VEHICULO.EXISTENTE ? !!v.vehiculoId : !!v.patente.trim()
     );
     const tieneFlexible = completos.some(v => Number(v.modalidad) === MODALIDAD.FLEXIBLE);
-    if (tieneFlexible || plazasSeleccionadas.length === 0) {
+    // Flexibles: nunca sugerir precio de lista.
+    if (tieneFlexible) {
       setPrecioSugerido(null);
       setEsFallback(false);
       return;
@@ -224,6 +232,7 @@ export default function NuevoAbono() {
     );
     if (fijos.length === 0) {
       setPrecioSugerido(null);
+      setEsFallback(false);
       return;
     }
 
@@ -254,7 +263,7 @@ export default function NuevoAbono() {
     return () => {
       cancelled = true;
     };
-  }, [vehiculos, plazasSeleccionadas, cocherasDisponibles, periodicidad]);
+  }, [vehiculos, cocherasDisponibles, periodicidad]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -273,6 +282,23 @@ export default function NuevoAbono() {
     return () => observer.disconnect();
   }, []);
 
+  const cocheraIdsFijos = useMemo(
+    () =>
+      [
+        ...new Set(
+          vehiculos
+            .filter(v => Number(v.modalidad) === MODALIDAD.FIJO && v.cocheraId)
+            .map(v => Number(v.cocheraId))
+        ),
+      ],
+    [vehiculos]
+  );
+
+  const plazasSeleccionadas = useMemo(
+    () => [...new Set([...cocheraIdsFijos, ...plazasFlexibles])],
+    [cocheraIdsFijos, plazasFlexibles]
+  );
+
   const plazasDetalle = useMemo(
     () =>
       plazasSeleccionadas
@@ -282,21 +308,33 @@ export default function NuevoAbono() {
   );
 
   const cocherasParaAgregar = cocherasDisponibles.filter(
-    c => !plazasSeleccionadas.includes(c.cocheraId)
+    c => !plazasFlexibles.includes(c.cocheraId)
+  );
+
+  const vehiculosFijos = useMemo(
+    () => vehiculos.filter(v => Number(v.modalidad) === MODALIDAD.FIJO),
+    [vehiculos]
+  );
+  const vehiculosFlex = useMemo(
+    () => vehiculos.filter(v => Number(v.modalidad) === MODALIDAD.FLEXIBLE),
+    [vehiculos]
   );
 
   const vehiculosCompletos = vehiculos.filter(v =>
     v.origen === ORIGEN_VEHICULO.EXISTENTE ? !!v.vehiculoId : !!v.patente.trim()
   );
 
+  const tieneFlexible = vehiculosCompletos.some(
+    v => Number(v.modalidad) === MODALIDAD.FLEXIBLE
+  );
+
   const checklist = {
     cliente: !!cliente?.clienteId,
-    plazas: plazasSeleccionadas.length > 0,
-    vehiculos: true,
+    estructura: plazasSeleccionadas.length > 0,
     condiciones: !!fechaInicio,
   };
 
-  const puedeCrear = checklist.cliente && checklist.plazas && !guardando;
+  const puedeCrear = checklist.cliente && checklist.estructura && !guardando;
 
   function idsVehiculosYaElegidos(exceptoKey) {
     return new Set(
@@ -319,17 +357,14 @@ export default function NuevoAbono() {
     }));
   }
 
-  function agregarPlaza() {
+  function agregarPlazaFlexible() {
     if (!plazaParaAgregar) return;
-    setPlazasSeleccionadas(prev => [...prev, Number(plazaParaAgregar)]);
+    setPlazasFlexibles(prev => [...prev, Number(plazaParaAgregar)]);
     setPlazaParaAgregar("");
   }
 
-  function quitarPlaza(cocheraId) {
-    setPlazasSeleccionadas(prev => prev.filter(id => id !== cocheraId));
-    setVehiculos(prev =>
-      prev.map(v => (Number(v.cocheraId) === cocheraId ? { ...v, cocheraId: "" } : v))
-    );
+  function quitarPlazaFlexible(cocheraId) {
+    setPlazasFlexibles(prev => prev.filter(id => id !== cocheraId));
   }
 
   function updateVehiculo(key, patch) {
@@ -368,7 +403,15 @@ export default function NuevoAbono() {
 
   function onSeleccionarCliente(c) {
     setCliente(c);
-    setVehiculos([emptyVehiculo()]);
+    setVehiculos([emptyVehiculo(MODALIDAD.FIJO)]);
+    setPlazasFlexibles([]);
+    setMenuEstructura(MENU_ESTRUCTURA.FIJOS);
+  }
+
+  function agregarVehiculoDelMenu() {
+    const modalidad =
+      menuEstructura === MENU_ESTRUCTURA.FLEXIBLES ? MODALIDAD.FLEXIBLE : MODALIDAD.FIJO;
+    setVehiculos(prev => [...prev, emptyVehiculo(modalidad)]);
   }
 
   function formatearFechaString(dateObj) {
@@ -412,12 +455,6 @@ export default function NuevoAbono() {
       setGuardando(true);
       setError(null);
 
-      const fechaInicioCobroObj = calcularFechaInicioCobro(
-        fechaInicio,
-        periodicidad,
-        comenzarPeriodoSiguiente
-      );
-
       const creado = await abonoService.crear({
         clienteId: cliente.clienteId,
         cocheraIds: plazasSeleccionadas,
@@ -438,13 +475,21 @@ export default function NuevoAbono() {
           };
         }),
         cobrador: cobrador.trim() || null,
+        email: null,
         fechaInicio: formatearFechaString(fechaInicio),
-        fechaInicioCobro: formatearFechaString(fechaInicioCobroObj),
         periodicidadCobro: Number(periodicidad),
+        politicaPrimerPeriodo: Number(politicaPrimerPeriodo),
         precioAcordado: precioAcordado ? Number(precioAcordado) : null,
       });
 
       const id = creado.abonoId ?? creado.abonoCocheraId;
+      if (id && generarContratoAlCrearAbono) {
+        try {
+          await abonoService.descargarContrato(id);
+        } catch {
+          // El abono ya se creó; si falla el PDF, igual se navega al detalle.
+        }
+      }
       navigate(id ? `/pagosAbono/${id}` : "/abonos");
     } catch (e) {
       const msg = e.response?.data;
@@ -461,65 +506,55 @@ export default function NuevoAbono() {
   const inputCls =
     "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
 
+  const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.id === activeSection));
+
   return (
     <div className="min-h-[calc(100vh-2rem)] -mx-1">
-      {/* Top bar */}
-      <div className="sticky top-16 z-30 -mx-4 px-4 lg:-mx-8 lg:px-8 py-3 mb-6 bg-gray-50/90 backdrop-blur-md border-b border-slate-200/70">
-        <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate("/abonos")}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 tracking-tight truncate">
-                  Nuevo abono
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
-                  <Sparkles size={10} /> Contrato
-                </span>
+      {/* Top bar + steps */}
+      <div className="sticky top-16 z-30 -mx-4 px-4 lg:-mx-8 lg:px-8 py-3 mb-8 bg-gray-50/95 backdrop-blur-md border-b border-slate-200/70">
+        <div className="max-w-6xl mx-auto space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => navigate("/abonos")}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black text-slate-900 tracking-tight truncate">
+                    Nuevo abono
+                  </h1>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5 truncate">
+                  Paso {activeIdx + 1} de {SECTIONS.length}
+                </p>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5 truncate">
-                Armá plazas, vehículos y condiciones en un solo flujo
-              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate("/abonos")}
+                className="hidden sm:inline-flex text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2.5 rounded-xl hover:bg-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCrear}
+                disabled={!puedeCrear}
+                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
+              >
+                {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                {guardando ? "Creando..." : "Crear abono"}
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => navigate("/abonos")}
-              className="hidden sm:inline-flex text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2.5 rounded-xl hover:bg-white transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleCrear}
-              disabled={!puedeCrear}
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
-            >
-              {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-              {guardando ? "Creando..." : "Crear abono"}
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {error && (
-        <div className="max-w-7xl mx-auto mb-5 flex items-start gap-2.5 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_300px] gap-6 pb-16">
-        {/* Step rail */}
-        <aside className="hidden xl:block">
-          <nav className="sticky top-36 space-y-1.5">
+          {/* Stepper en cabecera */}
+          <nav aria-label="Pasos del alta" className="flex items-stretch gap-1 sm:gap-2 overflow-x-auto pb-0.5">
             {SECTIONS.map((s, i) => {
               const Icon = s.icon;
               const active = activeSection === s.id;
@@ -529,63 +564,55 @@ export default function NuevoAbono() {
                   key={s.id}
                   type="button"
                   onClick={() => scrollTo(s.id)}
-                  className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-2xl transition-all ${
+                  className={`flex-1 min-w-[7.5rem] flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border transition-all text-left ${
                     active
-                      ? "bg-white shadow-sm border border-slate-200/80"
-                      : "hover:bg-white/70 border border-transparent"
+                      ? "bg-white border-slate-200 shadow-sm ring-1 ring-slate-900/5"
+                      : done
+                        ? "bg-emerald-50/80 border-emerald-100 hover:bg-emerald-50"
+                        : "bg-white/60 border-transparent hover:bg-white hover:border-slate-200"
                   }`}
                 >
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                       done
-                        ? "bg-emerald-50 text-emerald-600"
+                        ? "bg-emerald-500 text-white"
                         : active
-                          ? "bg-indigo-50 text-indigo-600"
+                          ? "bg-slate-900 text-white"
                           : "bg-slate-100 text-slate-400"
                     }`}
                   >
-                    {done ? <Check size={16} strokeWidth={2.5} /> : <Icon size={16} />}
+                    {done ? <Check size={14} strokeWidth={2.5} /> : <Icon size={14} />}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold truncate ${active ? "text-slate-900" : "text-slate-600"}`}>
-                      {i + 1}. {s.label}
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Paso {i + 1}
                     </p>
-                    <p className="text-[11px] text-slate-400 truncate">{s.hint}</p>
+                    <p className={`text-sm font-semibold truncate ${active ? "text-slate-900" : done ? "text-emerald-800" : "text-slate-600"}`}>
+                      {s.label}
+                    </p>
                   </div>
                 </button>
               );
             })}
           </nav>
-        </aside>
+        </div>
+      </div>
 
+      {error && (
+        <div className="max-w-6xl mx-auto mb-5 flex items-start gap-2.5 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="max-w-6xl mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-8 pb-16">
         {/* Main sections */}
-        <div className="space-y-5 min-w-0">
-          {/* Mobile steps */}
-          <div className="xl:hidden flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            {SECTIONS.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => scrollTo(s.id)}
-                className={`shrink-0 px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
-                  activeSection === s.id
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : checklist[s.id]
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                      : "bg-white text-slate-500 border-slate-200"
-                }`}
-              >
-                {i + 1}. {s.label}
-              </button>
-            ))}
-          </div>
-
+        <div className="space-y-6 min-w-0">
           {/* 1. Cliente */}
-            <section id="sec-cliente" className="scroll-mt-40 bg-white rounded-3xl border border-slate-200/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] p-6 sm:p-8">
+          <section id="sec-cliente" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
             <SectionHeader
               index={1}
               title="Cliente"
-              subtitle="Quién contrata el abono. Podés buscar uno existente o crear uno al vuelo."
               done={checklist.cliente}
             />
             <div className="max-w-xl">
@@ -604,7 +631,9 @@ export default function NuevoAbono() {
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 truncate">{cliente.nombre}</p>
                     <p className="text-xs text-slate-500 truncate">
-                      {[cliente.telefono, cliente.email].filter(Boolean).join(" · ") || "Sin contacto"}
+                      {[cliente.documento && `DNI ${cliente.documento}`, cliente.telefono, cliente.email]
+                        .filter(Boolean)
+                        .join(" · ") || "Sin contacto"}
                     </p>
                   </div>
                 </div>
@@ -612,257 +641,96 @@ export default function NuevoAbono() {
             </div>
           </section>
 
-          {/* 2. Plazas */}
-          <section id="sec-plazas" className="scroll-mt-40 bg-white rounded-3xl border border-slate-200/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] p-6 sm:p-8">
-            <SectionHeader
-              index={2}
-              title="Plazas contratadas"
-              subtitle="Una o varias cocheras forman el conjunto del abono. Después podés fijar vehículos a cada una."
-              done={checklist.plazas}
-            />
-
-            {plazasDetalle.length > 0 && (
-              <div className="grid sm:grid-cols-2 gap-3 mb-5">
-                {plazasDetalle.map((c, i) => (
-                  <div
-                    key={c.cocheraId}
-                    className="group relative flex items-center gap-3 p-4 rounded-2xl border border-slate-150 bg-gradient-to-br from-slate-50 to-white hover:border-indigo-200 transition-colors"
+          {/* 2. Plazas y vehículos */}
+          <section id="sec-estructura" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+              <SectionHeader
+                index={2}
+                title="Plazas y vehículos"
+                done={checklist.estructura}
+              />
+              <div className="grid grid-cols-2 gap-2 shrink-0 w-full sm:w-64">
+                {[
+                  { id: MENU_ESTRUCTURA.FIJOS, label: "Fijos" },
+                  { id: MENU_ESTRUCTURA.FLEXIBLES, label: "Flexibles" },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setMenuEstructura(opt.id)}
+                    className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      menuEstructura === opt.id
+                        ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/15"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    }`}
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex flex-col items-center justify-center shrink-0 shadow-md shadow-slate-900/20">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Nº</span>
-                      <span className="text-sm font-black leading-tight">{c.numero}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-900">Plaza {i + 1}</p>
-                      <p className="text-xs text-slate-500 truncate">
-                        {c.categoriaCochera?.nombre || "Sin categoría"}
-                        {c.multipleOcupacion ? " · Multi" : ""}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => quitarPlaza(c.cocheraId)}
-                      className="p-2 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                    {opt.label}
+                  </button>
                 ))}
               </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
-              <select
-                value={plazaParaAgregar}
-                onChange={e => setPlazaParaAgregar(e.target.value)}
-                className={`${inputCls} flex-1`}
-              >
-                <option value="">
-                  {cocherasParaAgregar.length === 0
-                    ? "No hay cocheras disponibles"
-                    : "Elegí una cochera disponible..."}
-                </option>
-                {cocherasParaAgregar.map(c => (
-                  <option key={c.cocheraId} value={c.cocheraId}>
-                    {c.numero}
-                    {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={agregarPlaza}
-                disabled={!plazaParaAgregar}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-600/20"
-              >
-                <Plus size={16} /> Agregar plaza
-              </button>
-            </div>
-          </section>
-
-          {/* 3. Vehículos */}
-          <section id="sec-vehiculos" className="scroll-mt-40 bg-white rounded-3xl border border-slate-200/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] p-6 sm:p-8">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <SectionHeader
-                index={3}
-                title="Vehículos habilitados"
-                subtitle="Podés elegir un vehículo ya cargado del cliente o crear uno nuevo. Fijo = plaza concreta; Flexible = cualquiera del abono."
-                done={vehiculosCompletos.length > 0}
-              />
-              <button
-                type="button"
-                onClick={() => setVehiculos(prev => [...prev, emptyVehiculo()])}
-                className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition-colors"
-              >
-                <Plus size={14} /> Agregar
-              </button>
             </div>
 
             {!cliente?.clienteId && (
               <p className="text-sm text-slate-500 mb-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-                Seleccioná un cliente para ver sus vehículos existentes o cargar uno nuevo.
+                Seleccioná un cliente primero.
               </p>
             )}
 
-            <div className="space-y-4">
-              {vehiculos.map((v, idx) => {
-                const esExistente = v.origen === ORIGEN_VEHICULO.EXISTENTE;
-                const opciones = todosVehiculosParaSelect(v.key);
-                const libres = opciones.filter(o => !o._disabled);
-                return (
-                <div
-                  key={v.key}
-                  className="relative rounded-2xl border border-slate-200/80 bg-slate-50/40 p-4 sm:p-5"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                        Vehículo {idx + 1}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          Number(v.modalidad) === MODALIDAD.FLEXIBLE
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-indigo-100 text-indigo-700"
-                        }`}
-                      >
-                        {modalidadLabel(v.modalidad)}
-                      </span>
-                    </div>
-                    {vehiculos.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setVehiculos(prev => prev.filter(x => x.key !== v.key))}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+            {menuEstructura === MENU_ESTRUCTURA.FIJOS && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500">
+                    Primero el vehículo; debajo, la cochera fija.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={agregarVehiculoDelMenu}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <Plus size={14} /> Agregar vehículo
+                  </button>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-4 max-w-md">
-                    {[
-                      { value: ORIGEN_VEHICULO.EXISTENTE, label: "Del sistema" },
-                      { value: ORIGEN_VEHICULO.NUEVO, label: "Crear nuevo" },
-                    ].map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        disabled={!cliente?.clienteId && opt.value === ORIGEN_VEHICULO.EXISTENTE}
-                        onClick={() => setOrigenVehiculo(v.key, opt.value)}
-                        className={`py-2.5 rounded-xl text-sm font-semibold border transition-all disabled:opacity-40 ${
-                          v.origen === opt.value
-                            ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/15"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                {vehiculosFijos.length === 0 && (
+                  <p className="text-sm text-slate-400 rounded-xl bg-slate-50 px-4 py-3">
+                    Sin vehículos fijos. Agregá uno o pasá a Flexibles.
+                  </p>
+                )}
 
-                  {esExistente ? (
-                    <div className="mb-3">
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                        Vehículo del cliente <span className="text-rose-400">*</span>
-                      </label>
-                      <select
-                        value={v.vehiculoId}
-                        onChange={e => seleccionarVehiculoExistente(v.key, e.target.value)}
-                        disabled={!cliente?.clienteId || cargandoVehiculos}
-                        className={inputCls}
-                      >
-                        <option value="">
-                          {!cliente?.clienteId
-                            ? "Primero elegí un cliente"
-                            : cargandoVehiculos
-                              ? "Cargando vehículos..."
-                              : vehiculosCliente.length === 0
-                                ? "Este cliente no tiene vehículos"
-                                : libres.length === 0
-                                  ? "No hay vehículos libres (todos en abonos activos)"
-                                  : "Seleccioná un vehículo..."}
-                        </option>
-                        {opciones.map(opt => (
-                          <option
-                            key={opt.vehiculoId}
-                            value={opt.vehiculoId}
-                            disabled={opt._disabled}
-                          >
-                            {opt.patente}
-                            {opt.modeloVehiculo ? ` — ${opt.modeloVehiculo}` : ""}
-                            {opt.tipoVehiculoNombre ? ` (${opt.tipoVehiculoNombre})` : ""}
-                            {opt._motivo ? ` — ${opt._motivo}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                      {cliente?.clienteId && !cargandoVehiculos && vehiculosCliente.length === 0 && (
-                        <p className="text-[11px] text-slate-400 mt-1.5">
-                          Este cliente no tiene vehículos cargados. Creá uno nuevo.
-                        </p>
-                      )}
-                      {cliente?.clienteId && !cargandoVehiculos && vehiculosCliente.length > 0 && libres.length === 0 && (
-                        <p className="text-[11px] text-amber-600 mt-1.5">
-                          Todos sus vehículos están en un abono activo. Dá de baja el otro abono o creá un vehículo nuevo.
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Patente</label>
-                      <input
-                        value={v.patente}
-                        onChange={e => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
-                        placeholder="ABC123"
-                        maxLength={10}
-                        className={`${inputCls} font-mono tracking-wider`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Modelo</label>
-                      <input
-                        value={v.modeloVehiculo}
-                        onChange={e => updateVehiculo(v.key, { modeloVehiculo: e.target.value })}
-                        placeholder="Ej: Golf"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Tipo</label>
-                      <select
-                        value={v.tipoVehiculoId}
-                        onChange={e => updateVehiculo(v.key, { tipoVehiculoId: e.target.value })}
-                        className={inputCls}
-                      >
-                        <option value="">Seleccioná...</option>
-                        {tipos.map(t => (
-                          <option key={t.tipoVehiculoId} value={t.tipoVehiculoId}>{t.nombre}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  )}
+                {vehiculosFijos.map((v, idx) => {
+                  const esExistente = v.origen === ORIGEN_VEHICULO.EXISTENTE;
+                  const opciones = todosVehiculosParaSelect(v.key);
+                  const libres = opciones.filter(o => !o._disabled);
+                  return (
+                    <div
+                      key={v.key}
+                      className="relative rounded-2xl border border-transparent bg-slate-50/40 p-4 sm:p-5"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                          Vehículo fijo {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setVehiculos(prev => prev.filter(x => x.key !== v.key))}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
 
-                  <div className={`${esExistente ? "" : "mt-3"} grid sm:grid-cols-2 gap-3`}>
-                    <div className={esExistente ? "sm:col-span-2" : ""}>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Modalidad</label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-2 mb-4 max-w-md">
                         {[
-                          { value: MODALIDAD.FIJO, label: "Fijo" },
-                          { value: MODALIDAD.FLEXIBLE, label: "Flexible" },
+                          { value: ORIGEN_VEHICULO.EXISTENTE, label: "Del sistema" },
+                          { value: ORIGEN_VEHICULO.NUEVO, label: "Crear nuevo" },
                         ].map(opt => (
                           <button
                             key={opt.value}
                             type="button"
-                            onClick={() =>
-                              updateVehiculo(v.key, {
-                                modalidad: opt.value,
-                                cocheraId: opt.value === MODALIDAD.FLEXIBLE ? "" : v.cocheraId,
-                              })
-                            }
-                            className={`py-3 rounded-xl text-sm font-semibold border transition-all ${
-                              Number(v.modalidad) === opt.value
+                            disabled={!cliente?.clienteId && opt.value === ORIGEN_VEHICULO.EXISTENTE}
+                            onClick={() => setOrigenVehiculo(v.key, opt.value)}
+                            className={`py-2.5 rounded-xl text-sm font-semibold border transition-all disabled:opacity-40 ${
+                              v.origen === opt.value
                                 ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/15"
                                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                             }`}
@@ -871,45 +739,279 @@ export default function NuevoAbono() {
                           </button>
                         ))}
                       </div>
-                    </div>
-                  </div>
 
-                  {Number(v.modalidad) === MODALIDAD.FIJO && (
-                    <div className="mt-3">
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                        Plaza fija <span className="text-rose-400">*</span>
-                      </label>
-                      <select
-                        value={v.cocheraId}
-                        onChange={e => updateVehiculo(v.key, { cocheraId: e.target.value })}
-                        disabled={plazasSeleccionadas.length === 0}
-                        className={inputCls}
+                      {esExistente ? (
+                        <div className="mb-3">
+                          <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+                            Vehículo <span className="text-rose-400">*</span>
+                          </label>
+                          <select
+                            value={v.vehiculoId}
+                            onChange={e => seleccionarVehiculoExistente(v.key, e.target.value)}
+                            disabled={!cliente?.clienteId || cargandoVehiculos}
+                            className={inputCls}
+                          >
+                            <option value="">
+                              {!cliente?.clienteId
+                                ? "Primero elegí un cliente"
+                                : cargandoVehiculos
+                                  ? "Cargando..."
+                                  : libres.length === 0
+                                    ? "No hay vehículos libres"
+                                    : "Seleccioná un vehículo..."}
+                            </option>
+                            {opciones.map(opt => (
+                              <option key={opt.vehiculoId} value={opt.vehiculoId} disabled={opt._disabled}>
+                                {opt.patente}
+                                {opt.modeloVehiculo ? ` — ${opt.modeloVehiculo}` : ""}
+                                {opt._motivo ? ` — ${opt._motivo}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-3 gap-3 mb-3">
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Patente</label>
+                            <input
+                              value={v.patente}
+                              onChange={e => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
+                              placeholder="ABC123"
+                              maxLength={10}
+                              className={`${inputCls} font-mono tracking-wider`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Modelo</label>
+                            <input
+                              value={v.modeloVehiculo}
+                              onChange={e => updateVehiculo(v.key, { modeloVehiculo: e.target.value })}
+                              placeholder="Ej: Golf"
+                              className={inputCls}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Tipo</label>
+                            <select
+                              value={v.tipoVehiculoId}
+                              onChange={e => updateVehiculo(v.key, { tipoVehiculoId: e.target.value })}
+                              className={inputCls}
+                            >
+                              <option value="">Seleccioná...</option>
+                              {tipos.map(t => (
+                                <option key={t.tipoVehiculoId} value={t.tipoVehiculoId}>{t.nombre}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-1">
+                        <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+                          Cochera fija <span className="text-rose-400">*</span>
+                        </label>
+                        <select
+                          value={v.cocheraId}
+                          onChange={e => updateVehiculo(v.key, { cocheraId: e.target.value })}
+                          className={inputCls}
+                        >
+                          <option value="">Elegí una cochera disponible...</option>
+                          {cocherasDisponibles.map(c => (
+                            <option key={c.cocheraId} value={c.cocheraId}>
+                              {c.numero}
+                              {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
+                              {c.multipleOcupacion
+                                ? ` · multi ${c.abonosActivos ?? 0}/${c.capacidadMaxima ?? "—"}`
+                                : (c.abonosActivos ?? 0) > 0
+                                  ? " · ocupada"
+                                  : " · libre"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {menuEstructura === MENU_ESTRUCTURA.FLEXIBLES && (
+              <div className="grid lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Vehículos</p>
+                    <button
+                      type="button"
+                      onClick={agregarVehiculoDelMenu}
+                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-xl transition-colors"
+                    >
+                      <Plus size={14} /> Agregar
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Sin plaza fija. El precio acordado es obligatorio (no hay tarifa de lista).
+                  </p>
+
+                  {vehiculosFlex.length === 0 && (
+                    <p className="text-sm text-slate-400 rounded-xl bg-amber-50/50 px-4 py-3">
+                      Sin vehículos flexibles todavía.
+                    </p>
+                  )}
+
+                  {vehiculosFlex.map((v, idx) => {
+                    const esExistente = v.origen === ORIGEN_VEHICULO.EXISTENTE;
+                    const opciones = todosVehiculosParaSelect(v.key);
+                    const libres = opciones.filter(o => !o._disabled);
+                    return (
+                      <div
+                        key={v.key}
+                        className="relative rounded-2xl border border-amber-100/80 bg-amber-50/30 p-4"
                       >
-                        <option value="">
-                          {plazasSeleccionadas.length === 0
-                            ? "Primero agregá plazas arriba"
-                            : "Asignar a plaza..."}
-                        </option>
-                        {plazasDetalle.map(c => (
-                          <option key={c.cocheraId} value={c.cocheraId}>
-                            Cochera {c.numero}
-                          </option>
-                        ))}
-                      </select>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-amber-700/70">
+                            Flexible {idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setVehiculos(prev => prev.filter(x => x.key !== v.key))}
+                            className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {[
+                            { value: ORIGEN_VEHICULO.EXISTENTE, label: "Del sistema" },
+                            { value: ORIGEN_VEHICULO.NUEVO, label: "Crear nuevo" },
+                          ].map(opt => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              disabled={!cliente?.clienteId && opt.value === ORIGEN_VEHICULO.EXISTENTE}
+                              onClick={() => setOrigenVehiculo(v.key, opt.value)}
+                              className={`py-2 rounded-xl text-xs font-semibold border transition-all disabled:opacity-40 ${
+                                v.origen === opt.value
+                                  ? "bg-slate-900 text-white border-slate-900"
+                                  : "bg-white text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        {esExistente ? (
+                          <select
+                            value={v.vehiculoId}
+                            onChange={e => seleccionarVehiculoExistente(v.key, e.target.value)}
+                            disabled={!cliente?.clienteId || cargandoVehiculos}
+                            className={inputCls}
+                          >
+                            <option value="">Seleccioná vehículo...</option>
+                            {opciones.map(opt => (
+                              <option key={opt.vehiculoId} value={opt.vehiculoId} disabled={opt._disabled}>
+                                {opt.patente}{opt._motivo ? ` — ${opt._motivo}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              value={v.patente}
+                              onChange={e => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
+                              placeholder="Patente"
+                              maxLength={10}
+                              className={`${inputCls} font-mono`}
+                            />
+                            <select
+                              value={v.tipoVehiculoId}
+                              onChange={e => updateVehiculo(v.key, { tipoVehiculoId: e.target.value })}
+                              className={inputCls}
+                            >
+                              <option value="">Tipo...</option>
+                              {tipos.map(t => (
+                                <option key={t.tipoVehiculoId} value={t.tipoVehiculoId}>{t.nombre}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Cocheras del abono</p>
+                  <p className="text-[11px] text-slate-500">
+                    Plazas disponibles para los flexibles (independientes del vehículo).
+                  </p>
+
+                  {plazasFlexibles.length > 0 && (
+                    <div className="space-y-2">
+                      {plazasFlexibles.map(id => {
+                        const c = cocherasDisponibles.find(x => x.cocheraId === id);
+                        if (!c) return null;
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-transparent"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-sm font-black">
+                              {c.numero}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-slate-800 truncate">
+                                {c.categoriaCochera?.nombre || "Sin categoría"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => quitarPlazaFlexible(id)}
+                              className="p-2 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
-                );
-              })}
-            </div>
-          </section>
 
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <select
+                      value={plazaParaAgregar}
+                      onChange={e => setPlazaParaAgregar(e.target.value)}
+                      className={`${inputCls} flex-1`}
+                    >
+                      <option value="">
+                        {cocherasParaAgregar.length === 0
+                          ? "No hay cocheras disponibles"
+                          : "Elegí cochera..."}
+                      </option>
+                      {cocherasParaAgregar.map(c => (
+                        <option key={c.cocheraId} value={c.cocheraId}>
+                          {c.numero}
+                          {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={agregarPlazaFlexible}
+                      disabled={!plazaParaAgregar}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40"
+                    >
+                      <Plus size={16} /> Plaza
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
           {/* 4. Condiciones */}
-          <section id="sec-condiciones" className="scroll-mt-40 bg-white rounded-3xl border border-slate-200/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] p-6 sm:p-8">
+          <section id="sec-condiciones" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
             <SectionHeader
-              index={4}
-              title="Condiciones del contrato"
-              subtitle="Fechas, periodicidad, cobrador y precio. Se genera la primera cuota al confirmar."
+              index={3}
+              title="Condiciones"
               done={checklist.condiciones}
             />
 
@@ -936,7 +1038,7 @@ export default function NuevoAbono() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="sm:col-span-2 max-w-md">
                 <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Cobrador</label>
                 <input
                   value={cobrador}
@@ -947,25 +1049,42 @@ export default function NuevoAbono() {
               </div>
             </div>
 
-            {mostrarCheckDiferir && (
-              <label className="mt-4 max-w-3xl flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-100 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={comenzarPeriodoSiguiente}
-                  onChange={e => setComenzarPeriodoSiguiente(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded text-indigo-600 border-amber-300 focus:ring-indigo-500"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-amber-900">
-                    Cobrar a partir del período siguiente
-                  </span>
-                  <span className="block text-xs text-amber-700 mt-0.5 leading-relaxed">
-                    El ingreso es a mitad de período. Marcá esto para no prorratear el actual
-                    (ej. entra el 20 y acuerdan pagar desde el 1° del próximo). Sin marcar, la
-                    primera cuota puede prorratearse (ej. entra el 15 y paga media mensualidad).
-                  </span>
-                </span>
-              </label>
+            {opcionesPolitica.length > 0 && (
+              <div className="mt-4 max-w-3xl space-y-2">
+                <p className="text-[11px] font-semibold text-slate-500 mb-1">
+                  Tratamiento del mes / período de ingreso
+                </p>
+                {!puedeProrratear && (
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    Ingreso el día 1 o 2: no se prorratea.
+                  </p>
+                )}
+                {opcionesPolitica.map((opt) => {
+                  const disabled =
+                    opt.value === POLITICA_PRIMER_PERIODO.PRORRATEAR && !puedeProrratear;
+                  return (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer ${
+                        politicaPrimerPeriodo === opt.value
+                          ? "border-indigo-200 bg-indigo-50/70"
+                          : "border-transparent bg-slate-50"
+                      } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="politicaPrimerPeriodo"
+                        value={opt.value}
+                        checked={politicaPrimerPeriodo === opt.value}
+                        disabled={disabled}
+                        onChange={() => setPoliticaPrimerPeriodo(opt.value)}
+                        className="mt-1 h-4 w-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm font-medium text-slate-800">{opt.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             )}
 
             {planCobro && (
@@ -986,32 +1105,14 @@ export default function NuevoAbono() {
                       </span>
                     )}
                   </p>
-                ) : (
-                  <p className="text-xs text-indigo-600/70 mt-1">Indicá un precio para ver el monto estimado.</p>
-                )}
-                <p className="text-xs text-indigo-700/80 mt-1">
-                  {planCobro.prorratea
-                    ? `Prorrateo por ingreso después del día umbral${diasUmbralProporcional != null ? ` (${diasUmbralProporcional})` : ""}.`
-                    : comenzarPeriodoSiguiente
-                      ? "Sin prorrateo del período actual: el cobro arranca en el período siguiente."
-                      : "Cuota completa del período (sin prorrateo)."}
-                </p>
+                ) : null}
               </div>
             )}
 
             <div className="mt-5 max-w-md">
               <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
                 Precio acordado
-                {vehiculosCompletos.some(v => Number(v.modalidad) === MODALIDAD.FLEXIBLE) ? (
-                  <span className="ml-1.5 font-medium normal-case text-amber-600">
-                    · obligatorio (hay vehículos flexibles)
-                  </span>
-                ) : precioSugerido != null ? (
-                  <span className={`ml-1.5 font-medium normal-case ${esFallback ? "text-amber-600" : "text-indigo-600"}`}>
-                    · sugerido {formatMoney(precioSugerido)}
-                    {esFallback ? " (genérico)" : " (suma tarifas fijas)"}
-                  </span>
-                ) : null}
+                {tieneFlexible && <span className="text-rose-400"> *</span>}
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
@@ -1019,13 +1120,25 @@ export default function NuevoAbono() {
                   type="number"
                   value={precioAcordado}
                   onChange={e => setPrecioAcordado(e.target.value)}
-                  placeholder={precioSugerido != null ? String(precioSugerido) : "Opcional"}
+                  placeholder={
+                    tieneFlexible
+                      ? "Obligatorio (sin tarifa de lista)"
+                      : precioSugerido != null
+                        ? String(precioSugerido)
+                        : "Opcional"
+                  }
                   className={`${inputCls} pl-8`}
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-2">
-                Se usa como monto de la primera cuota. Vacío = tarifa vigente al crear.
-              </p>
+              {tieneFlexible ? (
+                <p className="mt-1.5 text-[11px] text-amber-700">
+                  Con flexibles no se sugiere precio de lista: cargá el acordado.
+                </p>
+              ) : precioSugerido != null && !precioAcordado ? (
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Sugerido por tarifas: {formatMoney(precioSugerido)}
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -1045,10 +1158,10 @@ export default function NuevoAbono() {
 
         {/* Summary panel */}
         <aside className="hidden xl:block">
-          <div className="sticky top-36 rounded-3xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] overflow-hidden">
+          <div className="sticky top-44 rounded-3xl border border-transparent bg-white  overflow-hidden">
             <div className="px-5 py-4 bg-slate-900 text-white">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
-              <p className="text-base font-bold mt-1">Vista previa del contrato</p>
+              <p className="text-base font-bold mt-1">Vista previa de abono</p>
             </div>
             <div className="p-5 space-y-4 text-sm">
               <div>
@@ -1105,7 +1218,9 @@ export default function NuevoAbono() {
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {planCobro.periodicidadLabel}
                       {planCobro.prorratea ? " · prorrateado" : ""}
-                      {comenzarPeriodoSiguiente ? " · desde período siguiente" : ""}
+                      {politicaPrimerPeriodo === POLITICA_PRIMER_PERIODO.OMITIR_MES_ENTRANTE
+                        ? " · omite mes entrante"
+                        : ""}
                     </p>
                     {planCobro.montoPrimera != null && (
                       <p className="text-sm font-bold text-slate-800 mt-1">
@@ -1124,11 +1239,14 @@ export default function NuevoAbono() {
                   <p className="text-xl font-black text-slate-900 tracking-tight">
                     {precioAcordado
                       ? formatMoney(precioAcordado)
-                      : precioSugerido != null
+                      : !tieneFlexible && precioSugerido != null
                         ? formatMoney(precioSugerido)
                         : "—"}
                   </p>
-                  {!precioAcordado && precioSugerido != null && (
+                  {tieneFlexible && !precioAcordado && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">Requiere precio acordado</p>
+                  )}
+                  {!tieneFlexible && !precioAcordado && precioSugerido != null && (
                     <p className="text-[10px] text-slate-400 mt-0.5">Tarifa sugerida</p>
                   )}
                 </div>
@@ -1149,3 +1267,4 @@ export default function NuevoAbono() {
     </div>
   );
 }
+

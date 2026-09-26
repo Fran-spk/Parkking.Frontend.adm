@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   Car,
   Users,
   CreditCard,
@@ -11,19 +10,25 @@ import {
   ChevronUp,
   SlidersHorizontal,
   DollarSign,
+  Tags,
+  Layers,
+  GitBranch,
+  List,
+  Scale,
+  Banknote,
   ParkingSquare,
   Clock,
   Search,
   Receipt,
   FileBarChart,
   UserCog,
+  Mail,
 } from "lucide-react";
 
 const sections = [
   {
     title: "Operaciones",
     links: [
-      { to: "/mi-estacionamiento", label: "Mi estacionamiento", icon: LayoutDashboard },
       { to: "/cocheras", label: "Cocheras", icon: ParkingSquare },
       { to: "/clientes", label: "Clientes", icon: Users },
       { to: "/pagos-pendientes", label: "Pagos pendientes", icon: Clock },
@@ -36,6 +41,10 @@ const sections = [
       { to: "/abonos", label: "Abonos", icon: Car },
       { to: "/pagos", label: "Pagos", icon: CreditCard },
       { to: "/cuenta-corriente", label: "Cuenta corriente", icon: Wallet },
+      { to: "/grupos-financieros", label: "Grupos financieros", icon: Layers },
+      { to: "/movimientos", label: "Movimientos", icon: List },
+      { to: "/ajustes", label: "Ajustes", icon: Scale },
+      { to: "/gastos", label: "Gastos", icon: Banknote },
       { to: "/recibos", label: "Recibos", icon: Receipt },
     ],
   },
@@ -43,6 +52,7 @@ const sections = [
     title: "Reportes",
     links: [
       { to: "/reportes", label: "Reportes", icon: FileBarChart },
+      { to: "/mensajes-enviados", label: "Mensajes enviados", icon: Mail },
     ],
   },
 ];
@@ -50,6 +60,8 @@ const sections = [
 const CONFIG_ITEMS = [
   { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal },
   { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign },
+  { to: "/configuracion/tipos-gasto", label: "Tipos de gasto", icon: Tags },
+  { to: "/configuracion/reglas-asignacion", label: "Reglas de asignación", icon: GitBranch },
   { to: "/configuracion/usuarios", label: "Usuarios y accesos", icon: UserCog },
 ];
 
@@ -73,36 +85,37 @@ export default function Sidebar({ open }) {
           ${open ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <nav className="flex-1 px-4 py-6 space-y-7 overflow-y-auto">
+        <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
           {sections.map((section) => (
-            <div key={section.title} className="space-y-2">
-              <h4 className="text-[10px] font-bold text-ink-faint uppercase tracking-widest px-3 mb-3">
+            <div key={section.title} className="space-y-1.5">
+              <h4 className="text-[10px] font-bold text-ink-faint uppercase tracking-[0.14em] px-3 mb-2.5">
                 {section.title}
               </h4>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {section.links.map(({ to, label, icon: Icon }) => (
                   <NavLink
                     key={to}
                     to={to}
                     end={to === "/"}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 py-2.5 rounded-xl text-xs transition-all group ${
+                      `flex items-center gap-3.5 py-2.5 rounded-none text-[13px] transition-all group ${
                         isActive
-                          ? "bg-brand-muted text-brand font-bold border-l-2 border-brand rounded-r-none pl-2.5"
-                          : "text-ink-faint hover:bg-surface-muted/60 hover:text-ink pl-3"
+                          ? "bg-brand-muted text-brand font-bold border-l-[3px] border-brand pl-2.5"
+                          : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink pl-3"
                       }`
                     }
                   >
                     {({ isActive }) => (
                       <>
                         <Icon
-                          size={17}
-                          className={`duration-200 group-hover:scale-105 transition-transform ${
+                          size={20}
+                          strokeWidth={isActive ? 2.25 : 1.85}
+                          className={`shrink-0 duration-200 group-hover:scale-105 transition-transform ${
                             isActive ? "text-brand" : "text-ink-faint group-hover:text-ink-muted"
                           }`}
                         />
-                        <span className="tracking-tight">{label}</span>
+                        <span className="tracking-tight leading-none">{label}</span>
                       </>
                     )}
                   </NavLink>
@@ -112,32 +125,33 @@ export default function Sidebar({ open }) {
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-line-subtle bg-surface-muted/20">
+        <div className="px-3 py-3.5 border-t border-line-subtle bg-surface-muted/25">
           <button
             onClick={() => setIsConfigOpen(!isConfigOpen)}
-            className={`w-full flex items-center justify-between py-2.5 rounded-xl text-xs transition-all group pl-3 pr-2.5 ${
+            className={`w-full flex items-center justify-between py-2.5 rounded-none text-[13px] transition-all group pl-3 pr-2.5 ${
               isConfigRoute
                 ? "bg-brand-muted text-brand font-bold"
-                : "text-ink-faint hover:bg-surface-muted/60 hover:text-ink"
+                : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink"
             }`}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <Settings
-                size={17}
-                className={`duration-200 group-hover:rotate-45 transition-transform ${
+                size={20}
+                strokeWidth={isConfigRoute ? 2.25 : 1.85}
+                className={`shrink-0 duration-200 group-hover:rotate-45 transition-transform ${
                   isConfigRoute ? "text-brand" : "text-ink-faint group-hover:text-ink-muted"
                 }`}
               />
-              <span className="tracking-tight font-semibold">Configuración</span>
+              <span className="tracking-tight font-semibold leading-none">Configuración</span>
             </div>
             <div className="text-ink-faint group-hover:text-ink-muted transition-colors">
-              {isConfigOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {isConfigOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </div>
           </button>
 
           <div
-            className={`mt-1 pl-4 space-y-1 overflow-hidden transition-all duration-300 ${
-              isConfigOpen ? "max-h-72 opacity-100 py-1" : "max-h-0 opacity-0 pointer-events-none"
+            className={`mt-1 pl-3 space-y-0.5 overflow-hidden transition-all duration-300 ${
+              isConfigOpen ? "max-h-[40rem] opacity-100 py-1" : "max-h-0 opacity-0 pointer-events-none"
             }`}
           >
             {CONFIG_ITEMS.map(({ to, label, icon: Icon }) => (
@@ -145,22 +159,23 @@ export default function Sidebar({ open }) {
                 key={to}
                 to={to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 py-2 px-3 rounded-lg text-[11px] transition-all group ${
+                  `flex items-center gap-3 py-2 px-3 rounded-none text-[12px] transition-all group ${
                     isActive
-                      ? "bg-brand-muted text-brand font-bold border-l-2 border-brand rounded-r-none pl-2"
-                      : "text-ink-faint hover:bg-surface-muted/60 hover:text-ink"
+                      ? "bg-brand-muted text-brand font-bold border-l-[3px] border-brand pl-2"
+                      : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink"
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
                     <Icon
-                      size={14}
-                      className={`transition-colors duration-200 ${
+                      size={17}
+                      strokeWidth={isActive ? 2.25 : 1.85}
+                      className={`shrink-0 transition-colors duration-200 ${
                         isActive ? "text-brand" : "text-ink-faint group-hover:text-ink-muted"
                       }`}
                     />
-                    <span className="tracking-tight">{label}</span>
+                    <span className="tracking-tight leading-none">{label}</span>
                   </>
                 )}
               </NavLink>

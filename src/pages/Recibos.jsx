@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
-import { Search, Printer, Ban, AlertCircle, Receipt, Loader2 } from "lucide-react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { Printer, Ban, AlertCircle, Receipt, Loader2, Mail, History } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { reciboService } from "../services/reciboService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { imprimirReciboPdf } from "../utils/imprimirRecibo";
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
 
+/** @typedef {import("../types").Recibo} Recibo */
+/** @typedef {import("../types").Estacionamiento} Estacionamiento */
 function formatFecha(fecha) {
   if (!fecha) return "—";
   return new Date(fecha).toLocaleString("es-AR", {
@@ -35,13 +39,14 @@ function toYmd(date) {
 }
 
 export default function Recibos() {
-  const [recibos, setRecibos] = useState([]);
+  const [recibos, setRecibos] = useState(/** @type {Recibo[]} */ ([]));
   const [busqueda, setBusqueda] = useState("");
   const [desde, setDesde] = useState(null);
   const [hasta, setHasta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [okMsg, setOkMsg] = useState(null);
   const [metaEst, setMetaEst] = useState({ nombre: "Parkking", direccion: "" });
 
   useEffect(() => {
@@ -107,11 +112,48 @@ export default function Recibos() {
     if (motivo === null) return;
     try {
       setBusyId(recibo.reciboId);
+      setOkMsg(null);
       await reciboService.anular(recibo.reciboId, motivo || null);
       await cargar();
     } catch (e) {
       const msg = e.response?.data;
       setError(typeof msg === "string" ? msg : "No se pudo anular");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleEnviarEmail(recibo) {
+    const sugerido = "";
+    const email = window.prompt(
+      `Enviar recibo ${recibo.numeroFormateado || recibo.numero} por email.\n\nDejá vacío para usar el email del abono/cliente, o escribí uno:`,
+      sugerido
+    );
+    if (email === null) return;
+    try {
+      setBusyId(recibo.reciboId);
+      setError(null);
+      setOkMsg(null);
+      const res = await reciboService.enviarEmail(
+        recibo.reciboId,
+        email.trim() || undefined
+      );
+      if (res?.simulado) {
+        setOkMsg(
+          `Simulado → ${res.destinatario} (SMTP deshabilitado en el servidor). Cuando actives Email:Enabled se enviará de verdad.`
+        );
+      } else {
+        setOkMsg(`Recibo enviado a ${res?.destinatario || "el destinatario"}.`);
+      }
+    } catch (e) {
+      const data = e.response?.data;
+      const msg =
+        (typeof data === "string" && data) ||
+        data?.error ||
+        data?.title ||
+        data?.message ||
+        "No se pudo enviar el email";
+      setError(msg);
     } finally {
       setBusyId(null);
     }
@@ -130,36 +172,47 @@ export default function Recibos() {
     );
   });
 
+  const stats = useMemo(() => {
+    const vigentes = filtrados.filter((r) => !r.anulado).length;
+    const anulados = filtrados.filter((r) => r.anulado).length;
+    const total = filtrados
+      .filter((r) => !r.anulado)
+      .reduce((acc, r) => acc + Number(r.total ?? 0), 0);
+    return { vigentes, anulados, total };
+  }, [filtrados]);
+
   return (
-    <div className="animate-fade-in-up">
-      <div className="flex items-start justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Recibos</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Comprobantes de cobro. Reimprimí o anulá sin borrar el pago.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader
+        title="Recibos"
+        description="Comprobantes de cobro. Reimprimí o anulá sin borrar el pago."
+        loading={loading}
+        stats={[
+          { label: "Vigentes", value: stats.vigentes },
+          { label: "Anulados", value: stats.anulados, tone: "warning" },
+          { label: "Importe", value: formatPrecio(stats.total) },
+        ]}
+      />
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+        <div className="flex items-center gap-2 px-4 py-3 bg-danger-muted text-danger-ink text-sm">
           <AlertCircle size={15} className="shrink-0" /> {error}
         </div>
+      )}
+      {okMsg && (
+        <div className="px-4 py-3 bg-success-muted text-success-ink text-sm">{okMsg}</div>
       )}
 
       <form
         onSubmit={handleBuscar}
-        className="flex flex-col lg:flex-row gap-3 mb-5 bg-white border border-gray-100 rounded-2xl p-4"
+        className="flex flex-col lg:flex-row gap-3 bg-surface-card p-4"
       >
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="N°, cliente, cochera, patente..."
-            className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-          />
-        </div>
+        <SearchField
+          value={busqueda}
+          onChange={setBusqueda}
+          placeholder="N°, cliente, cochera, patente..."
+          className="flex-1"
+        />
         <DatePicker
           selected={desde}
           onChange={setDesde}
@@ -167,7 +220,7 @@ export default function Recibos() {
           locale={es}
           placeholderText="Desde"
           isClearable
-          className="w-full lg:w-36 text-sm border border-gray-200 rounded-xl px-3 py-2.5"
+          className="w-full lg:w-36 text-sm border border-line-strong px-3 py-2.5"
         />
         <DatePicker
           selected={hasta}
@@ -176,36 +229,31 @@ export default function Recibos() {
           locale={es}
           placeholderText="Hasta"
           isClearable
-          className="w-full lg:w-36 text-sm border border-gray-200 rounded-xl px-3 py-2.5"
+          className="w-full lg:w-36 text-sm border border-line-strong px-3 py-2.5"
         />
-        <button
-          type="submit"
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl"
-        >
-          Buscar
-        </button>
+        <PageHeaderAction type="submit">Buscar</PageHeaderAction>
       </form>
 
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="bg-surface-card overflow-hidden">
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-gray-400 p-8">
+          <div className="flex items-center gap-2 text-sm text-ink-faint p-8">
             <Loader2 size={16} className="animate-spin" /> Cargando recibos...
           </div>
         ) : filtrados.length === 0 ? (
           <div className="py-16 text-center">
-            <Receipt className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-gray-700">Sin recibos</p>
-            <p className="text-xs text-gray-400 mt-1">Se generan al registrar un pago.</p>
+            <Receipt className="w-10 h-10 text-ink-faint mx-auto mb-3" />
+            <p className="text-sm font-semibold text-ink">Sin recibos</p>
+            <p className="text-xs text-ink-faint mt-1">Se generan al registrar un pago.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-gray-400 border-b border-gray-50">
-                  <th className="px-4 py-3 font-bold">N°</th>
-                  <th className="px-4 py-3 font-bold">Fecha</th>
-                  <th className="px-4 py-3 font-bold">Cliente</th>
-                  <th className="px-4 py-3 font-bold">Cochera / Patente</th>
+                <tr className="text-left border-b border-line">
+                  <th className="px-4 py-3 pk-label">N°</th>
+                  <th className="px-4 py-3 pk-label">Fecha</th>
+                  <th className="px-4 py-3 pk-label">Cliente</th>
+                  <th className="px-4 py-3 pk-label">Cochera / Patente</th>
                   <th className="px-4 py-3 font-bold">Período</th>
                   <th className="px-4 py-3 font-bold text-right">Total</th>
                   <th className="px-4 py-3 font-bold">Estado</th>
@@ -263,6 +311,17 @@ export default function Recibos() {
                           >
                             {busy ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                           </button>
+                          {!r.anulado && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              title="Enviar por email"
+                              onClick={() => handleEnviarEmail(r)}
+                              className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                            >
+                              <Mail size={14} />
+                            </button>
+                          )}
                           {!r.anulado && (
                             <button
                               type="button"

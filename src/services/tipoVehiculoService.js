@@ -1,7 +1,10 @@
 import api from "./api";
 
+/** @typedef {import("../types").TipoVehiculo} TipoVehiculo */
+
 export const tipoVehiculoService = {
 
+  /** @returns {Promise<TipoVehiculo[]>} */
   getAll: (includeInactivos = false) =>
     api.get("/tipovehiculo", { params: { includeInactivos } }).then(r => r.data),
 

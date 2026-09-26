@@ -56,7 +56,7 @@ const AlertasDeudores = ({ alertas }) => {
         return (
           <div 
             key={alerta.abonoId ?? alerta.abonoCocheraId} 
-            className="p-4 bg-white border border-gray-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-[0_8px_20px_rgba(0,0,0,0.015)] hover:border-gray-200/80 group"
+            className="p-4 bg-white border border-transparent rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           >
             {/* Detalles del Cliente */}
             <div className="flex items-center gap-3">
@@ -111,7 +111,7 @@ const AlertasDeudores = ({ alertas }) => {
               ) : null}
               <button
                 onClick={() => handleRegistrarPago(alerta.abonoId ?? alerta.abonoCocheraId, alerta.clienteNombre, alerta.precioAcordado ?? null)}
-                className="text-[11px] flex items-center gap-1 bg-white text-indigo-600 border border-indigo-100 font-bold px-3 py-1.5 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.01)] hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300 active:scale-95 group-hover:shadow-md"
+                className="text-[11px] flex items-center gap-1 bg-white text-indigo-600 border border-indigo-100 font-bold px-3 py-1.5 rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300 active:scale-95"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Cobrar</span>

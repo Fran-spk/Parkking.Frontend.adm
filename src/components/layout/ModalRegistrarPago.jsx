@@ -20,6 +20,9 @@ import { pagoService } from "../../services/pagoService";
 import { reciboService } from "../../services/reciboService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { metodoDePagoService } from "../../services/metodoDePagoService";
+
+/** @typedef {import("../../types").MetodoDePago} MetodoDePago */
+/** @typedef {import("../../types").PagoSugerido} PagoSugerido */
 import { abonoIdOf, labelCocheras, labelPatentes } from "../../utils/abonoHelpers";
 import { imprimirReciboPdf } from "../../utils/imprimirRecibo";
 
@@ -84,14 +87,23 @@ export default function ModalRegistrarPago({
 }) {
   const abonoId = abonoIdOf(abono);
   const clienteNombre = abono?.cliente?.nombre || abono?.clienteNombre || "Cliente";
+  const clienteTelefono = abono?.cliente?.telefono || abono?.telefono || null;
+  const clienteEmail =
+    abono?.email || abono?.cliente?.email || abono?.clienteEmail || null;
   const cocheras = labelCocheras(abono);
   const patentes = labelPatentes(abono);
+  const precioAbono = abono?.precioAcordado;
 
   const listaFija = useMemo(() => {
     if (Array.isArray(cuotas) && cuotas.length > 0) return cuotas;
     if (cuota) return [cuota];
     return null;
   }, [cuotas, cuota]);
+
+  const otrasPendientes = useMemo(() => {
+    const clavesFijas = new Set((listaFija || []).map(cuotaKey));
+    return (cuotasPendientes || []).filter((c) => !clavesFijas.has(cuotaKey(c)));
+  }, [cuotasPendientes, listaFija]);
 
   const esMulti = (listaFija?.length ?? 0) > 1;
   const periodoFijo = Boolean(listaFija?.length);
@@ -111,9 +123,9 @@ export default function ModalRegistrarPago({
   });
   const [recargo, setRecargo] = useState("");
   const [observacion, setObservacion] = useState("");
-  const [metodos, setMetodos] = useState([]);
+  const [metodos, setMetodos] = useState(/** @type {MetodoDePago[]} */ ([]));
   const [metodoDePagoId, setMetodoDePagoId] = useState(null);
-  const [sugerido, setSugerido] = useState(null);
+  const [sugerido, setSugerido] = useState(/** @type {PagoSugerido | null} */ (null));
   const [loadingSugerido, setLoadingSugerido] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
@@ -459,20 +471,20 @@ export default function ModalRegistrarPago({
         onClick={onClose}
       />
 
-      <aside className="relative h-full w-full max-w-sm bg-surface-card shadow-pk-modal border-l border-line-subtle flex flex-col animate-fade-in-up">
+      <aside className="relative h-full w-full max-w-md sm:max-w-lg bg-surface-card shadow-pk-modal border-l border-line-subtle flex flex-col animate-fade-in-up">
         <div className="relative shrink-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-brand-strong via-brand to-brand" />
-          <div className="relative px-4 pt-3.5 pb-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
-                  <Receipt size={15} className="text-brand-foreground" />
+          <div className="relative px-5 pt-4 pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                  <Receipt size={17} className="text-brand-foreground" />
                 </div>
                 <div className="min-w-0">
                   <p className="pk-label text-white/70">
                     {esMulti ? `Cobrar ${listaFija.length} cuotas` : "Cobrar cuota"}
                   </p>
-                  <h3 className="pk-heading text-brand-foreground truncate !text-[0.9375rem]">
+                  <h3 className="pk-heading text-brand-foreground truncate !text-base">
                     {clienteNombre}
                   </h3>
                   <p className="pk-caption text-white/70 truncate mt-0.5">
@@ -484,25 +496,25 @@ export default function ModalRegistrarPago({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shrink-0"
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shrink-0"
               >
-                <X size={15} className="text-brand-foreground" />
+                <X size={16} className="text-brand-foreground" />
               </button>
             </div>
 
-            <div className="mt-3 rounded-xl bg-white/10 border border-white/15 px-3 py-2.5">
-              <div className="flex items-end justify-between gap-2">
+            <div className="mt-4 rounded-2xl bg-white/10 border border-white/15 px-4 py-3.5">
+              <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="pk-label text-white/65 flex items-center gap-1">
                     <Sparkles size={10} />
                     {periodoBloqueado ? "No disponible" : "Total a cobrar"}
                   </p>
-                  <p className="pk-amount text-brand-foreground mt-0.5">
+                  <p className="pk-amount text-brand-foreground mt-1 !text-2xl">
                     {loadingSugerido ? "…" : formatCurrency(totalCobro)}
                   </p>
                 </div>
                 {periodoLabel && !periodoBloqueado && (
-                  <div className="text-right shrink-0 max-w-[42%]">
+                  <div className="text-right shrink-0 max-w-[48%]">
                     <p className="pk-label text-white/55">{esMulti ? "Selección" : "Período"}</p>
                     <p className="pk-caption text-white/90 capitalize mt-0.5 leading-snug">
                       {periodoLabel}
@@ -511,7 +523,7 @@ export default function ModalRegistrarPago({
                 )}
               </div>
               {saldoMaximo != null && !periodoBloqueado && (
-                <p className="pk-caption text-white/70 mt-1.5">
+                <p className="pk-caption text-white/70 mt-2">
                   {esMulti ? "Saldo total" : "Saldo cuota"}:{" "}
                   <span className="text-white font-bold">{formatCurrency(saldoMaximo)}</span>
                 </p>
@@ -521,7 +533,62 @@ export default function ModalRegistrarPago({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5">
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+            {/* Contexto del abono */}
+            <div className="rounded-2xl border border-line-subtle bg-surface-muted/80 px-4 py-3.5 space-y-2.5">
+              <p className="pk-label text-ink-muted">Datos del abono</p>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                {precioAbono != null && precioAbono !== "" && (
+                  <div>
+                    <dt className="pk-caption text-ink-faint">Precio acordado</dt>
+                    <dd className="font-semibold text-ink tabular-nums">{formatCurrency(precioAbono)}</dd>
+                  </div>
+                )}
+                {abono?.cobrador && (
+                  <div>
+                    <dt className="pk-caption text-ink-faint">Cobrador</dt>
+                    <dd className="font-semibold text-ink truncate">{abono.cobrador}</dd>
+                  </div>
+                )}
+                {clienteTelefono && (
+                  <div>
+                    <dt className="pk-caption text-ink-faint">Teléfono</dt>
+                    <dd className="font-semibold text-ink">{clienteTelefono}</dd>
+                  </div>
+                )}
+                {clienteEmail && (
+                  <div className="col-span-2 min-w-0">
+                    <dt className="pk-caption text-ink-faint">Email</dt>
+                    <dd className="font-semibold text-ink truncate">{clienteEmail}</dd>
+                  </div>
+                )}
+              </dl>
+              {otrasPendientes.length > 0 && (
+                <div className="pt-2 border-t border-line-subtle">
+                  <p className="pk-caption text-ink-muted mb-1.5">
+                    Otras cuotas con saldo ({otrasPendientes.length})
+                  </p>
+                  <ul className="space-y-1 max-h-28 overflow-y-auto">
+                    {otrasPendientes.slice(0, 6).map((c) => (
+                      <li
+                        key={cuotaKey(c)}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="text-ink-muted capitalize truncate">
+                          {c.periodoLabel || String(c.periodoInicio || "").split("T")[0]}
+                        </span>
+                        <span className="font-bold text-ink tabular-nums shrink-0">
+                          {formatCurrency(c.saldo)}
+                        </span>
+                      </li>
+                    ))}
+                    {otrasPendientes.length > 6 && (
+                      <li className="pk-caption text-ink-faint">+{otrasPendientes.length - 6} más</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
             {esMulti ? (
               <div className="space-y-1.5">
                 <label className="pk-label">Cuotas a cobrar</label>
@@ -775,8 +842,8 @@ export default function ModalRegistrarPago({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-line-subtle bg-surface-card px-4 py-3 space-y-2.5">
-            <div className="space-y-1 pk-caption">
+          <div className="shrink-0 border-t border-line-subtle bg-surface-card px-5 py-4 space-y-3">
+            <div className="space-y-1.5 pk-caption">
               <div className="flex justify-between text-ink-muted">
                 <span>{esMulti ? "Monto cuotas" : "Monto cuota"}</span>
                 <span className="font-semibold text-ink tabular-nums">{formatCurrency(montoNumerico)}</span>
@@ -793,24 +860,24 @@ export default function ModalRegistrarPago({
                   <span className="font-bold tabular-nums">{formatCurrency(pendienteTrasPago)}</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1 border-t border-line-subtle pk-body">
+              <div className="flex justify-between pt-1.5 border-t border-line-subtle pk-body">
                 <span className="font-bold text-ink">Total ahora</span>
                 <span className="font-bold text-brand tabular-nums">{formatCurrency(totalCobro)}</span>
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-3 py-2.5 pk-label text-ink-muted rounded-xl border border-line hover:bg-surface-muted transition-colors"
+                className="flex-1 px-3 py-3 pk-label text-ink-muted rounded-xl border border-line hover:bg-surface-muted transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={confirmarDeshabilitado}
-                className="flex-[1.35] bg-brand text-brand-foreground px-3 py-2.5 pk-label rounded-xl hover:bg-brand-strong disabled:opacity-45 transition-all flex justify-center items-center gap-1.5"
+                className="flex-[1.35] bg-brand text-brand-foreground px-3 py-3 pk-label rounded-xl hover:bg-brand-strong disabled:opacity-45 transition-all flex justify-center items-center gap-1.5"
               >
                 {enviando ? (
                   <Loader2 size={14} className="animate-spin" />

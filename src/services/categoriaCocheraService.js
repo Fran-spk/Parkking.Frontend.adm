@@ -1,7 +1,10 @@
 import api from "./api";
 
+/** @typedef {import("../types").CategoriaCochera} CategoriaCochera */
+
 export const categoriaCocheraService = {
 
+  /** @returns {Promise<CategoriaCochera[]>} */
   getAll: (includeInactivos = false) =>
     api.get("/categoriacochera", { params: { includeInactivos } }).then(r => r.data),
 

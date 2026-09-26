@@ -1,5 +1,5 @@
 /**
- * Parkking design tokens — Parking Blue
+ * Parkking design tokens — Parking Ink (slate / near-black)
  *
  * Fuente de verdad del look. Cambiá valores acá y (vía CSS vars + Tailwind)
  * se actualiza la UI migrada.
@@ -16,14 +16,14 @@
  */
 
 export const parkkingTheme = {
-  name: "parking-blue",
+  name: "parking-ink",
 
   colors: {
     brand: {
-      DEFAULT: "#1d4ed8",
-      muted: "#eff6ff",
-      soft: "#bfdbfe",
-      strong: "#1e3a8a",
+      DEFAULT: "#0f172a",
+      muted: "#f1f5f9",
+      soft: "#cbd5e1",
+      strong: "#020617",
       foreground: "#ffffff",
     },
     ink: {
@@ -39,9 +39,9 @@ export const parkkingTheme = {
       overlay: "rgba(15, 23, 42, 0.55)",
     },
     line: {
-      subtle: "#f1f5f9",
-      DEFAULT: "#e2e8f0",
-      strong: "#cbd5e1",
+      subtle: "#f8fafc",
+      DEFAULT: "#eef2f7",
+      strong: "#e2e8f0",
     },
     success: {
       DEFAULT: "#059669",
@@ -59,9 +59,9 @@ export const parkkingTheme = {
       ink: "#be123c",
     },
     info: {
-      DEFAULT: "#2563eb",
-      muted: "#eff6ff",
-      ink: "#1d4ed8",
+      DEFAULT: "#334155",
+      muted: "#f1f5f9",
+      ink: "#0f172a",
     },
   },
 
@@ -78,23 +78,23 @@ export const parkkingTheme = {
   },
 
   radius: {
-    sm: "0.5rem",
-    md: "0.75rem",
-    lg: "1rem",
-    xl: "1.25rem",
-    "2xl": "1.5rem",
-    "3xl": "1.75rem",
+    sm: "0",
+    md: "0",
+    lg: "0",
+    xl: "0",
+    "2xl": "0",
+    "3xl": "0",
     pill: "9999px",
   },
 
   shadow: {
-    card: "0 8px 30px rgb(0, 0, 0, 0.015)",
+    card: "none",
     modal: "0 25px 50px -12px rgb(0, 0, 0, 0.25)",
-    soft: "0 1px 12px rgba(0, 0, 0, 0.03)",
+    soft: "none",
   },
 
   font: {
-    sans: '"Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+    sans: '"Plus Jakarta Sans", ui-sans-serif, sans-serif',
   },
 };
 

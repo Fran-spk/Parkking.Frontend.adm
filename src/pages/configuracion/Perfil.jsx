@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { User, Mail, Phone, Lock, Save, CheckCircle, AtSign } from "lucide-react";
 import { usuarioService } from "../../services/usuarioService";
 
@@ -120,7 +120,7 @@ export default function Perfil() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Información Personal */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-transparent  space-y-4">
             <h3 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-2">Información Personal</h3>
 
             <div className="space-y-3">
@@ -199,7 +199,7 @@ export default function Perfil() {
           </div>
 
           {/* Seguridad y Contraseña */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.015)] space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-transparent  space-y-4">
             <h3 className="text-sm font-bold text-gray-800 border-b border-gray-50 pb-2">Seguridad</h3>
             <p className="text-[11px] text-gray-400">Completá estos campos solo si querés cambiar tu contraseña.</p>
 
@@ -277,7 +277,7 @@ export default function Perfil() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none"
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none"
           >
             <Save size={15} />
             {saving ? "Guardando..." : "Guardar Cambios"}

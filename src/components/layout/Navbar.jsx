@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Menu,
-  ParkingSquare,
   RefreshCcw,
   LogOut,
 } from "lucide-react";
@@ -46,8 +45,10 @@ export default function Navbar({ onMenuClick }) {
     navigate("/login");
   };
 
-  const nombre = estacionamiento?.nombre || estacionamiento?.Nombre || "Parkking";
-  const direccion = estacionamiento?.direccion || estacionamiento?.Direccion || "Gestión Central";
+  const goHome = () => navigate("/mi-estacionamiento");
+
+  const sucursal = estacionamiento?.nombre || estacionamiento?.Nombre || "";
+  const direccion = estacionamiento?.direccion || estacionamiento?.Direccion || "";
   const userInitial = user?.nombre?.charAt(0).toUpperCase() || "U";
 
   return (
@@ -62,28 +63,42 @@ export default function Navbar({ onMenuClick }) {
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuClick}
-          className="p-1.5 -ml-1 rounded-lg text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors shrink-0"
+          className="p-1.5 -ml-1 text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors shrink-0"
           aria-label="Abrir menú"
         >
           <Menu size={18} />
         </button>
 
-        <div className="w-8 h-8 bg-gradient-to-tr from-brand-strong to-brand rounded-xl flex items-center justify-center shadow-sm shrink-0">
-          <ParkingSquare size={16} className="text-brand-foreground" />
-        </div>
-
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-black text-ink leading-tight truncate">{nombre}</span>
-          <span className="text-[10px] font-medium text-ink-faint truncate" title={direccion}>
-            {direccion}
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={goHome}
+          className="flex items-center gap-2.5 min-w-0 group"
+          aria-label="Ir al inicio"
+          title="Inicio"
+        >
+          <div className="w-8 h-8 bg-ink text-white flex items-center justify-center shrink-0 group-hover:bg-brand transition-colors">
+            <span className="text-sm font-black leading-none">P</span>
+          </div>
+          <div className="flex flex-col min-w-0 text-left">
+            <span className="text-sm font-black text-ink leading-tight tracking-tight group-hover:text-brand transition-colors">
+              Parkking
+            </span>
+            {sucursal ? (
+              <span
+                className="text-[10px] font-medium text-ink-faint truncate max-w-[160px] sm:max-w-[220px]"
+                title={direccion || sucursal}
+              >
+                {sucursal}
+              </span>
+            ) : null}
+          </div>
+        </button>
 
         <div className="hidden sm:block h-6 w-px bg-line-subtle mx-1 shrink-0" />
 
         <button
           onClick={handleChangeEstacionamiento}
-          className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-surface-card border border-line rounded-lg text-[10px] font-bold uppercase tracking-wider text-ink-muted hover:bg-surface-muted hover:text-brand transition-colors shadow-sm shrink-0"
+          className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-surface-card text-[10px] font-bold uppercase tracking-wider text-ink-muted hover:bg-surface-muted hover:text-brand transition-colors shrink-0"
         >
           <RefreshCcw size={11} />
           Cambiar Sucursal
@@ -94,10 +109,10 @@ export default function Navbar({ onMenuClick }) {
         {user && (
           <button
             onClick={() => navigate("/configuracion/perfil")}
-            className="hidden sm:flex items-center gap-2 pr-1 py-1 px-2 rounded-lg hover:bg-surface-muted transition-all group"
+            className="hidden sm:flex items-center gap-2 pr-1 py-1 px-2 hover:bg-surface-muted transition-all group"
             aria-label="Mi Perfil"
           >
-            <div className="w-7 h-7 rounded-full bg-brand-muted text-brand font-black text-xs flex items-center justify-center border border-brand-soft group-hover:bg-brand-soft transition-colors">
+            <div className="w-7 h-7 rounded-full bg-brand-muted text-brand font-black text-xs flex items-center justify-center group-hover:bg-brand-soft transition-colors">
               {userInitial}
             </div>
             <span className="text-[11px] font-bold text-ink group-hover:text-brand truncate max-w-[120px] transition-colors">
@@ -110,7 +125,7 @@ export default function Navbar({ onMenuClick }) {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[11px] font-semibold text-ink-faint hover:bg-danger-muted/80 hover:text-danger transition-all group"
+          className="flex items-center gap-1.5 py-1.5 px-3 text-[11px] font-semibold text-ink-faint hover:bg-danger-muted/80 hover:text-danger transition-all group"
           aria-label="Cerrar sesión"
         >
           <LogOut

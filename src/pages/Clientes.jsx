@@ -1,117 +1,18 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Pencil, Trash2, X, Phone, Mail, Car, ChevronRight, RotateCcw } from "lucide-react";
+﻿import { useState, useEffect, useMemo } from "react";
+import { Plus, Pencil, Trash2, X, Phone, Mail, Car, ChevronRight, RotateCcw, Wallet } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { clienteService } from "../services/clienteService";
 import { abonoService } from "../services/abonoService";
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import SearchField from "../components/layout/SearchField";
 
-// ─── Modal alta/edición ───────────────────────────────────────────────────────
-function ModalCliente({ cliente, onClose, onGuardado }) {
-  const [form, setForm] = useState({
-    nombre: cliente?.nombre ?? "",
-    telefono: cliente?.telefono ?? "",
-    email: cliente?.email ?? "",
-    observacion: cliente?.observacion ?? "",
-  });
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  function set(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setError(null);
-  }
-
-  async function handleGuardar() {
-    if (!form.nombre.trim()) { setError("El nombre es obligatorio"); return; }
-    try {
-      setLoading(true);
-      if (cliente) {
-        await clienteService.modificar(cliente.clienteId, form);
-      } else {
-        await clienteService.agregar(form);
-      }
-      onGuardado();
-      onClose();
-    } catch (e) {
-      const msg = e.response?.data;
-      setError(typeof msg === "string" ? msg : "No se pudo guardar el cliente");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-gray-900">
-            {cliente ? "Editar cliente" : "Nuevo cliente"}
-          </h2>
-          <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
-        </div>
-
-        <div className="space-y-3 mb-5">
-          <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1.5">
-              Nombre <span className="text-red-400">*</span>
-            </label>
-            <input
-              autoFocus
-              value={form.nombre}
-              onChange={e => set("nombre", e.target.value)}
-              placeholder="Ej: Juan Pérez"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
-            />
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1.5">Teléfono</label>
-            <input
-              value={form.telefono}
-              onChange={e => set("telefono", e.target.value)}
-              placeholder="Ej: 3415001234"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1.5">Email</label>
-            <input
-              value={form.email}
-              onChange={e => set("email", e.target.value)}
-              placeholder="Ej: juan@gmail.com"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1.5">Observación</label>
-            <textarea
-              value={form.observacion}
-              onChange={e => set("observacion", e.target.value)}
-              rows={2}
-              placeholder="Notas internas..."
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 text-sm text-gray-500 border border-gray-200 rounded-lg py-2.5 hover:bg-gray-50 transition-colors">
-            Cancelar
-          </button>
-          <button
-            onClick={handleGuardar}
-            disabled={loading}
-            className="flex-1 text-sm text-white bg-indigo-600 rounded-lg py-2.5 hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
-          >
-            {loading ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+/** @typedef {import("../types").Cliente} Cliente */
+/** @typedef {import("../types").Abono} Abono */
 
 // ─── Panel lateral detalle ────────────────────────────────────────────────────
 function PanelDetalle({ clienteId, onClose, onEditar }) {
-  const [detalle, setDetalle] = useState(null);
+  const navigate = useNavigate();
+  const [detalle, setDetalle] = useState(/** @type {Cliente | null} */ (null));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -162,6 +63,12 @@ function PanelDetalle({ clienteId, onClose, onEditar }) {
               </div>
 
               <div className="mt-2 space-y-1.5">
+                {detalle.documento && (
+                  <p className="text-sm text-gray-500">DNI {detalle.documento}</p>
+                )}
+                {detalle.domicilio && (
+                  <p className="text-sm text-gray-500">{detalle.domicilio}</p>
+                )}
                 {detalle.telefono && (
                   <a
                     href={`https://wa.me/549${detalle.telefono}`}
@@ -189,6 +96,13 @@ function PanelDetalle({ clienteId, onClose, onEditar }) {
                   {detalle.observacion}
                 </p>
               )}
+              <button
+                type="button"
+                onClick={() => navigate(`/clientes/${clienteId}/cuenta-corriente`)}
+                className="mt-4 inline-flex items-center gap-2 text-xs font-semibold bg-brand text-brand-foreground px-3 py-2"
+              >
+                <Wallet size={13} /> Cuenta corriente
+              </button>
             </div>
 
             <div>
@@ -247,13 +161,13 @@ function PanelDetalle({ clienteId, onClose, onEditar }) {
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 export default function Clientes() {
-  const [clientes, setClientes] = useState([]);
+  const navigate = useNavigate();
+  const [clientes, setClientes] = useState(/** @type {Cliente[]} */ ([]));
   const [abonosPorCliente, setAbonosPorCliente] = useState({});
   const [busqueda, setBusqueda] = useState("");
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modalForm, setModalForm] = useState(null);
   const [panelId, setPanelId] = useState(null);
 
   useEffect(() => { cargarDatos(); }, [mostrarInactivos]);
@@ -280,9 +194,21 @@ export default function Clientes() {
 
   const clientesFiltrados = clientes.filter(c =>
     c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    c.documento?.includes(busqueda) ||
+    c.domicilio?.toLowerCase().includes(busqueda.toLowerCase()) ||
     c.telefono?.includes(busqueda) ||
     c.email?.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  const stats = useMemo(() => {
+    const activos = clientes.filter((c) => c.activo);
+    const conAbono = activos.filter((c) => (abonosPorCliente[c.clienteId] ?? 0) > 0).length;
+    return {
+      total: clientes.length,
+      activos: activos.length,
+      conAbono,
+    };
+  }, [clientes, abonosPorCliente]);
 
   async function handleDarDeBaja(cliente) {
     if (!confirm(`¿Dar de baja a ${cliente.nombre}?`)) return;
@@ -305,42 +231,38 @@ export default function Clientes() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {clientes.filter(c => c.activo).length} clientes activos
-          </p>
-        </div>
-        <button
-          onClick={() => setModalForm("nuevo")}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-        >
-          <Plus size={16} />
-          Nuevo cliente
-        </button>
-      </div>
+    <div className="space-y-5 animate-fade-in-up">
+      <PageHeader
+        title="Clientes"
+        description="Agenda de abonados y contactos del estacionamiento."
+        loading={loading}
+        action={
+          <PageHeaderAction onClick={() => navigate("/clientes/nuevo")}>
+            <Plus size={16} />
+            Nuevo cliente
+          </PageHeaderAction>
+        }
+        stats={[
+          { label: "Listados", value: stats.total },
+          { label: "Activos", value: stats.activos },
+          { label: "Con abono", value: stats.conAbono },
+        ]}
+      />
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+        <div className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">
           {error}
         </div>
       )}
 
       {/* Buscador + toggle inactivos */}
-      <div className="flex gap-3 mb-5">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, teléfono o email..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-white"
-          />
-        </div>
+      <div className="flex gap-3">
+        <SearchField
+          value={busqueda}
+          onChange={setBusqueda}
+          placeholder="Buscar por nombre, DNI, teléfono o email..."
+          className="flex-1"
+        />
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -356,7 +278,7 @@ export default function Clientes() {
       {loading ? (
         <div className="text-sm text-gray-400">Cargando...</div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-transparent overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
@@ -440,6 +362,13 @@ export default function Clientes() {
                           ) : (
                             <>
                               <button
+                                title="Cuenta corriente"
+                                onClick={() => navigate(`/clientes/${cliente.clienteId}/cuenta-corriente`)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-ink hover:bg-brand-muted transition-colors"
+                              >
+                                <Wallet size={15} />
+                              </button>
+                              <button
                                 title="Ver detalle"
                                 onClick={() => setPanelId(cliente.clienteId)}
                                 className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -448,7 +377,7 @@ export default function Clientes() {
                               </button>
                               <button
                                 title="Editar"
-                                onClick={() => setModalForm(cliente)}
+                                onClick={() => navigate(`/clientes/${cliente.clienteId}/editar`)}
                                 className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
                               >
                                 <Pencil size={15} />
@@ -473,21 +402,14 @@ export default function Clientes() {
         </div>
       )}
 
-      {modalForm && (
-        <ModalCliente
-          cliente={modalForm === "nuevo" ? null : modalForm}
-          onClose={() => setModalForm(null)}
-          onGuardado={cargarDatos}
-        />
-      )}
-
       {panelId && (
         <PanelDetalle
           clienteId={panelId}
           onClose={() => setPanelId(null)}
-          onEditar={cliente => {
+          onEditar={() => {
+            const id = panelId;
             setPanelId(null);
-            setModalForm(cliente);
+            navigate(`/clientes/${id}/editar`);
           }}
         />
       )}

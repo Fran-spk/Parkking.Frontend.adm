@@ -2,12 +2,19 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, X, CheckCircle2 } from "lucide-react";
 import { clienteService } from "../../services/clienteService";
 
+/** @typedef {import("../../types").Cliente} Cliente */
+
 export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
   const [busqueda, setBusqueda] = useState("");
-  const [resultados, setResultados] = useState([]);
-  const [seleccionado, setSeleccionado] = useState(null);
+  const [resultados, setResultados] = useState(/** @type {Cliente[]} */ ([]));
+  const [seleccionado, setSeleccionado] = useState(/** @type {Cliente | null} */ (null));
   const [creando, setCreando] = useState(false);
-  const [nuevoCliente, setNuevoCliente] = useState({ telefono: "", email: "" });
+  const [nuevoCliente, setNuevoCliente] = useState({
+    documento: "",
+    domicilio: "",
+    telefono: "",
+    email: "",
+  });
   const [guardando, setGuardando] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const ref = useRef(null);
@@ -30,9 +37,11 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
       try {
         const data = await clienteService.getAll();
         const filtrados = data.filter(c => {
-          const nombreOk = c.nombre?.toLowerCase().includes(busqueda.toLowerCase());
+          const q = busqueda.toLowerCase();
+          const nombreOk = c.nombre?.toLowerCase().includes(q);
+          const docOk = c.documento?.includes(busqueda);
           const telOk = c.telefono?.includes(busqueda);
-          return nombreOk || telOk;
+          return nombreOk || docOk || telOk;
         });
         setResultados(filtrados.slice(0, 6));
         setAbierto(true);
@@ -53,7 +62,7 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
     setSeleccionado(null);
     setBusqueda("");
     setCreando(false);
-    setNuevoCliente({ telefono: "", email: "" });
+    setNuevoCliente({ documento: "", domicilio: "", telefono: "", email: "" });
     onSeleccionar(null);
   }
 
@@ -63,6 +72,8 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
       setGuardando(true);
       const creado = await clienteService.agregar({
         nombre: busqueda.trim(),
+        documento: nuevoCliente.documento.trim() || null,
+        domicilio: nuevoCliente.domicilio.trim() || null,
         telefono: nuevoCliente.telefono.trim() || null,
         email: nuevoCliente.email.trim() || null,
       });
@@ -112,7 +123,9 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
               className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
             >
               <p className="font-semibold text-slate-800">{c.nombre}</p>
-              {c.telefono && <p className="text-xs text-slate-400 mt-0.5">{c.telefono}</p>}
+              <p className="text-xs text-slate-400 mt-0.5">
+                {[c.documento && `DNI ${c.documento}`, c.telefono].filter(Boolean).join(" · ")}
+              </p>
             </button>
           ))}
           <button
@@ -128,6 +141,20 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
       {creando && !seleccionado && (
         <div className="mt-3 p-4 bg-indigo-50/80 border border-indigo-100 rounded-2xl space-y-3">
           <p className="text-xs font-semibold text-indigo-700">Nuevo cliente · {busqueda}</p>
+          <input
+            type="text"
+            value={nuevoCliente.documento || ""}
+            onChange={e => setNuevoCliente(p => ({ ...p, documento: e.target.value }))}
+            placeholder="DNI / documento (opcional)"
+            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+          />
+          <input
+            type="text"
+            value={nuevoCliente.domicilio || ""}
+            onChange={e => setNuevoCliente(p => ({ ...p, domicilio: e.target.value }))}
+            placeholder="Domicilio (opcional)"
+            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+          />
           <input
             type="text"
             value={nuevoCliente.telefono || ""}

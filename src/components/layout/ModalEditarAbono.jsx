@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { X, AlertCircle, ParkingSquare, Car, Calendar, User, RefreshCw } from "lucide-react";
 import { abonoService } from "../../services/abonoService";
 import { cocheraService } from "../../services/cocheraService";
+
+/** @typedef {import("../../types").Abono} Abono */
+/** @typedef {import("../../types").Cochera} Cochera */
 import {
   abonoIdOf,
   plazasDe,
@@ -38,12 +41,13 @@ function periodicidadLabel(value) {
 
 /** Edición: cobrador, precio y cambio de cochera. Cliente / vehículos / periodicidad solo lectura. */
 export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuardado }) {
-  const [abono, setAbono] = useState(abonoInicial);
+  const [abono, setAbono] = useState(/** @type {Abono} */ (abonoInicial));
   const [cobrador, setCobrador] = useState(abonoInicial.cobrador ?? "");
+  const [email, setEmail] = useState(abonoInicial.email ?? "");
   const [precioAcordado, setPrecioAcordado] = useState(
     abonoInicial.precioAcordado != null ? String(abonoInicial.precioAcordado) : ""
   );
-  const [cocherasDisponibles, setCocherasDisponibles] = useState([]);
+  const [cocherasDisponibles, setCocherasDisponibles] = useState(/** @type {Cochera[]} */ ([]));
   const [destinoPorPlaza, setDestinoPorPlaza] = useState({});
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -65,6 +69,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
     const fresh = await abonoService.getById(id);
     setAbono(fresh);
     setCobrador(fresh.cobrador ?? "");
+    setEmail(fresh.email ?? "");
     setPrecioAcordado(fresh.precioAcordado != null ? String(fresh.precioAcordado) : "");
     setDestinoPorPlaza({});
     setDatosDirty(false);
@@ -105,6 +110,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
       setError(null);
       await abonoService.modificar(id, {
         cobrador: cobrador.trim() || null,
+        email: email.trim() || null,
         precioAcordado: precioAcordado !== "" ? Number(precioAcordado) : null,
       });
       await refrescar();
@@ -141,7 +147,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
           )}
 
           {/* Readonly: cliente / fechas / periodicidad / vehículos */}
-          <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+          <div className="rounded-xl border border-transparent bg-gray-50/60 p-4 space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
               Contrato (solo lectura)
             </p>
@@ -230,7 +236,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
                 return (
                   <div
                     key={plazaId ?? p.cocheraId}
-                    className="rounded-xl border border-gray-100 p-3 space-y-2"
+                    className="rounded-xl border border-transparent p-3 space-y-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
@@ -262,6 +268,10 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
                               <option key={c.cocheraId} value={c.cocheraId}>
                                 {c.numero}
                                 {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
+                                {` · ${c.abonosActivos ?? 0} abono${(c.abonosActivos ?? 0) === 1 ? "" : "s"}`}
+                                {c.multipleOcupacion
+                                  ? ` (máx ${c.capacidadMaxima ?? c.maxOcupacion ?? "—"})`
+                                  : ""}
                               </option>
                             ))}
                         </select>
@@ -291,7 +301,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
             </p>
           </div>
 
-          {/* Editable: cobrador / precio */}
+          {/* Editable: cobrador / email / precio */}
           <div className="space-y-4 pt-1 border-t border-gray-100">
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1.5">Cobrador</label>
@@ -301,6 +311,24 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
                   setCobrador(e.target.value);
                   setDatosDirty(true);
                 }}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1.5">
+                Email de avisos
+                <span className="ml-1.5 font-normal text-gray-400">
+                  — vacío = email del cliente
+                </span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setDatosDirty(true);
+                }}
+                placeholder={abono.cliente?.email || "cliente@ejemplo.com"}
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
               />
             </div>
