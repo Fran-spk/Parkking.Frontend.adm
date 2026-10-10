@@ -4,16 +4,16 @@ import { ArrowLeft, Check, Loader2, AlertCircle } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import { operacionFinancieraService } from "../services/operacionFinancieraService";
 import { abonoIdOf, labelCocheras } from "../utils/abonoHelpers";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Abono} Abono */
 
-const inputCls =
-  "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+const inputCls = fieldClass;
 
 function SectionHeader({ index, title, done }) {
   return (
     <div className="flex items-start gap-4 mb-6">
-      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black ${done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-slate-900 text-white shadow-lg shadow-slate-900/15"}`}>
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black ${done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"}`}>
         {done ? <Check size={18} strokeWidth={3} /> : index}
       </div>
       <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
@@ -78,7 +78,7 @@ export default function CargoAbono() {
               <p className="text-xs text-slate-400 mt-0.5">Obligación del cliente. No mueve la cuenta hasta que se cobre.</p>
             </div>
           </div>
-          <button type="button" onClick={handleGuardar} disabled={!puede} className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20">
+          <button type="button" onClick={handleGuardar} disabled={!puede} className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20">
             {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
             Registrar cargo
           </button>
@@ -115,7 +115,7 @@ export default function CargoAbono() {
         </section>
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Cargo</p>
             </div>
@@ -123,7 +123,7 @@ export default function CargoAbono() {
               <p className="font-semibold text-slate-900">{concepto.trim() || "Sin concepto"}</p>
               <p className="text-2xl font-black text-slate-900">{monto > 0 ? pesos(monto) : "—"}</p>
               <p className="text-xs text-slate-500">Queda como deuda del cliente de este abono.</p>
-              <button type="button" onClick={handleGuardar} disabled={!puede} className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl">
+              <button type="button" onClick={handleGuardar} disabled={!puede} className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl">
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar cargo
               </button>

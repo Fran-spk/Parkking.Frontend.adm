@@ -12,8 +12,9 @@ import {
 
 const AlertasDeudores = ({ alertas }) => {
   const navigate = useNavigate();
-  const handleRegistrarPago = (abonoId, cliente, monto) => {
-    navigate(`/pagosAbono/${abonoId}`)
+  const handleRegistrarPago = (alerta) => {
+    if (alerta.reservaId) navigate(`/reservas/${alerta.reservaId}`);
+    else navigate(`/pagosAbono/${alerta.abonoId}`);
   };
 
   // Helper para obtener las iniciales del nombre
@@ -42,7 +43,7 @@ const AlertasDeudores = ({ alertas }) => {
         </div>
         <h4 className="text-sm font-bold text-gray-800">¡Cuentas al Día!</h4>
         <p className="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto leading-relaxed">
-          No hay abonos con deudas o cobros pendientes registrados hoy.
+          No hay abonos con deudas o pagos pendientes registrados hoy.
         </p>
       </div>
     );
@@ -110,11 +111,11 @@ const AlertasDeudores = ({ alertas }) => {
               </span>
               ) : null}
               <button
-                onClick={() => handleRegistrarPago(alerta.abonoId ?? alerta.abonoCocheraId, alerta.clienteNombre, alerta.precioAcordado ?? null)}
-                className="text-[11px] flex items-center gap-1 bg-white text-indigo-600 border border-indigo-100 font-bold px-3 py-1.5 rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300 active:scale-95"
+                onClick={() => handleRegistrarPago(alerta)}
+                className="text-[11px] flex items-center gap-1 bg-white text-indigo-600 border border-indigo-100 font-bold px-3 py-1.5 rounded-xl hover:bg-brand hover:text-brand-foreground hover:border-brand transition-all duration-300 active:scale-95"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>Cobrar</span>
+                <span>Pagar</span>
                 <ArrowRight className="w-3 h-3 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>

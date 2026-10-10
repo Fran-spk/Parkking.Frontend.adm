@@ -1,36 +1,119 @@
-import { useState, useEffect } from "react";
-import {
-  Plus,
-  Pencil,
-  Car,
-  AlertCircle,
-  ChevronRight,
-  GripVertical,
-  Lock,
-  Unlock,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cocheraService } from "../services/cocheraService";
-import { abonoService } from "../services/abonoService";
 import { categoriaCocheraService } from "../services/categoriaCocheraService";
+import { zonaService } from "../services/zonaService";
+import { estacionamientoService } from "../services/estacionamientoService";
 import ModalCochera from "../components/layout/ModalCochera";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import FilterSelect from "../components/layout/FilterSelect";
+import Checkbox from "../components/layout/Check";
 
 /** @typedef {import("../types").Cochera} Cochera */
 /** @typedef {import("../types").CategoriaCochera} CategoriaCochera */
-/** @typedef {import("../types").Abono} Abono */
+/** @typedef {import("../types").Zona} Zona */
+
+function nombreEstado(estado) {
+  return Number(estado) === 1 ? "Deshabilitada" : "Habilitada";
+}
+
+function CocheraCard({ cochera, categoria, onDarDeBaja, dandoDeBaja }) {
+  const navigate = useNavigate();
+  const abonos = cochera.abonosActivos ?? 0;
+  const libre = abonos === 0;
+
+  return (
+    <article className="flex h-[220px] flex-col bg-surface-card border border-line p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-3xl font-black tracking-tight leading-none text-ink tabular-nums">
+          {cochera.numero}
+        </p>
+        <span
+          className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 ${
+            libre ? "bg-success-muted text-success-ink" : "bg-brand text-brand-foreground"
+          }`}
+        >
+          {libre ? "Libre" : "Ocupada"}
+        </span>
+      </div>
+
+      <dl className="mt-4 space-y-2 text-xs">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-ink-faint font-semibold uppercase tracking-wider text-[10px]">Categoría</dt>
+          <dd className="font-bold text-ink truncate">{categoria || "—"}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-ink-faint font-semibold uppercase tracking-wider text-[10px]">Estado</dt>
+          <dd className="font-bold text-ink">{nombreEstado(cochera.estadoCochera)}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-ink-faint font-semibold uppercase tracking-wider text-[10px]">Abonos</dt>
+          <dd className="font-bold text-ink tabular-nums">{abonos}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-auto pt-3 flex items-center justify-between gap-3">
+        {libre ? (
+          <button
+            type="button"
+            disabled={dandoDeBaja}
+            onClick={() => onDarDeBaja?.(cochera)}
+            className="text-xs font-bold text-danger hover:text-danger-ink disabled:opacity-40"
+          >
+            {dandoDeBaja ? "Dando de baja…" : "Dar de baja"}
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={() => navigate(`/cocheras/${cochera.cocheraId}`)}
+          className="text-xs font-bold text-brand hover:text-brand-strong"
+        >
+          Ver más
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function Grilla({ cocheras, nombreCategoria, onDarDeBaja, bajaId }) {
+  if (cocheras.length === 0) {
+    return (
+      <div className="bg-surface-card px-4 py-16 text-center">
+        <p className="text-sm text-ink-muted font-medium">No hay cocheras en este filtro.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {cocheras.map((cochera) => (
+        <CocheraCard
+          key={cochera.cocheraId}
+          cochera={cochera}
+          categoria={nombreCategoria(cochera.categoriaCocheraId)}
+          onDarDeBaja={onDarDeBaja}
+          dandoDeBaja={bajaId === cochera.cocheraId}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function Cocheras() {
-  const navigate = useNavigate();
   const [cocheras, setCocheras] = useState(/** @type {Cochera[]} */ ([]));
   const [categorias, setCategorias] = useState(/** @type {CategoriaCochera[]} */ ([]));
+  const [zonas, setZonas] = useState(/** @type {Zona[]} */ ([]));
+  const [trabajarConZonas, setTrabajarConZonas] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [seleccionada, setSeleccionada] = useState(null);
   const [filtro, setFiltro] = useState("Todas");
-
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [porZona, setPorZona] = useState(false);
+  const [zonaIndex, setZonaIndex] = useState(0);
+  const [bajaId, setBajaId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -39,42 +122,16 @@ export default function Cocheras() {
   async function cargarDatos() {
     try {
       setLoading(true);
-      const [cochData, abonosData, catData] = await Promise.all([
+      const [cochData, catData, zonaData, est] = await Promise.all([
         cocheraService.getAll(),
-        abonoService.getOcupadas(),
         categoriaCocheraService.getAll(),
+        zonaService.getAll(),
+        estacionamientoService.get(),
       ]);
-
-      const abonoIncluye = (a, cocheraId) =>
-        (Array.isArray(a.plazas) &&
-          a.plazas.some(
-            (p) =>
-              p.activo !== false &&
-              (p.cocheraId === cocheraId || p.cochera?.cocheraId === cocheraId)
-          )) ||
-        a.cocheraId === cocheraId;
-
-      let detalle = cochData.map((c) => ({
-        ...c,
-        ocupada: abonosData.some((a) => abonoIncluye(a, c.cocheraId)),
-        abonos: abonosData.filter((a) => abonoIncluye(a, c.cocheraId)),
-      }));
-
-      const savedOrder = localStorage.getItem("cocherasOrder");
-      if (savedOrder) {
-        const orderIds = JSON.parse(savedOrder);
-        detalle.sort((a, b) => {
-          const idxA = orderIds.indexOf(a.cocheraId);
-          const idxB = orderIds.indexOf(b.cocheraId);
-          if (idxA === -1 && idxB === -1) return 0;
-          if (idxA === -1) return 1;
-          if (idxB === -1) return -1;
-          return idxA - idxB;
-        });
-      }
-
-      setCocheras(detalle);
-      setCategorias(catData);
+      setCocheras(Array.isArray(cochData) ? cochData : []);
+      setCategorias(Array.isArray(catData) ? catData : []);
+      setZonas(Array.isArray(zonaData) ? zonaData : []);
+      setTrabajarConZonas(!!est?.trabajarConZonas);
     } catch {
       /* ignore */
     } finally {
@@ -84,59 +141,62 @@ export default function Cocheras() {
 
   const filtros = ["Todas", "Ocupadas", "Libres"];
   const cocherasFiltradas = cocheras.filter((c) => {
-    if (filtro === "Ocupadas") return c.ocupada;
-    if (filtro === "Libres") return !c.ocupada;
+    const abonos = c.abonosActivos ?? 0;
+    if (filtro === "Ocupadas") return abonos > 0;
+    if (filtro === "Libres") return abonos === 0;
     return true;
   });
 
   const resumen = {
     total: cocheras.length,
-    ocupadas: cocheras.filter((c) => c.ocupada).length,
-    libres: cocheras.filter((c) => !c.ocupada).length,
+    ocupadas: cocheras.filter((c) => (c.abonosActivos ?? 0) > 0).length,
+    libres: cocheras.filter((c) => (c.abonosActivos ?? 0) === 0).length,
   };
-
   const ocupacionPct =
     resumen.total > 0 ? Math.round((resumen.ocupadas / resumen.total) * 100) : 0;
 
-  const handleDragStart = (e, index) => {
-    if (filtro !== "Todas") return;
-    setDraggedIndex(index);
-    e.dataTransfer.setData("text/plain", index);
-    e.dataTransfer.effectAllowed = "move";
-  };
+  const grupos = useMemo(() => {
+    /** @type {{ id: string, nombre: string, items: Cochera[] }[]} */
+    const lista = zonas.map((z) => ({
+      id: String(z.zonaId),
+      nombre: z.nombre,
+      items: cocherasFiltradas.filter((c) => (c.zonaId ?? c.zona?.zonaId) === z.zonaId),
+    }));
+    const sinZona = cocherasFiltradas.filter((c) => !(c.zonaId ?? c.zona?.zonaId));
+    if (sinZona.length > 0) {
+      lista.push({ id: "sin", nombre: "Sin zona", items: sinZona });
+    }
+    return lista.filter((g) => g.items.length > 0);
+  }, [zonas, cocherasFiltradas]);
 
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    if (filtro !== "Todas" || draggedIndex === null) return;
-    if (hoveredIndex !== index) setHoveredIndex(index);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setHoveredIndex(null);
-  };
-
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    if (filtro !== "Todas" || draggedIndex === null || draggedIndex === targetIndex) return;
-
-    const updated = [...cocheras];
-    const draggedItem = updated[draggedIndex];
-    updated.splice(draggedIndex, 1);
-    updated.splice(targetIndex, 0, draggedItem);
-
-    setCocheras(updated);
-    localStorage.setItem(
-      "cocherasOrder",
-      JSON.stringify(updated.map((c) => c.cocheraId))
-    );
-
-    setDraggedIndex(null);
-    setHoveredIndex(null);
-  };
+  const indice = grupos.length === 0 ? 0 : Math.min(zonaIndex, grupos.length - 1);
+  const grupoActual = grupos[indice];
 
   function nombreCategoria(id) {
     return categorias.find((cat) => cat.categoriaCocheraId === id)?.nombre;
+  }
+
+  async function darDeBaja(cochera) {
+    if ((cochera.abonosActivos ?? 0) > 0) return;
+    if (!confirm(`¿Dar de baja la cochera ${cochera.numero}?`)) return;
+    try {
+      setError(null);
+      setBajaId(cochera.cocheraId);
+      await cocheraService.desactivar(cochera.cocheraId);
+      await cargarDatos();
+    } catch (e) {
+      const msg = e.response?.data;
+      setError(typeof msg === "string" ? msg : "No se pudo dar de baja la cochera");
+    } finally {
+      setBajaId(null);
+    }
+  }
+
+  function irZona(delta) {
+    setZonaIndex((i) => {
+      const actual = grupos.length === 0 ? 0 : Math.min(i, grupos.length - 1);
+      return Math.min(grupos.length - 1, Math.max(0, actual + delta));
+    });
   }
 
   return (
@@ -148,7 +208,6 @@ export default function Cocheras() {
         action={
           <PageHeaderAction
             onClick={() => {
-              setSeleccionada(null);
               setModalOpen(true);
             }}
           >
@@ -168,193 +227,101 @@ export default function Cocheras() {
         ]}
       />
 
-      {/* Filtros + hint drag */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex gap-1 bg-surface-muted p-1 w-full sm:w-auto">
-          {filtros.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFiltro(f)}
-              className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold transition-colors ${
-                filtro === f
-                  ? "bg-brand text-brand-foreground"
-                  : "text-ink-muted hover:text-ink hover:bg-surface-card"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        {filtro === "Todas" ? (
-          <p className="text-[11px] text-ink-faint font-medium flex items-center gap-1.5">
-            <GripVertical size={14} className="opacity-60" />
-            Arrastrá para reordenar
-          </p>
-        ) : null}
+        <FilterSelect
+          ariaLabel="Filtrar cocheras"
+          value={filtro}
+          onChange={setFiltro}
+          options={filtros.map((f) => ({ value: f, label: f }))}
+        />
+        <label className="flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <Checkbox
+            checked={porZona}
+            onChange={(e) => {
+              setPorZona(e.target.checked);
+              setZonaIndex(0);
+            }}
+          />
+          Organizar por zona
+        </label>
       </div>
 
-      {/* Grid */}
+      {error && <p className="text-sm text-danger">{error}</p>}
+
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
           <span className="pk-caption">Cargando cocheras…</span>
         </div>
-      ) : cocherasFiltradas.length === 0 ? (
-        <div className="bg-surface-card px-4 py-16 text-center">
-          <p className="text-sm text-ink-muted font-medium">No hay cocheras en este filtro.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {cocherasFiltradas.map((cochera, index) => {
-            const isOcupada = cochera.ocupada;
-            const isDragged = draggedIndex === index;
-            const isHoveredAsDrop = hoveredIndex === index;
-            const catNombre = nombreCategoria(cochera.categoriaCocheraId);
-
-            return (
-              <div
-                key={cochera.cocheraId}
-                draggable={filtro === "Todas"}
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                onDrop={(e) => handleDrop(e, index)}
-                className={`group relative bg-surface-card transition-all duration-200 ${
-                  isOcupada ? "ring-1 ring-inset ring-line" : ""
-                } ${isDragged ? "opacity-40 scale-[0.98]" : ""} ${
-                  isHoveredAsDrop && !isDragged
-                    ? "ring-2 ring-brand bg-brand-muted z-10"
-                    : ""
-                }`}
+      ) : porZona ? (
+        grupos.length === 0 ? (
+          <div className="bg-surface-card px-4 py-16 text-center">
+            <p className="text-sm text-ink-muted font-medium">No hay cocheras en este filtro.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => irZona(-1)}
+                disabled={indice === 0}
+                className="p-2 border border-line text-ink disabled:opacity-30 hover:bg-surface-muted"
+                aria-label="Zona anterior"
               >
-                <div
-                  className={`absolute top-0 left-0 bottom-0 w-[3px] ${
-                    isOcupada ? "bg-brand" : "bg-success"
-                  }`}
-                />
-
-                <div className="pl-4 pr-3 pt-4 pb-3">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        {filtro === "Todas" && (
-                          <div
-                            className="cursor-grab active:cursor-grabbing p-1 -ml-1 text-ink-faint hover:text-ink transition-colors"
-                            title="Arrastrar para ordenar"
-                          >
-                            <GripVertical size={16} />
-                          </div>
-                        )}
-                        <p className="text-3xl font-black tracking-tight leading-none text-ink tabular-nums">
-                          {cochera.numero}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 ${
-                            isOcupada
-                              ? "bg-brand text-brand-foreground"
-                              : "bg-success-muted text-success-ink"
-                          }`}
-                        >
-                          {isOcupada ? (
-                            <Lock size={10} strokeWidth={2.5} />
-                          ) : (
-                            <Unlock size={10} strokeWidth={2.5} />
-                          )}
-                          {isOcupada ? "Ocupada" : "Libre"}
-                        </span>
-                        {catNombre ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
-                            {catNombre}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSeleccionada(cochera);
-                        setModalOpen(true);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-2 text-ink-faint hover:text-ink hover:bg-surface-muted"
-                      aria-label="Editar cochera"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                  </div>
-
-                  {cochera.observacion && !isOcupada ? (
-                    <div className="flex items-start gap-1.5 mb-3 text-[11px] font-medium text-warning-ink bg-warning-muted px-2.5 py-2">
-                      <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                      <span className="leading-relaxed">{cochera.observacion}</span>
-                    </div>
-                  ) : null}
-
-                  {cochera.abonos.length > 0 ? (
-                    <div className="pt-3 border-t border-line space-y-2">
-                      {cochera.abonos.map((a) => {
-                        const aid = a.abonoId ?? a.abonoCocheraId;
-                        const vehiculos =
-                          Array.isArray(a.vehiculos) && a.vehiculos.length > 0
-                            ? a.vehiculos
-                            : a.patente || a.tipoVehiculo
-                              ? [{ patente: a.patente, tipoVehiculo: a.tipoVehiculo }]
-                              : [];
-                        const labelVeh =
-                          vehiculos
-                            .map((v) =>
-                              [v.tipoVehiculo?.nombre, v.patente].filter(Boolean).join(" ")
-                            )
-                            .filter(Boolean)
-                            .join(" · ") || "Sin vehículos";
-
-                        return (
-                          <button
-                            key={aid}
-                            type="button"
-                            onClick={() => navigate(`/pagosAbono/${aid}`)}
-                            className="w-full flex items-center justify-between gap-2 bg-surface-muted hover:bg-brand-muted px-2.5 py-2 text-left transition-colors group/abono"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-ink truncate">
-                                {a.cliente?.nombre}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-ink-muted font-medium">
-                                <Car size={11} className="shrink-0 text-ink-faint" />
-                                <span className="truncate">{labelVeh}</span>
-                              </div>
-                            </div>
-                            <ChevronRight
-                              size={16}
-                              className="text-ink-faint group-hover/abono:text-ink shrink-0 transition-colors"
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="pt-3 border-t border-line border-dashed flex items-center justify-center py-3">
-                      <p className="text-[10px] font-bold text-ink-faint tracking-wider uppercase">
-                        Sin suscripción
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <ChevronLeft size={18} />
+              </button>
+              <div className="text-center min-w-0">
+                <p className="text-sm font-bold text-ink truncate">{grupoActual.nombre}</p>
+                <p className="pk-caption">
+                  {indice + 1} / {grupos.length} · {grupoActual.items.length} cocheras
+                </p>
               </div>
-            );
-          })}
-        </div>
+              <button
+                type="button"
+                onClick={() => irZona(1)}
+                disabled={indice >= grupos.length - 1}
+                className="p-2 border border-line text-ink disabled:opacity-30 hover:bg-surface-muted"
+                aria-label="Zona siguiente"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+            <div className="overflow-hidden">
+              <div
+                className="flex transition-transform duration-300 ease-out"
+                style={{
+                  width: `${grupos.length * 100}%`,
+                  transform: `translateX(-${(indice * 100) / grupos.length}%)`,
+                }}
+              >
+                {grupos.map((grupo) => (
+                  <div key={grupo.id} style={{ width: `${100 / grupos.length}%` }}>
+                    <Grilla
+                      cocheras={grupo.items}
+                      nombreCategoria={nombreCategoria}
+                      onDarDeBaja={darDeBaja}
+                      bajaId={bajaId}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      ) : (
+        <Grilla
+          cocheras={cocherasFiltradas}
+          nombreCategoria={nombreCategoria}
+          onDarDeBaja={darDeBaja}
+          bajaId={bajaId}
+        />
       )}
 
       {modalOpen && (
         <ModalCochera
-          cochera={seleccionada}
           categorias={categorias}
+          zonas={zonas}
+          exigirZona={trabajarConZonas}
           onClose={() => setModalOpen(false)}
           onGuardar={cargarDatos}
         />

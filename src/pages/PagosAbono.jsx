@@ -9,7 +9,6 @@ import {
   AlertCircle,
   Loader2,
   Pencil,
-  Plus,
   Ban,
   Wallet,
   ChevronDown,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import { pagoService } from "../services/pagoService";
+import { operacionFinancieraService } from "../services/operacionFinancieraService";
 import { reciboService } from "../services/reciboService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { imprimirReciboPdf } from "../utils/imprimirRecibo";
@@ -32,7 +32,9 @@ import DocumentosAbono from "../components/layout/DocumentosAbono";
 import CargosReintegrosAbono from "../components/layout/CargosReintegrosAbono";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
-import { labelCocheras, plazasDe, vehiculosDe, modalidadLabel, MODALIDAD } from "../utils/abonoHelpers";
+import FilterSelect from "../components/layout/FilterSelect";
+import Checkbox from "../components/layout/Check";
+import { labelCocheras, plazasDe, vehiculosDe, modalidadLabel, nombreTipoVehiculo, MODALIDAD } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
 
 /** @typedef {import("../types").Abono} Abono */
@@ -85,8 +87,8 @@ const ESTADO = {
 };
 
 const VISTAS = [
-  { id: "cuotas", label: "Ver cuotas" },
-  { id: "pagos", label: "Ver pagos" },
+  { id: "cuotas", label: "Cuotas" },
+  { id: "pagos", label: "Pagos" },
   { id: "extras", label: "Cargos y reintegros" },
 ];
 
@@ -95,11 +97,13 @@ const FILTROS_CUOTA = [
   { id: "pendiente", label: "Pendientes" },
   { id: "parcial", label: "Parciales" },
   { id: "pagada", label: "Pagadas" },
+  { id: "anulada", label: "Anuladas" },
   { id: "futuro", label: "Futuros" },
-  { id: "conCobros", label: "Con cobros" },
+  { id: "conCobros", label: "Con pagos" },
 ];
 
 function clasificarCuota(c) {
+  if (c.estado === 3) return "anulada";
   if (c.esFuturo && c.estado !== 2 && Number(c.montoPagado) <= 0) return "futuro";
   if (c.estado === 2 || (Number(c.saldo) <= 0 && Number(c.montoPagado) > 0)) return "pagada";
   if (c.estado === 1 || Number(c.montoPagado) > 0) return "parcial";
@@ -107,6 +111,15 @@ function clasificarCuota(c) {
 }
 
 function estiloCuota(c) {
+  if (c.estado === 3) {
+    return {
+      row: "bg-gray-50/40",
+      dot: "bg-gray-300",
+      title: "text-gray-400 line-through",
+      badge: "bg-gray-100 text-gray-500 border-gray-200",
+      label: "Anulada",
+    };
+  }
   if (c.esFuturo) {
     return {
       row: "bg-gray-50/60",
@@ -149,6 +162,7 @@ function CuotaTimelineItem({
   expandido,
   onToggle,
   onCobrar,
+  onAnular,
   onVerRecibo,
   onVerDetalle,
   reciboBusyId,
@@ -158,12 +172,20 @@ function CuotaTimelineItem({
   pagosById,
 }) {
   const estilo = estiloCuota(cuota);
-  const cobrable = esActivo && !cuota.esFuturo && Number(cuota.saldo) > 0 && cuota.estado !== 2;
+  const tieneCobros = (cuota.cobros || []).length > 0;
+  const cobrable = esActivo && !cuota.esFuturo && Number(cuota.saldo) > 0 && cuota.estado !== 2 && cuota.estado !== 3;
+  const adelantable = esActivo && !!cuota.esFuturo && Number(cuota.saldo) > 0 && cuota.estado !== 2 && cuota.estado !== 3;
+  const anulable =
+    esActivo &&
+    cuota.estado !== 2 &&
+    cuota.estado !== 3 &&
+    !tieneCobros &&
+    Number(cuota.montoPagado) <= 0 &&
+    (Number(cuota.saldo) > 0 || (cuota.esFuturo && Number(cuota.monto) > 0));
   const pct =
     Number(cuota.monto) > 0
       ? Math.min(100, Math.round((Number(cuota.montoPagado) / Number(cuota.monto)) * 100))
       : 0;
-  const tieneCobros = (cuota.cobros || []).length > 0;
   const detallesLiq = cuota.detallesLiquidacion || [];
   const tieneLiquidacion = detallesLiq.length > 0;
   const expandible = tieneCobros || tieneLiquidacion || cuota.estado === 1 || cuota.estado === 2;
@@ -176,12 +198,10 @@ function CuotaTimelineItem({
     >
       <div className="flex items-center gap-3 px-5 py-3.5">
         {modoMulti && cobrable ? (
-          <input
-            type="checkbox"
+          <Checkbox
             checked={seleccionada}
             onChange={onToggleSeleccion}
             title="Incluir en pago múltiple"
-            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 shrink-0"
           />
         ) : modoMulti ? (
           <span className="w-3.5 shrink-0" />
@@ -205,6 +225,11 @@ function CuotaTimelineItem({
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${estilo.badge}`}>
               {estilo.label}
             </span>
+            {cuota.vencida && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-rose-50 text-rose-700 border-rose-100">
+                Vencida
+              </span>
+            )}
           </div>
 
           {(cuota.estado === 1 || Number(cuota.montoPagado) > 0) && cuota.estado !== 2 && (
@@ -225,18 +250,35 @@ function CuotaTimelineItem({
             <p className="text-xs text-gray-400 mt-0.5">{formatPrecio(cuota.monto)}</p>
           )}
 
-          {cobrable && cuota.estado === 0 && (
-            <p className="text-xs text-gray-400 mt-0.5">Saldo {formatPrecio(cuota.saldo)}</p>
+          {(cobrable || adelantable) && cuota.estado === 0 && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              {adelantable ? "Período que todavía no empezó · " : ""}
+              Saldo {formatPrecio(cuota.saldo)}
+              {cuota.fechaVencimiento ? ` · vence ${formatFecha(cuota.fechaVencimiento)}` : ""}
+            </p>
           )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {!modoMulti && cobrable ? (
+          {!modoMulti && anulable && (
+            <button
+              type="button"
+              onClick={() => onAnular?.(cuota)}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-line-strong text-ink-muted hover:bg-surface-muted"
+            >
+              Anular
+            </button>
+          )}
+          {!modoMulti && (cobrable || adelantable) ? (
             <button
               onClick={() => onCobrar(cuota)}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                adelantable
+                  ? "border-brand/30 bg-brand-muted text-brand hover:bg-brand-soft"
+                  : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+              }`}
             >
-              Cobrar
+              {adelantable ? "Adelantar" : "Pagar"}
             </button>
           ) : cuota.estado === 2 ? (
             <div className="flex items-center justify-center w-6 h-6 bg-emerald-100 rounded-full">
@@ -311,6 +353,7 @@ function CuotaTimelineItem({
                         </p>
                         <p className="text-[11px] text-gray-500 mt-0.5">
                           {formatFechaHora(cobro.fechaHora)}
+                          {cobro.adelantado ? " · Adelanto" : ""}
                           {pago?.metodoDePagoNombre ? ` · ${pago.metodoDePagoNombre}` : ""}
                         </p>
                       </div>
@@ -400,9 +443,14 @@ function PagosTransaccionList({ pagos, onVerRecibo, onVerDetalle, reciboBusyId }
                       Recibo {pago.reciboNumero}
                     </span>
                   )}
+                  {detalles.some((d) => d.adelantado) && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand-muted text-brand">
+                      Adelanto
+                    </span>
+                  )}
                   {detalles.length > 1 && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-                      {detalles.length} períodos
+                      {detalles.length} ítems
                     </span>
                   )}
                 </div>
@@ -469,6 +517,7 @@ export default function PagosAbono() {
   const navigate = useNavigate();
   const [abono, setAbono] = useState(/** @type {Abono | null} */ (null));
   const [cuotas, setCuotas] = useState(/** @type {Cuota[]} */ ([]));
+  const [cargosImpagos, setCargosImpagos] = useState(/** @type {{ importe: number, pagado?: boolean }[]} */ ([]));
   const [pagos, setPagos] = useState(/** @type {Pago[]} */ ([]));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -485,6 +534,7 @@ export default function PagosAbono() {
   const [busqueda, setBusqueda] = useState("");
   const [seleccionCuotas, setSeleccionCuotas] = useState(() => new Set());
   const [modoMultiPago, setModoMultiPago] = useState(false);
+  const [revisionCargos, setRevisionCargos] = useState(0);
 
   useEffect(() => {
     cargarDatos();
@@ -493,14 +543,24 @@ export default function PagosAbono() {
   async function cargarDatos() {
     try {
       setLoading(true);
-      const [abonoData, cuotasData, pagosData] = await Promise.all([
+      const [abonoData, cuotasData, pagosData, futura, cargosData] = await Promise.all([
         abonoService.getById(id),
         pagoService.getCuotas(id),
         pagoService.getByAbono(id),
+        pagoService.getCuotaFutura(id).catch(() => null),
+        operacionFinancieraService.cargosPorAbono(id).catch(() => []),
       ]);
       setAbono(abonoData);
-      setCuotas(cuotasData || []);
+      const lista = cuotasData || [];
+      if (futura && !lista.some((c) => c.periodoInicio === futura.periodoInicio))
+        lista.push(futura);
+      setCuotas(lista);
       setPagos(Array.isArray(pagosData) ? pagosData : []);
+      setCargosImpagos(
+        (Array.isArray(cargosData) ? cargosData : []).filter(
+          (c) => !c.pagado && Number(c.estado) !== 2
+        )
+      );
       setSeleccionCuotas(new Set());
       setModoMultiPago(false);
 
@@ -511,6 +571,7 @@ export default function PagosAbono() {
           .map((c) => `${c.periodoInicio}`)
       );
       setExpandidas(parciales);
+      setRevisionCargos((n) => n + 1);
     } catch (err) {
       setError(err.response?.data || err.message || "Error al cargar datos");
     } finally {
@@ -519,7 +580,7 @@ export default function PagosAbono() {
   }
 
   const cuotasCobrables = useMemo(
-    () => cuotas.filter((c) => !c.esFuturo && Number(c.saldo) > 0 && c.estado !== 2),
+    () => cuotas.filter((c) => !c.esFuturo && Number(c.saldo) > 0 && c.estado !== 2 && c.estado !== 3),
     [cuotas]
   );
 
@@ -532,14 +593,20 @@ export default function PagosAbono() {
   const totalSeleccion = cuotasSeleccionadas.reduce((acc, c) => acc + Number(c.saldo || 0), 0);
 
   const desgloseTarifas = useMemo(() => {
-    const conDetalle = cuotas.find(
-      c => Array.isArray(c.componentesTarifa) && c.componentesTarifa.length > 0
+    const conDetalle = cuotas.filter(
+      (c) => Array.isArray(c.componentesTarifa) && c.componentesTarifa.length > 0
     );
-    if (!conDetalle) return null;
+    if (conDetalle.length === 0) return null;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const dia = (value) => String(value || "").slice(0, 10);
+    const actual =
+      conDetalle.find((c) => dia(c.periodoInicio) <= hoy && dia(c.periodoFin) >= hoy) ||
+      [...conDetalle].reverse().find((c) => !c.esFuturo) ||
+      conDetalle[conDetalle.length - 1];
     return {
-      esPrecioAcordado: !!conDetalle.esPrecioAcordado,
-      componentes: conDetalle.componentesTarifa,
-      total: conDetalle.componentesTarifa.reduce((a, x) => a + Number(x.precio || 0), 0),
+      esPrecioAcordado: !!actual.esPrecioAcordado,
+      componentes: actual.componentesTarifa,
+      total: actual.componentesTarifa.reduce((a, x) => a + Number(x.precio || 0), 0),
     };
   }, [cuotas]);
 
@@ -567,6 +634,33 @@ export default function PagosAbono() {
       return;
     }
     setModalPago({ cuota: null, cuotas: cuotasSeleccionadas });
+  }
+
+  async function anularCuota(cuota) {
+    const label = cuota.periodoLabel || "este período";
+    if (!window.confirm(`¿Anular la cuota de ${label}? Deja de ser deuda y no se vuelve a generar.`))
+      return;
+    try {
+      await pagoService.anularCuota(id, {
+        cuotaId: cuota.cuotaId || null,
+        periodoInicio: String(cuota.periodoInicio).split("T")[0],
+      });
+      await cargarDatos();
+    } catch (err) {
+      const msg = err.response?.data;
+      setError(typeof msg === "string" ? msg : err.message || "No se pudo anular la cuota");
+    }
+  }
+
+  async function anularCargo(cargo) {
+    if (!window.confirm("¿Anular este cargo? Deja de ser deuda.")) return;
+    try {
+      await operacionFinancieraService.anularCargo(cargo.cargoId);
+      await cargarDatos();
+    } catch (err) {
+      const msg = err.response?.data;
+      setError(typeof msg === "string" ? msg : err.message || "No se pudo anular el cargo");
+    }
   }
 
   const q = busqueda.trim().toLowerCase();
@@ -614,7 +708,9 @@ export default function PagosAbono() {
     });
   }, [pagos, q]);
 
-  const deudaMonto = cuotasCobrables.reduce((acc, c) => acc + Number(c.saldo || 0), 0);
+  const deudaMonto =
+    cuotasCobrables.reduce((acc, c) => acc + Number(c.saldo || 0), 0) +
+    cargosImpagos.reduce((acc, c) => acc + Number(c.importe || 0), 0);
   const totalRecaudado = pagos.reduce(
     (acc, p) => acc + Number(p.monto || 0) + Number(p.recargo || 0),
     0
@@ -752,20 +848,6 @@ export default function PagosAbono() {
         loading={false}
         action={
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => navigate(`/pagosAbono/${abono.abonoId ?? abono.abonoCocheraId}/cargo`)}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors"
-            >
-              Cargo
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/pagosAbono/${abono.abonoId ?? abono.abonoCocheraId}/reintegro`)}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors"
-            >
-              Reintegro
-            </button>
             {esActivo && (
               <button
                 type="button"
@@ -789,11 +871,30 @@ export default function PagosAbono() {
               )}
               Contrato
             </button>
-            {esActivo && cuotasCobrables.length > 0 && !modoMultiPago && (
+            {esActivo && (cuotasCobrables.length > 0 || cargosImpagos.length > 0) && !modoMultiPago && (
               <PageHeaderAction
-                onClick={() => setModalPago({ cuota: cuotasCobrables[0], cuotas: null })}
+                onClick={() =>
+                  setModalPago({
+                    deudas: [
+                      ...cuotasCobrables.map((c) => ({
+                        key: `cuota-${c.cuotaId ?? c.periodoInicio}`,
+                        tipo: "cuota",
+                        label: c.periodoLabel,
+                        saldo: Number(c.saldo),
+                        cuota: c,
+                      })),
+                      ...cargosImpagos.map((c) => ({
+                        key: `cargo-${c.cargoId}`,
+                        tipo: "cargo",
+                        label: c.concepto,
+                        saldo: Number(c.importe),
+                        cargo: c,
+                      })),
+                    ],
+                  })
+                }
               >
-                <Wallet size={14} /> Cobrar deuda
+                <Wallet size={14} /> Pagar
               </PageHeaderAction>
             )}
           </div>
@@ -838,6 +939,11 @@ export default function PagosAbono() {
                     <span className="font-mono text-[11px] font-bold bg-surface-muted px-1.5 py-0.5">
                       {v.patente || "S/PAT"}
                     </span>
+                    {nombreTipoVehiculo(v) && (
+                      <span className="text-[11px] font-semibold text-ink-muted">
+                        {nombreTipoVehiculo(v)}
+                      </span>
+                    )}
                     <span className="text-[9px] font-bold text-ink-muted">
                       {modalidadLabel(v.modalidad)}
                     </span>
@@ -879,44 +985,39 @@ export default function PagosAbono() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        <div className="flex-1 min-w-0 bg-surface-card overflow-hidden w-full">
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex items-end gap-1 px-2">
+            {VISTAS.map((v) => {
+              const activa = vista === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setVista(v.id)}
+                  className={`px-4 py-2 text-xs font-semibold border border-b-0 -mb-px ${
+                    activa
+                      ? "bg-surface-card text-ink border-line"
+                      : "bg-surface-muted text-ink-muted border-transparent hover:text-ink"
+                  }`}
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="bg-surface-card border border-line overflow-hidden">
           <div className="px-4 sm:px-5 py-4 border-b border-line space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-sm font-bold text-ink">
-                  {vista === "cuotas"
-                    ? "Línea de períodos"
-                    : vista === "pagos"
-                      ? "Historial de pagos"
-                      : "Cargos y reintegros"}
-                </h2>
-                <p className="text-xs text-ink-faint mt-0.5">
-                  {vista === "cuotas"
-                    ? modoMultiPago
-                      ? `${cuotasFiltradas.length} de ${cuotas.length} períodos · seleccioná cuotas y generá el pago`
-                      : `${cuotasFiltradas.length} de ${cuotas.length} períodos`
-                    : vista === "pagos"
-                      ? `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"}`
-                      : "Obligaciones y devoluciones de este abono"}
-                </p>
-              </div>
+              <p className="text-xs text-ink-faint">
+                {vista === "cuotas"
+                  ? modoMultiPago
+                    ? `${cuotasFiltradas.length} de ${cuotas.length} períodos · seleccioná cuotas y generá el pago`
+                    : `${cuotasFiltradas.length} de ${cuotas.length} períodos`
+                  : vista === "pagos"
+                    ? `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"}`
+                    : "Obligaciones y devoluciones de este abono"}
+              </p>
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex gap-0.5 p-0.5 bg-surface-muted">
-                  {VISTAS.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setVista(v.id)}
-                      className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                        vista === v.id
-                          ? "bg-brand text-brand-foreground"
-                          : "text-ink-muted hover:text-ink"
-                      }`}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
                 {esActivo && cuotasCobrables.length > 1 && vista === "cuotas" && (
                   <button
                     type="button"
@@ -941,15 +1042,6 @@ export default function PagosAbono() {
                     Generar pago ({cuotasSeleccionadas.length}) · {formatPrecio(totalSeleccion)}
                   </button>
                 )}
-                {esActivo && !modoMultiPago && vista === "cuotas" && cuotasCobrables.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setModalPago({ cuota: cuotasCobrables[0], cuotas: null })}
-                    className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-medium px-3 py-2 transition-colors"
-                  >
-                    <Plus size={13} /> Cobrar
-                  </button>
-                )}
               </div>
             </div>
 
@@ -965,28 +1057,21 @@ export default function PagosAbono() {
                 }
                 className="flex-1 min-w-[180px] max-w-xs"
               />
-              {vista === "cuotas" &&
-                FILTROS_CUOTA.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setFiltroCuota(f.id)}
-                    className={`px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                      filtroCuota === f.id
-                        ? "bg-brand text-brand-foreground"
-                        : "bg-surface-muted text-ink-muted hover:text-ink"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              {vista === "cuotas" && (
+                <FilterSelect
+                  ariaLabel="Filtrar cuotas"
+                  value={filtroCuota}
+                  onChange={setFiltroCuota}
+                  options={FILTROS_CUOTA.map((f) => ({ value: f.id, label: f.label }))}
+                />
+              )}
             </div>
             )}
           </div>
 
           {vista === "cuotas" ? (
             cuotas.length === 0 ? (
-              <div className="py-10 text-center text-sm text-ink-faint">Sin períodos de cobro</div>
+              <div className="py-10 text-center text-sm text-ink-faint">Sin períodos</div>
             ) : cuotasFiltradas.length === 0 ? (
               <div className="py-10 text-center text-sm text-ink-faint">
                 Sin períodos para este filtro
@@ -1003,6 +1088,7 @@ export default function PagosAbono() {
                       expandido={expandidas.has(key)}
                       onToggle={() => toggleExpand(key)}
                       onCobrar={(cuota) => setModalPago({ cuota, cuotas: null })}
+                      onAnular={anularCuota}
                       onVerRecibo={handleVerRecibo}
                       onVerDetalle={setPagoDetalle}
                       reciboBusyId={reciboBusyId}
@@ -1023,8 +1109,22 @@ export default function PagosAbono() {
               reciboBusyId={reciboBusyId}
             />
           ) : (
-            abono && <CargosReintegrosAbono abono={abono} />
+            abono && (
+              <CargosReintegrosAbono
+                abono={abono}
+                pagos={pagos}
+                revision={revisionCargos}
+                onPagarCargo={(cargo) =>
+                  setModalPago({ cuota: null, cuotas: null, cargo })
+                }
+                onAnularCargo={anularCargo}
+                onVerDetalle={setPagoDetalle}
+                onVerRecibo={handleVerRecibo}
+                reciboBusyId={reciboBusyId}
+              />
+            )
           )}
+          </div>
         </div>
 
         <div className="w-full lg:w-72 shrink-0 lg:sticky lg:top-20 space-y-3">
@@ -1082,6 +1182,9 @@ export default function PagosAbono() {
                             {vehiculoFijo ? (
                               <span className="font-mono font-semibold text-ink">
                                 {vinculo}
+                                {nombreTipoVehiculo(vehiculoFijo)
+                                  ? ` · ${nombreTipoVehiculo(vehiculoFijo)}`
+                                  : ""}
                               </span>
                             ) : (
                               <span className="font-semibold text-warning-ink">Flexible</span>
@@ -1111,6 +1214,8 @@ export default function PagosAbono() {
           cuota={modalPago.cuota || null}
           cuotas={modalPago.cuotas || null}
           cuotasPendientes={cuotasCobrables}
+          cargo={modalPago.cargo || null}
+          deudas={modalPago.deudas || null}
           onClose={() => setModalPago(null)}
           onRegistrado={() => {
             setModalPago(null);

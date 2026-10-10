@@ -4,6 +4,7 @@ import { ArrowLeft, Tags, Banknote, Layers, Check, Loader2, AlertCircle } from "
 import SelectorGrupos from "../components/layout/SelectorGrupos";
 import { tipoGastoService } from "../services/tipoGastoService";
 import { operacionFinancieraService } from "../services/operacionFinancieraService";
+import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").TipoGasto} TipoGasto */
 
@@ -13,15 +14,14 @@ const SECTIONS = [
   { id: "grupos", label: "Grupos", icon: Layers },
 ];
 
-const inputCls =
-  "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+const inputCls = fieldClass;
 
 function SectionHeader({ index, title, done }) {
   return (
     <div className="flex items-start gap-4 mb-6">
       <div
         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black ${
-          done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-slate-900 text-white shadow-lg shadow-slate-900/15"
+          done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
         }`}
       >
         {done ? <Check size={18} strokeWidth={3} /> : index}
@@ -129,7 +129,7 @@ export default function NuevoGasto() {
               type="button"
               onClick={handleGuardar}
               disabled={!puedeGuardar}
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20"
+              className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20"
             >
               {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               {guardando ? "Guardando..." : "Registrar gasto"}
@@ -149,7 +149,7 @@ export default function NuevoGasto() {
                     active ? "bg-white border-slate-200 shadow-sm" : done ? "bg-emerald-50/80 border-emerald-100" : "bg-white/60 border-transparent"
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-500 text-white" : active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-500 text-white" : active ? "bg-brand text-brand-foreground" : "bg-slate-100 text-slate-400"}`}>
                     {done ? <Check size={14} /> : <Icon size={14} />}
                   </div>
                   <div className="min-w-0">
@@ -181,12 +181,16 @@ export default function NuevoGasto() {
             <SectionHeader index={1} title="Tipo de gasto" done={checklist.tipo} />
             <div className="max-w-xl">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Catálogo</label>
-              <select value={tipoGastoId} onChange={(e) => setTipoGastoId(e.target.value)} className={inputCls}>
-                <option value="">Elegir tipo</option>
-                {tipos.map((t) => (
-                  <option key={t.tipoGastoId} value={t.tipoGastoId}>{t.nombre}</option>
-                ))}
-              </select>
+              <FilterSelect
+                className="w-full"
+                ariaLabel="Tipo de gasto"
+                value={tipoGastoId}
+                onChange={setTipoGastoId}
+                options={[
+                  { value: "", label: "Elegir tipo" },
+                  ...tipos.map((t) => ({ value: t.tipoGastoId, label: t.nombre })),
+                ]}
+              />
               {tipos.length === 0 && (
                 <p className="text-xs text-slate-400 mt-2">No hay tipos activos. Cargalos en Configuración.</p>
               )}
@@ -219,7 +223,7 @@ export default function NuevoGasto() {
 
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Gasto</p>
             </div>
@@ -240,7 +244,7 @@ export default function NuevoGasto() {
                   {monto > 0 ? pesos(-monto) : "—"}
                 </p>
               </div>
-              <button type="button" onClick={handleGuardar} disabled={!puedeGuardar} className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/25">
+              <button type="button" onClick={handleGuardar} disabled={!puedeGuardar} className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/25">
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar gasto
               </button>

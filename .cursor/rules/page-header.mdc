@@ -1,0 +1,51 @@
+---
+description: Estándares de UI de pages — PageHeader + SearchField
+globs: src/pages/**/*.{jsx,tsx}
+alwaysApply: false
+---
+
+# Estándares de UI (Parkking Frontend)
+
+## Cabecera — `PageHeader`
+
+```jsx
+import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+
+<PageHeader
+  title="Nombre"
+  description="Para qué sirve."
+  loading={loading}
+  action={<PageHeaderAction onClick={…}><Plus size={16} /> Nuevo</PageHeaderAction>}
+  stats={[
+    { label: "Listados", value: n },
+    { label: "Activos", value: a },
+    { label: "Alerta", value: x, tone: "danger" },
+  ]}
+/>
+```
+
+## Búsqueda — `SearchField`
+
+Referencia visual: Pagos pendientes. No reinventar input + ícono Search.
+
+```jsx
+import SearchField from "../components/layout/SearchField";
+
+<SearchField
+  value={busqueda}
+  onChange={setBusqueda}
+  placeholder="Cliente, cochera, patente…"
+/>
+```
+
+- `onChange` recibe el **string** (compatible con `setState`).
+- Wrapper por defecto: `flex-1 min-w-[200px] max-w-sm`.
+- Estilo fijo: `bg-surface-muted`, borde `line-strong`, focus → `border-brand` + `bg-surface-card`.
+
+## Reglas
+
+1. Contenedor de page: `className="space-y-5 animate-fade-in-up"`.
+2. Solo tokens del theme (`brand`, `ink`, `surface`, `line`, danger/warning/success).
+3. No `indigo-*`, `gray-*` ni `h1`/`search` custom en pages nuevas.
+
+Referencias: `PageHeader.jsx`, `SearchField.jsx`.

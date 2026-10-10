@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw, Layers, Eye } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import { grupoFinancieroService } from "../../services/grupoFinancieroService";
+import Checkbox from "../../components/layout/Check";
+import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").GrupoFinanciero} GrupoFinanciero */
 
@@ -109,8 +111,7 @@ export default function GruposFinancieros() {
             <Layers size={13} /> Listado
           </span>
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={mostrarInactivos}
               onChange={(e) => {
                 setLoading(true);
@@ -142,13 +143,13 @@ export default function GruposFinancieros() {
                         autoFocus
                         value={editNombre}
                         onChange={(e) => setEditNombre(e.target.value)}
-                        className="w-full text-sm border border-line px-3 py-2 text-ink focus:outline-none focus:border-brand"
+                        className={fieldClass}
                       />
                       <input
                         value={editDescripcion}
                         onChange={(e) => setEditDescripcion(e.target.value)}
                         placeholder="Descripción"
-                        className="w-full text-sm border border-line px-3 py-2 text-ink focus:outline-none focus:border-brand"
+                        className={fieldClass}
                       />
                       <div className="flex gap-2">
                         <button type="button" onClick={() => handleModificar(grupo.grupoFinancieroId)} className="p-2 text-success">
@@ -209,13 +210,13 @@ export default function GruposFinancieros() {
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             placeholder="Nombre del grupo"
-            className="text-xs font-semibold border border-line px-4 py-2.5 bg-surface-muted/50 text-ink focus:outline-none focus:border-brand"
+            className={fieldClass}
           />
           <input
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             placeholder="Descripción"
-            className="text-xs border border-line px-4 py-2.5 bg-surface-muted/50 text-ink focus:outline-none focus:border-brand"
+            className={fieldClass}
           />
           <button
             type="button"

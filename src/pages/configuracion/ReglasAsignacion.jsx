@@ -5,6 +5,8 @@ import { reglaAsignacionService, CriterioRegla } from "../../services/reglaAsign
 import { grupoFinancieroService } from "../../services/grupoFinancieroService";
 import { tipoGastoService } from "../../services/tipoGastoService";
 import { clienteService } from "../../services/clienteService";
+import Checkbox from "../../components/layout/Check";
+import FilterSelect from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").ReglaAsignacion} ReglaAsignacion */
 /** @typedef {import("../../types").GrupoFinanciero} GrupoFinanciero */
@@ -41,6 +43,29 @@ export default function ReglasAsignacion() {
 
   const tiposPorId = useMemo(() => new Map(tipos.map((t) => [t.tipoGastoId, t.nombre])), [tipos]);
   const clientesPorId = useMemo(() => new Map(clientes.map((c) => [c.clienteId, c.nombre])), [clientes]);
+  const reglasPorGrupo = useMemo(() => {
+    const map = new Map();
+    for (const regla of reglas) {
+      const id = regla.grupoFinancieroId;
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          nombre: regla.grupoNombre || grupos.find((g) => g.grupoFinancieroId === id)?.nombre || `Grupo ${id}`,
+          reglas: [],
+        });
+      }
+      map.get(id).reglas.push(regla);
+    }
+    const orden = grupos.map((g) => g.grupoFinancieroId);
+    return [...map.values()].sort((a, b) => {
+      const ia = orden.indexOf(a.id);
+      const ib = orden.indexOf(b.id);
+      if (ia === -1 && ib === -1) return a.nombre.localeCompare(b.nombre, "es");
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  }, [reglas, grupos]);
 
   useEffect(() => {
     cargar();
@@ -173,68 +198,64 @@ export default function ReglasAsignacion() {
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-xs text-ink-muted">
             Grupo
-            <select
+            <FilterSelect
+              className="mt-1 w-full"
+              ariaLabel="Grupo"
               value={form.grupoFinancieroId}
-              onChange={(e) => setForm((f) => ({ ...f, grupoFinancieroId: e.target.value }))}
-              className="mt-1 block w-full text-sm border border-line-strong bg-surface-muted text-ink px-2 py-2"
-            >
-              <option value="">Elegir</option>
-              {grupos.map((g) => (
-                <option key={g.grupoFinancieroId} value={g.grupoFinancieroId}>
-                  {g.nombre}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm((f) => ({ ...f, grupoFinancieroId: v }))}
+              options={[
+                { value: "", label: "Elegir" },
+                ...grupos.map((g) => ({ value: g.grupoFinancieroId, label: g.nombre })),
+              ]}
+            />
           </label>
           <label className="text-xs text-ink-muted">
             Criterio
-            <select
+            <FilterSelect
+              className="mt-1 w-full"
+              ariaLabel="Criterio"
               value={form.criterio}
-              onChange={(e) =>
+              onChange={(v) =>
                 setForm((f) => ({
                   ...f,
-                  criterio: Number(e.target.value),
+                  criterio: Number(v),
                   clienteId: "",
                   tipoGastoId: "",
                 }))
               }
-              className="mt-1 block w-full text-sm border border-line-strong bg-surface-muted text-ink px-2 py-2"
-            >
-              <option value={CriterioRegla.Cliente}>Cliente</option>
-              <option value={CriterioRegla.TipoGasto}>Tipo de gasto</option>
-            </select>
+              options={[
+                { value: CriterioRegla.Cliente, label: "Cliente" },
+                { value: CriterioRegla.TipoGasto, label: "Tipo de gasto" },
+              ]}
+            />
           </label>
           {criterioEsCliente ? (
             <label className="text-xs text-ink-muted sm:col-span-2">
               Cliente
-              <select
+              <FilterSelect
+                className="mt-1 w-full"
+                ariaLabel="Cliente"
                 value={form.clienteId}
-                onChange={(e) => setForm((f) => ({ ...f, clienteId: e.target.value }))}
-                className="mt-1 block w-full text-sm border border-line-strong bg-surface-muted text-ink px-2 py-2"
-              >
-                <option value="">Elegir</option>
-                {clientes.map((c) => (
-                  <option key={c.clienteId} value={c.clienteId}>
-                    {labelCliente(c)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, clienteId: v }))}
+                options={[
+                  { value: "", label: "Elegir" },
+                  ...clientes.map((c) => ({ value: c.clienteId, label: labelCliente(c) })),
+                ]}
+              />
             </label>
           ) : (
             <label className="text-xs text-ink-muted sm:col-span-2">
               Tipo de gasto
-              <select
+              <FilterSelect
+                className="mt-1 w-full"
+                ariaLabel="Tipo de gasto"
                 value={form.tipoGastoId}
-                onChange={(e) => setForm((f) => ({ ...f, tipoGastoId: e.target.value }))}
-                className="mt-1 block w-full text-sm border border-line-strong bg-surface-muted text-ink px-2 py-2"
-              >
-                <option value="">Elegir</option>
-                {tipos.map((t) => (
-                  <option key={t.tipoGastoId} value={t.tipoGastoId}>
-                    {t.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, tipoGastoId: v }))}
+                options={[
+                  { value: "", label: "Elegir" },
+                  ...tipos.map((t) => ({ value: t.tipoGastoId, label: t.nombre })),
+                ]}
+              />
             </label>
           )}
         </div>
@@ -270,8 +291,7 @@ export default function ReglasAsignacion() {
             <GitBranch size={13} /> Listado
           </span>
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={mostrarInactivas}
               onChange={(e) => {
                 setLoading(true);
@@ -287,39 +307,47 @@ export default function ReglasAsignacion() {
         ) : reglas.length === 0 ? (
           <p className="text-xs text-ink-faint py-4">No hay reglas</p>
         ) : (
-          <ul className="divide-y divide-line">
-            {reglas.map((regla) => {
-              const criterio =
-                Number(regla.criterio) === CriterioRegla.Cliente
-                  ? clientesPorId.get(regla.clienteId) || `Cliente ${regla.clienteId}`
-                  : tiposPorId.get(regla.tipoGastoId) || `Tipo ${regla.tipoGastoId}`;
-              return (
-                <li key={regla.reglaAsignacionId} className={`py-3 flex items-center gap-3 ${regla.activa ? "" : "opacity-60"}`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-ink">{regla.grupoNombre}</p>
-                    <p className="text-xs text-ink-muted truncate">
-                      {regla.criterioDescripcion} · {criterio}
-                    </p>
-                  </div>
-                  {!regla.activa && <span className="text-[10px] font-bold text-ink-muted">Baja</span>}
-                  {regla.activa ? (
-                    <div className="flex gap-1">
-                      <button type="button" title="Editar" onClick={() => empezarEdicion(regla)} className="p-1.5 text-ink-faint hover:text-warning">
-                        <Pencil size={15} />
-                      </button>
-                      <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(regla)} className="p-1.5 text-ink-faint hover:text-danger">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" title="Reactivar" onClick={() => handleReactivar(regla)} className="p-1.5 text-ink-faint hover:text-success">
-                      <RotateCcw size={15} />
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-5">
+            {reglasPorGrupo.map((grupo) => (
+              <section key={grupo.id}>
+                <h3 className="text-sm font-bold text-ink pb-2 border-b border-line-subtle">
+                  {grupo.nombre}
+                  <span className="ml-2 text-[11px] font-semibold text-ink-faint">{grupo.reglas.length}</span>
+                </h3>
+                <ul className="divide-y divide-line">
+                  {grupo.reglas.map((regla) => {
+                    const criterio =
+                      Number(regla.criterio) === CriterioRegla.Cliente
+                        ? clientesPorId.get(regla.clienteId) || `Cliente ${regla.clienteId}`
+                        : tiposPorId.get(regla.tipoGastoId) || `Tipo ${regla.tipoGastoId}`;
+                    return (
+                      <li key={regla.reglaAsignacionId} className={`py-3 flex items-center gap-3 ${regla.activa ? "" : "opacity-60"}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-ink">{criterio}</p>
+                          <p className="text-xs text-ink-muted truncate">{regla.criterioDescripcion}</p>
+                        </div>
+                        {!regla.activa && <span className="text-[10px] font-bold text-ink-muted">Baja</span>}
+                        {regla.activa ? (
+                          <div className="flex gap-1">
+                            <button type="button" title="Editar" onClick={() => empezarEdicion(regla)} className="p-1.5 text-ink-faint hover:text-warning">
+                              <Pencil size={15} />
+                            </button>
+                            <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(regla)} className="p-1.5 text-ink-faint hover:text-danger">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button type="button" title="Reactivar" onClick={() => handleReactivar(regla)} className="p-1.5 text-ink-faint hover:text-success">
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
       </div>
     </div>

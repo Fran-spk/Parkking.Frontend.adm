@@ -5,11 +5,11 @@ import SelectorGrupos from "../components/layout/SelectorGrupos";
 import { abonoService } from "../services/abonoService";
 import { operacionFinancieraService } from "../services/operacionFinancieraService";
 import { abonoIdOf, labelCocheras } from "../utils/abonoHelpers";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Abono} Abono */
 
-const inputCls =
-  "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+const inputCls = fieldClass;
 
 function pesos(n) {
   return Number(n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
@@ -77,7 +77,7 @@ export default function ReintegroAbono() {
               <p className="text-xs text-slate-400 mt-0.5">Devuelve al cliente y resta en tu cuenta y en sus grupos.</p>
             </div>
           </div>
-          <button type="button" onClick={handleGuardar} disabled={!puede} className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20">
+          <button type="button" onClick={handleGuardar} disabled={!puede} className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20">
             {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
             Registrar reintegro
           </button>
@@ -94,7 +94,7 @@ export default function ReintegroAbono() {
         <div className="space-y-6">
           <section className="bg-white rounded-3xl p-6 sm:p-8 lg:p-10 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-sm font-black">1</div>
+              <div className="w-10 h-10 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center text-sm font-black">1</div>
               <div>
                 <p className="font-bold text-slate-900">{abono?.cliente?.nombre || "Cargando…"}</p>
                 <p className="text-xs text-slate-500">{abono ? labelCocheras(abono) : ""}</p>
@@ -126,7 +126,7 @@ export default function ReintegroAbono() {
           </section>
           <section className="bg-white rounded-3xl p-6 sm:p-8 lg:p-10">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center"><Layers size={16} /></div>
+              <div className="w-10 h-10 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center"><Layers size={16} /></div>
               <h2 className="text-lg font-bold text-slate-900">Grupos</h2>
             </div>
             <p className="text-sm text-slate-500 mb-4 max-w-xl">Se suman a las reglas del cliente de este abono.</p>
@@ -135,7 +135,7 @@ export default function ReintegroAbono() {
         </div>
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Reintegro</p>
             </div>
@@ -143,7 +143,7 @@ export default function ReintegroAbono() {
               <p className="font-semibold text-slate-900">{motivo.trim() || "Sin motivo"}</p>
               <p className="text-2xl font-black text-rose-600">{monto > 0 ? pesos(-monto) : "—"}</p>
               <p className="text-xs text-slate-500">Ese importe resta en tu cuenta corriente.</p>
-              <button type="button" onClick={handleGuardar} disabled={!puede} className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl">
+              <button type="button" onClick={handleGuardar} disabled={!puede} className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl">
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar reintegro
               </button>

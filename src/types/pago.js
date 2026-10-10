@@ -42,6 +42,7 @@
  * @property {number | null} recargoPago
  * @property {number | null} reciboId
  * @property {string | null} reciboNumero
+ * @property {boolean} [adelantado]
  */
 
 /**
@@ -57,6 +58,8 @@
  * @property {number} estado
  * @property {boolean} esPrecioAcordado
  * @property {boolean} [esFuturo]
+ * @property {string | null} [fechaVencimiento]
+ * @property {boolean} [vencida]
  * @property {ComponenteTarifa[]} [componentesTarifa]
  * @property {DetalleCuota[]} [detallesLiquidacion]
  * @property {CuotaCobro[]} [cobros]
@@ -74,6 +77,7 @@
  * @property {number} estadoCuota
  * @property {number} montoCuota
  * @property {number} saldoCuota
+ * @property {boolean} [adelantado]
  */
 
 /**
@@ -107,6 +111,8 @@
  * @typedef {object} DeudaPendiente
  * @property {number} abonoId
  * @property {number | null} cuotaId
+ * @property {number | null} [cargoId]
+ * @property {boolean} [esCargo]
  * @property {number} clienteId
  * @property {string} clienteNombre
  * @property {string | null} clienteTelefono

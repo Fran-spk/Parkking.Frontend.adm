@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Mail, Loader2, RefreshCw, AlertCircle, CheckCircle2, FlaskConical } from "lucide-react";
 import { mensajeService } from "../../services/mensajeService";
 import { reciboService } from "../../services/reciboService";
@@ -155,7 +155,7 @@ export default function HistorialMensajes({ abonoId, reciboId, compact = false, 
         <div className="px-5 py-6 text-center">
           <p className="text-sm text-gray-500">Todavía no hay envíos registrados.</p>
           <p className="text-[11px] text-gray-400 mt-1">
-            Aparecen al mandar un recibo por email (manual o al cobrar).
+            Aparecen al mandar un recibo por email (manual o al pagar).
           </p>
         </div>
       ) : (

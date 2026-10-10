@@ -92,6 +92,18 @@ export default function MovimientoDetalle() {
               </dd>
             </div>
             <div>
+              <dt className="pk-label">Abono</dt>
+              <dd className="mt-1">
+                {movimiento.abonoId ? (
+                  <Link to={`/pagosAbono/${movimiento.abonoId}`} className="font-semibold text-ink hover:underline">
+                    Abono #{movimiento.abonoId}
+                  </Link>
+                ) : (
+                  <span className="text-ink-faint">Sin abono</span>
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="pk-label">Grupos</dt>
               <dd className="text-ink mt-1">
                 {(movimiento.grupoFinancieroIds || []).length

@@ -14,8 +14,9 @@ export const usuarioService = {
     api.get("/Usuario/del-estacionamiento").then(r => r.data),
 
   /**
-   * Modifica nombre y teléfono del usuario autenticado.
-   * @param {{ nombre: string, telefono: string }} data
+   * Modifica nombre, mail y teléfono del usuario autenticado.
+   * El mail se reenvía aunque la UI no lo edite (el API lo exige).
+   * @param {{ nombre: string, mail: string, telefono?: string }} data
    */
   modificarPerfil: (data) =>
     api.put("/Usuario", data).then(r => r.data),

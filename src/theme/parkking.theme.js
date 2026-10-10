@@ -22,6 +22,7 @@ export const parkkingTheme = {
     brand: {
       DEFAULT: "#0f172a",
       muted: "#f1f5f9",
+      wash: "#f4f6f8",
       soft: "#cbd5e1",
       strong: "#020617",
       foreground: "#ffffff",
@@ -104,6 +105,7 @@ export function themeToCssVars(theme = parkkingTheme) {
   return {
     "--pk-brand": c.brand.DEFAULT,
     "--pk-brand-muted": c.brand.muted,
+    "--pk-brand-wash": c.brand.wash,
     "--pk-brand-soft": c.brand.soft,
     "--pk-brand-strong": c.brand.strong,
     "--pk-brand-fg": c.brand.foreground,
@@ -188,6 +190,62 @@ export function themeToCssVars(theme = parkkingTheme) {
 
     "--pk-font-sans": f.sans,
   };
+}
+
+export const COLOR_MARCA_DEFAULT = "#0f172a";
+
+/** Acepta #RRGGBB. Cualquier otro valor vuelve al gris azulado del tema. */
+export function normalizarColorMarca(value) {
+  const hex = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toLowerCase() : COLOR_MARCA_DEFAULT;
+}
+
+function hexToRgb(hex) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function rgbToHex(r, g, b) {
+  const canal = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  return `#${canal(r)}${canal(g)}${canal(b)}`;
+}
+
+function mezclar(hex, hacia, cantidad) {
+  const a = hexToRgb(hex);
+  const b = hexToRgb(hacia);
+  return rgbToHex(
+    a.r + (b.r - a.r) * cantidad,
+    a.g + (b.g - a.g) * cantidad,
+    a.b + (b.b - a.b) * cantidad
+  );
+}
+
+function luminancia(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const canal = (c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+}
+
+/** Texto legible sobre el color de marca. */
+export function colorMarcaForeground(value) {
+  const color = normalizarColorMarca(value);
+  return luminancia(color) > 0.55 ? COLOR_MARCA_DEFAULT : "#ffffff";
+}
+
+/** Pinta botones y acentos (`bg-brand`) con el color del estacionamiento. */
+export function applyColorMarca(value) {
+  if (typeof document === "undefined") return;
+  const color = normalizarColorMarca(value);
+  const root = document.documentElement;
+  root.style.setProperty("--pk-brand", color);
+  root.style.setProperty("--pk-brand-strong", mezclar(color, "#000000", 0.18));
+  root.style.setProperty("--pk-brand-soft", mezclar(color, "#ffffff", 0.55));
+  root.style.setProperty("--pk-brand-muted", mezclar(color, "#ffffff", 0.86));
+  root.style.setProperty("--pk-brand-wash", mezclar(color, "#ffffff", 0.78));
+  root.style.setProperty("--pk-brand-fg", colorMarcaForeground(color));
 }
 
 /** Apply tokens as CSS variables on :root (call once at app boot). */

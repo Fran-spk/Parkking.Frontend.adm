@@ -2,9 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Cocheras from "./pages/Cocheras";
+import CocheraDetalle from "./pages/CocheraDetalle";
 import Clientes from "./pages/Clientes";
 import NuevoCliente from "./pages/NuevoCliente";
 import Abonos from "./pages/Abonos";
+import Reservas from "./pages/Reservas";
+import ReservaForm from "./pages/ReservaForm";
+import ReservaDetalle from "./pages/ReservaDetalle";
 import NuevoAbono from "./pages/NuevoAbono";
 import Pagos from "./pages/Pagos";
 import CuentaCorriente from "./pages/CuentaCorriente";
@@ -26,6 +30,8 @@ import TarifasConfig from "./pages/configuracion/Tarifas";
 import TiposGastoConfig from "./pages/configuracion/TiposGasto";
 import ReglasAsignacionConfig from "./pages/configuracion/ReglasAsignacion";
 import UsuariosConfig from "./pages/configuracion/Usuarios";
+import GruposSeguridad from "./pages/configuracion/GruposSeguridad";
+import ReservasConfig from "./pages/configuracion/ReservasConfig";
 import PagosAbono from "./pages/PagosAbono";
 import CargoAbono from "./pages/CargoAbono";
 import ReintegroAbono from "./pages/ReintegroAbono";
@@ -46,6 +52,7 @@ export default function App() {
           <Route path="mi-estacionamiento" element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/mi-estacionamiento" replace />} />
           <Route path="cocheras" element={<Cocheras />} />
+          <Route path="cocheras/:cocheraId" element={<CocheraDetalle />} />
           <Route path="clientes" element={<Clientes />} />
           <Route path="clientes/nuevo" element={<NuevoCliente />} />
           <Route path="clientes/:clienteId/editar" element={<NuevoCliente />} />
@@ -55,6 +62,10 @@ export default function App() {
           <Route path="buscar-patente" element={<BuscarPatente />} />
           <Route path="abonos" element={<Abonos />} />
           <Route path="abonos/nuevo" element={<NuevoAbono />} />
+          <Route path="reservas" element={<Reservas />} />
+          <Route path="reservas/nueva" element={<ReservaForm />} />
+          <Route path="reservas/:id" element={<ReservaDetalle />} />
+          <Route path="reservas/:id/editar" element={<ReservaForm />} />
           <Route path="pagos" element={<Pagos />} />
           <Route path="cuenta-corriente" element={<CuentaCorriente />} />
           <Route path="movimientos" element={<Movimientos />} />
@@ -78,9 +89,11 @@ export default function App() {
             <Route path="tipos-vehiculo" element={<Navigate to="/configuracion/general?tab=tipos" replace />} />
             <Route path="metodos-pago" element={<Navigate to="/configuracion/general?tab=metodos" replace />} />
             <Route path="tarifas" element={<TarifasConfig />} />
+            <Route path="reservas" element={<ReservasConfig />} />
             <Route path="tipos-gasto" element={<TiposGastoConfig />} />
             <Route path="grupos-financieros" element={<Navigate to="/grupos-financieros" replace />} />
             <Route path="reglas-asignacion" element={<ReglasAsignacionConfig />} />
+            <Route path="grupos" element={<GruposSeguridad />} />
             <Route path="usuarios" element={<UsuariosConfig />} />
           </Route>
           <Route path="pagosAbono/:id" element={<PagosAbono />} />

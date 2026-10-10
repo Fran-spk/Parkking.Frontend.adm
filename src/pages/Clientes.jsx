@@ -1,10 +1,11 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Pencil, Trash2, X, Phone, Mail, Car, ChevronRight, RotateCcw, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clienteService } from "../services/clienteService";
 import { abonoService } from "../services/abonoService";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import Checkbox from "../components/layout/Check";
 
 /** @typedef {import("../types").Cliente} Cliente */
 /** @typedef {import("../types").Abono} Abono */
@@ -132,6 +133,7 @@ function PanelDetalle({ clienteId, onClose, onEditar }) {
                           {vehiculos.filter(v => v.patente).map((v, i) => (
                             <span key={v.abonoVehiculoId ?? `${v.patente}-${i}`} className="font-mono text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
                               {v.patente}
+                              {v.tipoVehiculo?.nombre ? ` · ${v.tipoVehiculo.nombre}` : ""}
                             </span>
                           ))}
                         </div>
@@ -264,11 +266,9 @@ export default function Clientes() {
           className="flex-1"
         />
         <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={mostrarInactivos}
             onChange={e => setMostrarInactivos(e.target.checked)}
-            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
           />
           Mostrar dados de baja
         </label>

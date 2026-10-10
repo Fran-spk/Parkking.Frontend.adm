@@ -1,17 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Calendar,
-  DollarSign,
   Loader2,
   AlertCircle,
   Banknote,
-  CreditCard,
-  ArrowLeftRight,
-  Receipt,
-  Sparkles,
-  CircleDollarSign,
-  ChevronDown,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
@@ -25,6 +19,8 @@ import { metodoDePagoService } from "../../services/metodoDePagoService";
 /** @typedef {import("../../types").PagoSugerido} PagoSugerido */
 import { abonoIdOf, labelCocheras, labelPatentes } from "../../utils/abonoHelpers";
 import { imprimirReciboPdf } from "../../utils/imprimirRecibo";
+import Checkbox from "./Check";
+import FilterSelect from "./FilterSelect";
 
 const formatCurrency = (val) =>
   new Intl.NumberFormat("es-AR", {
@@ -57,21 +53,6 @@ function cuotaKey(c) {
   return `${c?.cuotaId ?? "p"}-${String(c?.periodoInicio ?? "").split("T")[0]}`;
 }
 
-function iconForMetodo(nombre) {
-  const n = String(nombre || "").toLowerCase();
-  if (n.includes("efectivo") || n.includes("cash")) return Banknote;
-  if (n.includes("transfer") || n.includes("alias") || n.includes("cbu")) return ArrowLeftRight;
-  if (
-    n.includes("débito") ||
-    n.includes("debito") ||
-    n.includes("crédito") ||
-    n.includes("credito") ||
-    n.includes("tarjeta")
-  )
-    return CreditCard;
-  return Banknote;
-}
-
 /**
  * Panel lateral de cobro.
  * - Una cuota: `cuota`
@@ -82,16 +63,19 @@ export default function ModalRegistrarPago({
   cuota = null,
   cuotas = null,
   cuotasPendientes = [],
+  cargo = null,
+  sena = null,
+  deudas = null,
   onClose,
   onRegistrado,
 }) {
   const abonoId = abonoIdOf(abono);
-  const clienteNombre = abono?.cliente?.nombre || abono?.clienteNombre || "Cliente";
+  const clienteNombre = sena?.clienteNombre || abono?.cliente?.nombre || abono?.clienteNombre || "Cliente";
   const clienteTelefono = abono?.cliente?.telefono || abono?.telefono || null;
   const clienteEmail =
     abono?.email || abono?.cliente?.email || abono?.clienteEmail || null;
-  const cocheras = labelCocheras(abono);
-  const patentes = labelPatentes(abono);
+  const cocheras = sena?.cocherasLabel || labelCocheras(abono);
+  const patentes = sena?.patentesLabel || labelPatentes(abono);
   const precioAbono = abono?.precioAcordado;
 
   const listaFija = useMemo(() => {
@@ -106,6 +90,7 @@ export default function ModalRegistrarPago({
   }, [cuotasPendientes, listaFija]);
 
   const esMulti = (listaFija?.length ?? 0) > 1;
+  const esConjunto = Array.isArray(deudas) && deudas.length > 0;
   const periodoFijo = Boolean(listaFija?.length);
   const cuotaUnica = !esMulti && listaFija?.[0] ? listaFija[0] : null;
 
@@ -116,7 +101,15 @@ export default function ModalRegistrarPago({
     return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   });
 
-  const [monto, setMonto] = useState(cuotaUnica?.saldo != null ? String(cuotaUnica.saldo) : "");
+  const [monto, setMonto] = useState(
+    sena?.importe != null
+      ? String(sena.importe)
+      : cargo?.importe != null
+      ? String(cargo.importe)
+      : cuotaUnica?.saldo != null
+        ? String(cuotaUnica.saldo)
+        : ""
+  );
   const [montosPorCuota, setMontosPorCuota] = useState(() => {
     if (!listaFija) return {};
     return Object.fromEntries(listaFija.map((c) => [cuotaKey(c), String(c.saldo ?? 0)]));
@@ -130,6 +123,7 @@ export default function ModalRegistrarPago({
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
   const [periodoBloqueado, setPeriodoBloqueado] = useState(false);
+  const [elegidas, setElegidas] = useState(() => new Set((deudas || []).map((d) => d.key)));
 
   useEffect(() => {
     metodoDePagoService
@@ -194,10 +188,15 @@ export default function ModalRegistrarPago({
     : cuotaUnica?.periodoLabel || cuotaDelPeriodo?.periodoLabel || null;
 
   const montoNumerico = useMemo(() => {
+    if (esConjunto) {
+      return deudas
+        .filter((d) => elegidas.has(d.key))
+        .reduce((acc, d) => acc + Number(d.saldo || 0), 0);
+    }
     if (esMulti) return lineasMulti.reduce((acc, l) => acc + l.monto, 0);
     const m = parseFloat(monto);
     return !isNaN(m) && m > 0 ? m : 0;
-  }, [esMulti, lineasMulti, monto]);
+  }, [esConjunto, deudas, elegidas, esMulti, lineasMulti, monto]);
 
   const recargoNumerico = useMemo(() => {
     if (recargo === "" || recargo == null) return 0;
@@ -219,7 +218,9 @@ export default function ModalRegistrarPago({
   const esPagoParcial =
     saldoMaximo != null && montoNumerico > 0 && pendienteTrasPago != null && pendienteTrasPago > 0.009;
 
-  const excedeSaldo = esMulti
+  const excedeSaldo = cargo || sena
+    ? false
+    : esMulti
     ? lineasMulti.some((l) => l.excede)
     : saldoMaximo != null && montoNumerico > saldoMaximo + 0.009;
 
@@ -235,7 +236,7 @@ export default function ModalRegistrarPago({
     }
     if (saldoMaximo != null && n > saldoMaximo) {
       setMonto(String(saldoMaximo));
-      setError(`No podés cobrar más que el saldo de la cuota (${formatCurrency(saldoMaximo)}).`);
+      setError(`No podés pagar más que el saldo de la cuota (${formatCurrency(saldoMaximo)}).`);
       return;
     }
     if (error && error.includes("más que el saldo")) setError(null);
@@ -256,7 +257,7 @@ export default function ModalRegistrarPago({
     }
     if (n > saldo) {
       setMontosPorCuota((prev) => ({ ...prev, [key]: String(saldo) }));
-      setError(`No podés cobrar más que el saldo de ${c.periodoLabel || "la cuota"} (${formatCurrency(saldo)}).`);
+      setError(`No podés pagar más que el saldo de ${c.periodoLabel || "la cuota"} (${formatCurrency(saldo)}).`);
       return;
     }
     if (error && error.includes("más que el saldo")) setError(null);
@@ -264,7 +265,22 @@ export default function ModalRegistrarPago({
   }
 
   useEffect(() => {
-    if (!abonoId) return;
+    if (!abonoId || sena) return;
+
+    if (esConjunto) {
+      setPeriodoBloqueado(false);
+      setError(null);
+      setSugerido(null);
+      return;
+    }
+
+    if (cargo) {
+      setPeriodoBloqueado(false);
+      setError(null);
+      setMonto(String(cargo.importe));
+      setSugerido(null);
+      return;
+    }
 
     if (esMulti && listaFija?.length) {
       const invalida = listaFija.some((c) => Number(c.saldo) <= 0);
@@ -283,7 +299,7 @@ export default function ModalRegistrarPago({
       const saldo = Number(cuotaUnica.saldo);
       if (saldo <= 0) {
         setPeriodoBloqueado(true);
-        setError("Esta cuota ya está pagada. No se puede registrar otro cobro.");
+        setError("Esta cuota ya está pagada. No se puede registrar otro pago.");
         setSugerido(null);
         setMonto("");
         return;
@@ -314,7 +330,7 @@ export default function ModalRegistrarPago({
       const saldo = Number(cuotaDelPeriodo.saldo);
       if (saldo <= 0) {
         setPeriodoBloqueado(true);
-        setError("Esta cuota ya está pagada. No se puede registrar otro cobro.");
+        setError("Esta cuota ya está pagada. No se puede registrar otro pago.");
         setSugerido(null);
         setMonto("");
         return;
@@ -346,7 +362,7 @@ export default function ModalRegistrarPago({
         const msg =
           typeof data === "string"
             ? data
-            : data?.title || data?.message || err.message || "No se puede cobrar este período";
+            : data?.title || data?.message || err.message || "No se puede pagar este período";
         setPeriodoBloqueado(true);
         setSugerido(null);
         setMonto("");
@@ -358,7 +374,7 @@ export default function ModalRegistrarPago({
     };
 
     fetchSugerido();
-  }, [mes, abonoId, periodoFijo, cuotaUnica, cuotaDelPeriodo, cuotasPendientes.length, esMulti, listaFija]);
+  }, [mes, abonoId, periodoFijo, cuotaUnica, cuotaDelPeriodo, cuotasPendientes.length, esMulti, listaFija, cargo, esConjunto]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -382,10 +398,50 @@ export default function ModalRegistrarPago({
         throw new Error("El monto no puede superar el saldo pendiente de alguna cuota.");
       }
 
-      if (!abonoId) throw new Error("Abono inválido");
+      if (!abonoId && !sena) throw new Error("Abono inválido");
+
+      if (sena) {
+        const registrado = await pagoService.pagarSena({
+          senaId: sena.senaId,
+          metodoDePagoId: Number(metodoDePagoId),
+          recargo: recargoNumerico > 0 ? recargoNumerico : null,
+          observacion: observacion?.trim() || null,
+        });
+        try {
+          const datos = await estacionamientoService.get();
+          if (datos?.imprimirReciboAlCobrar !== false && registrado?.reciboId) {
+            const recibo = await reciboService.getById(registrado.reciboId);
+            await imprimirReciboPdf(recibo);
+          }
+        } catch {
+          /* el cobro ya quedó */
+        }
+        onRegistrado();
+        onClose();
+        return;
+      }
 
       let detalles;
-      if (esMulti) {
+      if (esConjunto) {
+        const marcadas = deudas.filter((d) => elegidas.has(d.key));
+        if (marcadas.length === 0) {
+          throw new Error("Marcá al menos una deuda.");
+        }
+        detalles = marcadas.map((d) => {
+          if (d.tipo === "cargo") {
+            return { cargoId: d.cargo.cargoId, monto: Number(d.saldo) };
+          }
+          const cuotaRef = d.cuota;
+          return {
+            monto: Number(d.saldo),
+            ...(cuotaRef?.cuotaId
+              ? { cuotaId: cuotaRef.cuotaId }
+              : { periodoInicio: String(cuotaRef.periodoInicio).split("T")[0] }),
+          };
+        });
+      } else if (cargo) {
+        detalles = [{ cargoId: cargo.cargoId, monto: Number(cargo.importe) }];
+      } else if (esMulti) {
         if (lineasMulti.some((l) => l.monto <= 0)) {
           throw new Error("Cada cuota seleccionada debe tener un monto mayor a cero.");
         }
@@ -462,8 +518,20 @@ export default function ModalRegistrarPago({
     montoNumerico <= 0 ||
     excedeSaldo;
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  useEffect(() => {
+    const html = document.documentElement;
+    const prevHtml = html.style.overflow;
+    const prevBody = document.body.style.overflow;
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] h-dvh overflow-hidden overscroll-none flex justify-end">
       <button
         type="button"
         aria-label="Cerrar"
@@ -471,181 +539,135 @@ export default function ModalRegistrarPago({
         onClick={onClose}
       />
 
-      <aside className="relative h-full w-full max-w-md sm:max-w-lg bg-surface-card shadow-pk-modal border-l border-line-subtle flex flex-col animate-fade-in-up">
-        <div className="relative shrink-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-strong via-brand to-brand" />
-          <div className="relative px-5 pt-4 pb-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
-                  <Receipt size={17} className="text-brand-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="pk-label text-white/70">
-                    {esMulti ? `Cobrar ${listaFija.length} cuotas` : "Cobrar cuota"}
-                  </p>
-                  <h3 className="pk-heading text-brand-foreground truncate !text-base">
-                    {clienteNombre}
-                  </h3>
-                  <p className="pk-caption text-white/70 truncate mt-0.5">
-                    Cochera {cocheras}
-                    {patentes ? ` · ${patentes}` : ""}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shrink-0"
-              >
-                <X size={16} className="text-brand-foreground" />
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-white/10 border border-white/15 px-4 py-3.5">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="pk-label text-white/65 flex items-center gap-1">
-                    <Sparkles size={10} />
-                    {periodoBloqueado ? "No disponible" : "Total a cobrar"}
-                  </p>
-                  <p className="pk-amount text-brand-foreground mt-1 !text-2xl">
-                    {loadingSugerido ? "…" : formatCurrency(totalCobro)}
-                  </p>
-                </div>
-                {periodoLabel && !periodoBloqueado && (
-                  <div className="text-right shrink-0 max-w-[48%]">
-                    <p className="pk-label text-white/55">{esMulti ? "Selección" : "Período"}</p>
-                    <p className="pk-caption text-white/90 capitalize mt-0.5 leading-snug">
-                      {periodoLabel}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {saldoMaximo != null && !periodoBloqueado && (
-                <p className="pk-caption text-white/70 mt-2">
-                  {esMulti ? "Saldo total" : "Saldo cuota"}:{" "}
-                  <span className="text-white font-bold">{formatCurrency(saldoMaximo)}</span>
-                </p>
-              )}
-            </div>
+      <aside className="relative h-dvh max-h-dvh w-full max-w-md sm:max-w-lg bg-surface-card shadow-pk-modal border-l border-line-subtle flex flex-col overflow-hidden overscroll-none">
+        <div className="shrink-0 bg-brand px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-white/70">
+              {esConjunto
+                ? "Pagar deuda"
+                : sena
+                ? "Cobrar seña"
+                : cargo
+                ? "Registrar pago"
+                : esMulti
+                  ? `Pagar ${listaFija.length} cuotas`
+                  : cuotaUnica?.esFuturo
+                    ? "Adelantar cuota"
+                    : "Pagar cuota"}
+            </p>
+            <p className="text-sm font-bold text-brand-foreground truncate">{clienteNombre}</p>
+            <p className="text-[11px] text-white/75 truncate">
+              Cochera {cocheras}
+              {patentes ? ` · ${patentes}` : ""}
+              {periodoLabel && !esConjunto ? ` · ${periodoLabel}` : ""}
+              {esConjunto
+                ? ` · ${deudas.filter((d) => elegidas.has(d.key)).length} de ${deudas.length}`
+                : ""}
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 bg-white/10 hover:bg-white/20 shrink-0"
+          >
+            <X size={16} className="text-brand-foreground" />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-            {/* Contexto del abono */}
-            <div className="rounded-2xl border border-line-subtle bg-surface-muted/80 px-4 py-3.5 space-y-2.5">
-              <p className="pk-label text-ink-muted">Datos del abono</p>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-                {precioAbono != null && precioAbono !== "" && (
-                  <div>
-                    <dt className="pk-caption text-ink-faint">Precio acordado</dt>
-                    <dd className="font-semibold text-ink tabular-nums">{formatCurrency(precioAbono)}</dd>
-                  </div>
-                )}
-                {abono?.cobrador && (
-                  <div>
-                    <dt className="pk-caption text-ink-faint">Cobrador</dt>
-                    <dd className="font-semibold text-ink truncate">{abono.cobrador}</dd>
-                  </div>
-                )}
-                {clienteTelefono && (
-                  <div>
-                    <dt className="pk-caption text-ink-faint">Teléfono</dt>
-                    <dd className="font-semibold text-ink">{clienteTelefono}</dd>
-                  </div>
-                )}
-                {clienteEmail && (
-                  <div className="col-span-2 min-w-0">
-                    <dt className="pk-caption text-ink-faint">Email</dt>
-                    <dd className="font-semibold text-ink truncate">{clienteEmail}</dd>
-                  </div>
-                )}
-              </dl>
-              {otrasPendientes.length > 0 && (
-                <div className="pt-2 border-t border-line-subtle">
-                  <p className="pk-caption text-ink-muted mb-1.5">
-                    Otras cuotas con saldo ({otrasPendientes.length})
-                  </p>
-                  <ul className="space-y-1 max-h-28 overflow-y-auto">
-                    {otrasPendientes.slice(0, 6).map((c) => (
-                      <li
-                        key={cuotaKey(c)}
-                        className="flex items-center justify-between gap-2 text-xs"
-                      >
-                        <span className="text-ink-muted capitalize truncate">
-                          {c.periodoLabel || String(c.periodoInicio || "").split("T")[0]}
-                        </span>
-                        <span className="font-bold text-ink tabular-nums shrink-0">
-                          {formatCurrency(c.saldo)}
-                        </span>
-                      </li>
-                    ))}
-                    {otrasPendientes.length > 6 && (
-                      <li className="pk-caption text-ink-faint">+{otrasPendientes.length - 6} más</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-            </div>
-            {esMulti ? (
-              <div className="space-y-1.5">
-                <label className="pk-label">Cuotas a cobrar</label>
-                <div className="space-y-2">
-                  {lineasMulti.map((l) => (
-                    <div
-                      key={l.key}
-                      className="rounded-xl border border-line-subtle bg-surface-muted px-3 py-2.5 space-y-1.5"
+          <p className="shrink-0 px-4 pt-2 text-[11px] text-ink-muted truncate">
+            {[
+              precioAbono != null && precioAbono !== "" ? `Precio ${formatCurrency(precioAbono)}` : null,
+              abono?.cobrador ? `Cobrador ${abono.cobrador}` : null,
+              clienteTelefono,
+              clienteEmail,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "\u00a0"}
+          </p>
+          <div className="shrink-0 max-h-[42%] overflow-y-auto px-4 py-2 space-y-2">
+            {esConjunto ? (
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">
+                  Deudas · se cobran completas
+                </p>
+                {deudas.map((d) => {
+                  const marcada = elegidas.has(d.key);
+                  return (
+                    <label
+                      key={d.key}
+                      className={`flex items-center gap-2 border px-2 py-1 cursor-pointer ${
+                        marcada ? "border-brand bg-brand-muted" : "border-line bg-surface-muted"
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="pk-subhead capitalize">{l.cuota.periodoLabel}</span>
-                        <span className="pk-caption text-ink-muted">
-                          Saldo {formatCurrency(l.saldo)}
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0.01"
-                          max={l.saldo}
-                          step="0.01"
-                          value={montosPorCuota[l.key] ?? ""}
-                          onChange={(e) => setMontoLinea(l.cuota, e.target.value)}
-                          className="w-full bg-surface-card border border-line-subtle rounded-lg pl-3 pr-8 py-2 pk-subhead text-ink outline-none focus:ring-2 focus:ring-brand focus:border-brand tabular-nums"
-                        />
-                        <DollarSign
-                          size={12}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                        />
-                      </div>
-                      {l.pendiente > 0.009 && l.monto > 0 && (
-                        <p className="pk-caption text-warning-ink">
-                          Queda pendiente {formatCurrency(l.pendiente)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                      <Checkbox
+                        checked={marcada}
+                        onChange={() =>
+                          setElegidas((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(d.key)) next.delete(d.key);
+                            else next.add(d.key);
+                            return next;
+                          })
+                        }
+                      />
+                      <span className="text-[10px] font-bold uppercase text-ink-faint w-11 shrink-0">
+                        {d.tipo === "cargo" ? "Cargo" : "Cuota"}
+                      </span>
+                      <span className="min-w-0 flex-1 text-xs font-semibold text-ink capitalize truncate">{d.label}</span>
+                      <span className="text-xs font-bold tabular-nums shrink-0">{formatCurrency(d.saldo)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : esMulti ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Cuotas</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMontosPorCuota(
+                        Object.fromEntries(listaFija.map((c) => [cuotaKey(c), String(c.saldo ?? 0)]))
+                      )
+                    }
+                    className="text-[11px] font-semibold text-brand"
+                  >
+                    Saldo completo
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMontosPorCuota(
-                      Object.fromEntries(listaFija.map((c) => [cuotaKey(c), String(c.saldo ?? 0)]))
-                    )
-                  }
-                  className="pk-label text-brand hover:text-brand-strong"
-                >
-                  Cobrar saldo completo de todas
-                </button>
+                {lineasMulti.map((l) => (
+                  <div key={l.key} className="grid grid-cols-[1fr_7rem] gap-2 items-center">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-ink capitalize truncate">{l.cuota.periodoLabel}</p>
+                      <p className="text-[11px] text-ink-faint">
+                        Saldo {formatCurrency(l.saldo)}
+                        {l.pendiente > 0.009 && l.monto > 0 ? ` · queda ${formatCurrency(l.pendiente)}` : ""}
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max={l.saldo}
+                      step="0.01"
+                      value={montosPorCuota[l.key] ?? ""}
+                      onChange={(e) => setMontoLinea(l.cuota, e.target.value)}
+                      className="w-full bg-surface-muted border border-line-strong px-2 py-1 text-sm text-ink outline-none focus:border-brand tabular-nums"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : sena ? (
+              <div className="flex items-center gap-2 w-full bg-surface-muted px-3 py-1.5 border border-line">
+                <span className="text-sm font-semibold text-ink">Seña · {formatCurrency(sena.importe)}</span>
               </div>
             ) : (
               <div className="space-y-1.5">
                 <label className="pk-label">Período a abonar</label>
                 {periodoFijo ? (
-                  <div className="flex items-center gap-2 w-full bg-surface-muted rounded-xl px-3 py-2.5 border border-line-subtle">
-                    <Calendar size={14} className="text-brand shrink-0" />
-                    <span className="pk-subhead capitalize">
+                  <div className="flex items-center gap-2 w-full bg-surface-muted px-3 py-1.5 border border-line">
+                    <Calendar size={13} className="text-brand shrink-0" />
+                    <span className="text-sm font-semibold text-ink capitalize truncate">
                       {cuotaUnica?.periodoLabel || buildDateString(mes)}
                     </span>
                   </div>
@@ -657,7 +679,7 @@ export default function ModalRegistrarPago({
                       dateFormat="MMMM yyyy"
                       showMonthYearPicker
                       locale={es}
-                      className="w-full bg-surface-muted border border-line-subtle rounded-xl pl-3 pr-9 py-2.5 pk-subhead text-ink focus:ring-2 focus:ring-brand focus:border-brand outline-none capitalize"
+                      className="w-full bg-surface-muted border border-line-strong pl-3 pr-9 py-2 text-sm text-ink focus:border-brand focus:bg-surface-card outline-none capitalize"
                     />
                     <Calendar
                       size={14}
@@ -667,75 +689,68 @@ export default function ModalRegistrarPago({
                 )}
               </div>
             )}
+            {otrasPendientes.length > 0 && !esConjunto && (
+              <p className="text-[11px] text-ink-muted">
+                Otras cuotas con saldo: {otrasPendientes.length}
+                {" · "}
+                {formatCurrency(otrasPendientes.reduce((acc, c) => acc + Number(c.saldo || 0), 0))}
+              </p>
+            )}
+            {cuotaUnica?.esFuturo && !periodoBloqueado && (
+              <p className="text-[11px] text-ink-muted">
+                El período todavía no empezó. Podés adelantar el total o una parte.
+              </p>
+            )}
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="pk-label">Forma de pago</label>
+          <div className="shrink-0 px-4 pb-2 space-y-2">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Forma de pago</label>
               {metodos.length === 0 ? (
                 <p className="pk-desc text-warning-ink bg-warning-muted border border-line rounded-xl px-3 py-2">
                   No hay métodos activos. Configuralos en Datos del estacionamiento.
                 </p>
               ) : (
-                <div className="relative">
-                  {(() => {
-                    const actual = metodos.find((m) => m.metodoDePagoId === metodoDePagoId);
-                    const Icon = iconForMetodo(actual?.nombre);
-                    return (
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-brand pointer-events-none">
-                        <Icon size={15} />
-                      </span>
-                    );
-                  })()}
-                  <select
-                    disabled={periodoBloqueado}
-                    value={metodoDePagoId ?? ""}
-                    onChange={(e) => setMetodoDePagoId(Number(e.target.value))}
-                    className="w-full appearance-none bg-surface-muted border border-line-subtle rounded-xl pl-9 pr-9 py-2.5 pk-subhead text-ink outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 cursor-pointer"
-                  >
-                    {metodos.map((m) => (
-                      <option key={m.metodoDePagoId} value={m.metodoDePagoId}>
-                        {m.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none"
-                  />
-                </div>
+                <FilterSelect
+                  className="w-full"
+                  ariaLabel="Forma de pago"
+                  disabled={periodoBloqueado}
+                  value={metodoDePagoId ?? ""}
+                  onChange={(v) => setMetodoDePagoId(Number(v))}
+                  options={metodos.map((m) => ({ value: m.metodoDePagoId, label: m.nombre }))}
+                />
               )}
             </div>
 
-            {!esMulti && (
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1.5">
-                  <label className="pk-label">Monto a cobrar</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min="0.01"
-                      max={saldoMaximo ?? undefined}
-                      step="0.01"
-                      disabled={periodoBloqueado}
-                      value={monto}
-                      onChange={(e) => setMontoAcotado(e.target.value)}
-                      className="w-full bg-surface-muted border border-line-subtle rounded-xl pl-3 pr-8 py-2.5 pk-subhead text-ink outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 tabular-nums"
-                    />
-                    <DollarSign size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-                  </div>
+            {!esMulti && !esConjunto && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Monto</span>
+                  <input
+                    type="number"
+                    required
+                    min="0.01"
+                    max={saldoMaximo ?? undefined}
+                    step="0.01"
+                    disabled={periodoBloqueado || !!cargo || !!sena}
+                    readOnly={!!cargo || !!sena}
+                    value={monto}
+                    onChange={(e) => setMontoAcotado(e.target.value)}
+                    className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 tabular-nums"
+                  />
                   {saldoMaximo != null && (
                     <button
                       type="button"
                       disabled={periodoBloqueado}
                       onClick={() => setMontoAcotado(String(saldoMaximo))}
-                      className="pk-label text-brand hover:text-brand-strong disabled:opacity-40"
+                      className="text-[11px] font-semibold text-brand disabled:opacity-40"
                     >
-                      Cobrar saldo completo
+                      Saldo completo
                     </button>
                   )}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="pk-label">Recargo / mora</label>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Recargo</span>
                   <input
                     type="number"
                     value={recargo}
@@ -744,15 +759,15 @@ export default function ModalRegistrarPago({
                     placeholder="0"
                     min="0"
                     step="0.01"
-                    className="w-full bg-surface-muted border border-line-subtle rounded-xl px-3 py-2.5 pk-subhead text-ink outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 tabular-nums"
+                    className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 tabular-nums"
                   />
-                </div>
+                </label>
               </div>
             )}
 
-            {esMulti && (
-              <div className="space-y-1.5">
-                <label className="pk-label">Recargo / mora (único)</label>
+            {(esMulti || esConjunto) && (
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Recargo único</span>
                 <input
                   type="number"
                   value={recargo}
@@ -761,59 +776,34 @@ export default function ModalRegistrarPago({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full bg-surface-muted border border-line-subtle rounded-xl px-3 py-2.5 pk-subhead text-ink outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 tabular-nums"
+                  className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 tabular-nums"
                 />
-              </div>
+              </label>
             )}
 
             {esPagoParcial && !periodoBloqueado && (
-              <div className="rounded-xl border border-warning/30 bg-warning-muted px-3 py-2.5 flex gap-2">
-                <CircleDollarSign size={15} className="text-warning shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="pk-label text-warning-ink">
-                    {esMulti ? "Pago parcial en una o más cuotas" : "Pago parcial"}
-                  </p>
-                  <p className="pk-body mt-0.5">
-                    Quedará pendiente{" "}
-                    <span className="text-warning-ink font-bold tabular-nums">
-                      {formatCurrency(pendienteTrasPago)}
-                    </span>
-                    .
-                  </p>
-                </div>
-              </div>
+              <p className="text-[11px] text-warning-ink bg-warning-muted border border-warning/30 px-2 py-1">
+                Pago parcial. Queda {formatCurrency(pendienteTrasPago)}.
+              </p>
             )}
 
-            {montoNumerico > 0 &&
-              pendienteTrasPago != null &&
-              pendienteTrasPago <= 0.009 &&
-              !periodoBloqueado && (
-                <div className="rounded-xl border border-success/25 bg-success-muted px-3 py-2 pk-desc text-success-ink font-semibold">
-                  {esMulti
-                    ? "Con estos montos todas las cuotas quedan saldadas."
-                    : "Con este monto la cuota queda saldada."}
-                </div>
-              )}
+            {montoNumerico > 0 && pendienteTrasPago != null && pendienteTrasPago <= 0.009 && !periodoBloqueado && (
+              <p className="text-[11px] font-semibold text-success-ink bg-success-muted border border-success/25 px-2 py-1">
+                {esMulti ? "Todas las cuotas quedan saldadas." : "La cuota queda saldada."}
+              </p>
+            )}
 
             {sugerido?.recargo > 0 && !periodoBloqueado && !esMulti && (
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-warning-muted border border-line px-3 py-2">
-                <p className="pk-caption text-warning-ink font-semibold">
-                  Mora sugerida: {formatCurrency(Number(sugerido.recargo))}
+              <div className="flex items-center justify-between gap-2 bg-warning-muted border border-line px-2 py-1">
+                <p className="text-[11px] font-semibold text-warning-ink">
+                  Mora sugerida {formatCurrency(Number(sugerido.recargo))}
                 </p>
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setRecargo(String(sugerido.recargo))}
-                    className="pk-label text-brand hover:text-brand-strong"
-                  >
+                  <button type="button" onClick={() => setRecargo(String(sugerido.recargo))} className="text-[11px] font-semibold text-brand">
                     Aplicar
                   </button>
                   {recargo !== "" && (
-                    <button
-                      type="button"
-                      onClick={() => setRecargo("")}
-                      className="pk-label text-ink-faint hover:text-ink-muted"
-                    >
+                    <button type="button" onClick={() => setRecargo("")} className="text-[11px] text-ink-faint">
                       Quitar
                     </button>
                   )}
@@ -821,8 +811,8 @@ export default function ModalRegistrarPago({
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label className="pk-label">Observación</label>
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Observación</span>
               <input
                 type="text"
                 value={observacion}
@@ -830,68 +820,47 @@ export default function ModalRegistrarPago({
                 onChange={(e) => setObservacion(e.target.value)}
                 placeholder="Opcional"
                 maxLength={255}
-                className="w-full bg-surface-muted border border-line-subtle rounded-xl px-3 py-2.5 pk-body outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 placeholder:text-ink-faint"
+                className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 placeholder:text-ink-faint"
               />
-            </div>
+            </label>
 
             {error && (
-              <div className="flex items-start gap-2 bg-danger-muted text-danger pk-desc font-semibold p-2.5 rounded-xl border border-line">
-                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <p className="flex items-start gap-1.5 bg-danger-muted text-danger text-xs font-semibold px-2 py-1 border border-line">
+                <AlertCircle size={13} className="shrink-0 mt-0.5" />
                 <span>{error}</span>
-              </div>
+              </p>
             )}
           </div>
 
-          <div className="shrink-0 border-t border-line-subtle bg-surface-card px-5 py-4 space-y-3">
-            <div className="space-y-1.5 pk-caption">
-              <div className="flex justify-between text-ink-muted">
-                <span>{esMulti ? "Monto cuotas" : "Monto cuota"}</span>
-                <span className="font-semibold text-ink tabular-nums">{formatCurrency(montoNumerico)}</span>
-              </div>
-              {recargoNumerico > 0 && (
-                <div className="flex justify-between text-ink-muted">
-                  <span>Recargo</span>
-                  <span className="font-semibold text-ink tabular-nums">{formatCurrency(recargoNumerico)}</span>
-                </div>
-              )}
-              {esPagoParcial && (
-                <div className="flex justify-between text-warning-ink">
-                  <span className="font-semibold">Pendiente restante</span>
-                  <span className="font-bold tabular-nums">{formatCurrency(pendienteTrasPago)}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-1.5 border-t border-line-subtle pk-body">
-                <span className="font-bold text-ink">Total ahora</span>
-                <span className="font-bold text-brand tabular-nums">{formatCurrency(totalCobro)}</span>
-              </div>
+          <div className="mt-auto shrink-0 border-t border-line bg-surface-card px-4 py-2 flex items-center gap-3">
+            <div className="min-w-0 text-xs">
+              <p className="font-bold text-brand tabular-nums text-sm leading-none">
+                {loadingSugerido ? "…" : formatCurrency(totalCobro)}
+              </p>
+              <p className="text-[11px] text-ink-muted truncate">
+                {esConjunto ? "Deudas" : esMulti ? "Cuotas" : "Monto"} {formatCurrency(montoNumerico)}
+                {recargoNumerico > 0 ? ` + recargo ${formatCurrency(recargoNumerico)}` : ""}
+              </p>
             </div>
-
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-3 py-3 pk-label text-ink-muted rounded-xl border border-line hover:bg-surface-muted transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={confirmarDeshabilitado}
-                className="flex-[1.35] bg-brand text-brand-foreground px-3 py-3 pk-label rounded-xl hover:bg-brand-strong disabled:opacity-45 transition-all flex justify-center items-center gap-1.5"
-              >
-                {enviando ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <>
-                    <Banknote size={13} />
-                    Confirmar
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-2 text-xs font-semibold text-ink-muted border border-line hover:bg-surface-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={confirmarDeshabilitado}
+              className="bg-brand text-brand-foreground px-3 py-2 text-xs font-semibold hover:bg-brand-strong disabled:opacity-45 inline-flex items-center gap-1.5"
+            >
+              {enviando ? <Loader2 size={13} className="animate-spin" /> : <Banknote size={13} />}
+              Confirmar
+            </button>
           </div>
         </form>
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }

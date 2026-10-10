@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, AlertCircle, ParkingSquare, Car, Calendar, User, RefreshCw } from "lucide-react";
 import { abonoService } from "../../services/abonoService";
 import { cocheraService } from "../../services/cocheraService";
@@ -14,6 +14,7 @@ import {
   modalidadLabel,
 } from "../../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../../utils/periodicidadHelpers";
+import FilterSelect from "./FilterSelect";
 
 function formatFecha(fecha) {
   if (!fecha) return "—";
@@ -250,31 +251,27 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
                     </div>
                     {plazaId ? (
                       <div className="flex gap-2">
-                        <select
-                          value={destino}
+                        <FilterSelect
+                          className="flex-1 w-full"
+                          ariaLabel="Cambiar cochera"
                           disabled={busy}
-                          onChange={(e) =>
+                          value={destino}
+                          onChange={(valor) =>
                             setDestinoPorPlaza((prev) => ({
                               ...prev,
-                              [plazaId]: e.target.value,
+                              [plazaId]: valor,
                             }))
                           }
-                          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        >
-                          <option value="">Cambiar a...</option>
-                          {opciones
-                            .filter((c) => c.cocheraId !== p.cocheraId)
-                            .map((c) => (
-                              <option key={c.cocheraId} value={c.cocheraId}>
-                                {c.numero}
-                                {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
-                                {` · ${c.abonosActivos ?? 0} abono${(c.abonosActivos ?? 0) === 1 ? "" : "s"}`}
-                                {c.multipleOcupacion
-                                  ? ` (máx ${c.capacidadMaxima ?? c.maxOcupacion ?? "—"})`
-                                  : ""}
-                              </option>
-                            ))}
-                        </select>
+                          options={[
+                            { value: "", label: "Cambiar a..." },
+                            ...opciones
+                              .filter((c) => c.cocheraId !== p.cocheraId)
+                              .map((c) => ({
+                                value: c.cocheraId,
+                                label: `${c.numero}${c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""} · ${c.abonosActivos ?? 0} abono${(c.abonosActivos ?? 0) === 1 ? "" : "s"}${c.multipleOcupacion ? ` (máx ${c.capacidadMaxima ?? c.maxOcupacion ?? "—"})` : ""}`,
+                              })),
+                          ]}
+                        />
                         <button
                           type="button"
                           disabled={!puedeMover || busy}
@@ -368,7 +365,7 @@ export default function ModalEditarAbono({ abono: abonoInicial, onClose, onGuard
             type="button"
             onClick={handleGuardarDatos}
             disabled={busy}
-            className="flex-1 text-sm text-white bg-indigo-600 rounded-lg py-2.5 hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
+            className="flex-1 text-sm text-brand-foreground bg-brand rounded-lg py-2.5 hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
           >
             {busy ? "Guardando..." : "Guardar datos"}
           </button>

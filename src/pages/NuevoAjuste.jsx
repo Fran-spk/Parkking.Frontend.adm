@@ -4,6 +4,7 @@ import { ArrowLeft, User, Scale, Layers, Check, Loader2, AlertCircle } from "luc
 import SelectorGrupos from "../components/layout/SelectorGrupos";
 import { clienteService } from "../services/clienteService";
 import { operacionFinancieraService } from "../services/operacionFinancieraService";
+import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Cliente} Cliente */
 
@@ -13,15 +14,14 @@ const SECTIONS = [
   { id: "grupos", label: "Grupos", icon: Layers },
 ];
 
-const inputCls =
-  "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+const inputCls = fieldClass;
 
 function SectionHeader({ index, title, done }) {
   return (
     <div className="flex items-start gap-4 mb-6">
       <div
         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black ${
-          done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-slate-900 text-white shadow-lg shadow-slate-900/15"
+          done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
         }`}
       >
         {done ? <Check size={18} strokeWidth={3} /> : index}
@@ -133,7 +133,7 @@ export default function NuevoAjuste() {
               type="button"
               onClick={handleGuardar}
               disabled={!puedeGuardar}
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20"
+              className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20"
             >
               {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               {guardando ? "Guardando..." : "Registrar ajuste"}
@@ -153,7 +153,7 @@ export default function NuevoAjuste() {
                     active ? "bg-white border-slate-200 shadow-sm" : done ? "bg-emerald-50/80 border-emerald-100" : "bg-white/60 border-transparent"
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-500 text-white" : active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-500 text-white" : active ? "bg-brand text-brand-foreground" : "bg-slate-100 text-slate-400"}`}>
                     {done ? <Check size={14} /> : <Icon size={14} />}
                   </div>
                   <div className="min-w-0">
@@ -185,12 +185,16 @@ export default function NuevoAjuste() {
             <SectionHeader index={1} title="Cliente" done={checklist.cliente} />
             <div className="max-w-xl">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Titular</label>
-              <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={inputCls}>
-                <option value="">Elegir cliente</option>
-                {clientes.map((c) => (
-                  <option key={c.clienteId} value={c.clienteId}>{c.nombre}</option>
-                ))}
-              </select>
+              <FilterSelect
+                className="w-full"
+                ariaLabel="Cliente"
+                value={clienteId}
+                onChange={setClienteId}
+                options={[
+                  { value: "", label: "Elegir cliente" },
+                  ...clientes.map((c) => ({ value: c.clienteId, label: c.nombre })),
+                ]}
+              />
             </div>
           </section>
 
@@ -198,11 +202,11 @@ export default function NuevoAjuste() {
             <SectionHeader index={2} title="Importe" done={checklist.importe} />
             <div className="max-w-xl space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setSentido("favor")} className={`text-left rounded-2xl border px-4 py-4 ${aFavor ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-600"}`}>
+                <button type="button" onClick={() => setSentido("favor")} className={`text-left rounded-2xl border px-4 py-4 ${aFavor ? "border-brand bg-brand text-brand-foreground" : "border-slate-200 text-slate-600"}`}>
                   <p className="font-bold">A su favor</p>
                   <p className={`text-xs mt-1 ${aFavor ? "text-slate-300" : "text-slate-400"}`}>Resta en tu cuenta</p>
                 </button>
-                <button type="button" onClick={() => setSentido("debe")} className={`text-left rounded-2xl border px-4 py-4 ${!aFavor ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-600"}`}>
+                <button type="button" onClick={() => setSentido("debe")} className={`text-left rounded-2xl border px-4 py-4 ${!aFavor ? "border-brand bg-brand text-brand-foreground" : "border-slate-200 text-slate-600"}`}>
                   <p className="font-bold">Debe más</p>
                   <p className={`text-xs mt-1 ${!aFavor ? "text-slate-300" : "text-slate-400"}`}>Suma en tu cuenta</p>
                 </button>
@@ -230,7 +234,7 @@ export default function NuevoAjuste() {
 
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Ajuste</p>
             </div>
@@ -251,7 +255,7 @@ export default function NuevoAjuste() {
                   {monto > 0 ? pesos(signoCuenta) : "—"}
                 </p>
               </div>
-              <button type="button" onClick={handleGuardar} disabled={!puedeGuardar} className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/25">
+              <button type="button" onClick={handleGuardar} disabled={!puedeGuardar} className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/25">
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar ajuste
               </button>

@@ -1,10 +1,43 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import { estacionamientoService } from "../../services/estacionamientoService";
+import { authService } from "../../services/authService";
+import { applyColorMarca } from "../../theme/parkking.theme.js";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    estacionamientoService
+      .get()
+      .then((data) => applyColorMarca(data?.colorMarca))
+      .catch(() => {});
+
+    (async () => {
+      try {
+        const me = await authService.me();
+        if (cancelled) return;
+        // Sin tenant válido: volver al selector
+        if (!me?.permisos && !localStorage.getItem("parkking_estacionamiento")) {
+          navigate("/seleccion-estacionamientos", { replace: true });
+        }
+      } catch (err) {
+        if (err?.response?.status === 401) {
+          await authService.logout();
+          navigate("/login", { replace: true });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-surface-page">

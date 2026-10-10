@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, AlertCircle, Receipt, CreditCard, Calendar } from "lucide-react";
 import { pagoService } from "../../services/pagoService";
 
@@ -85,15 +86,18 @@ export default function ModalDetallePago({ pago: pagoInicial, pagoId, onClose, o
   const recargo = Number(pago?.recargo || 0);
   const total = monto + recargo;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-        aria-label="Cerrar"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl shadow-slate-900/20 overflow-hidden max-h-[90vh] flex flex-col">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-overlay"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Detalle de pago"
+        className="relative w-full max-w-lg bg-surface-card shadow-pk-modal overflow-hidden max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Detalle de pago</p>
@@ -237,12 +241,13 @@ export default function ModalDetallePago({ pago: pagoInicial, pagoId, onClose, o
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-strong transition-colors"
           >
             Cerrar
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  ChevronRight,
+  ChevronDown,
   DollarSign,
   MapPin,
   MoreHorizontal,
@@ -44,6 +44,9 @@ export default function HomeProfileHeader({
   abonosActivos,
   ocupacionPct,
   pagosPendientes = 0,
+  estadisticasAbiertas = false,
+  onToggleEstadisticas,
+  children,
 }) {
   const navigate = useNavigate();
   const label = nombre || "Mi estacionamiento";
@@ -178,20 +181,25 @@ export default function HomeProfileHeader({
 
         <button
           type="button"
-          onClick={() => navigate("/reportes")}
+          onClick={onToggleEstadisticas}
+          aria-expanded={estadisticasAbiertas}
           className="mt-5 w-full flex items-center gap-3 px-3.5 py-3 bg-surface-muted text-left hover:bg-brand-muted/60 transition-colors"
         >
-          <div className="w-9 h-9 bg-ink text-white flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 bg-brand text-brand-foreground flex items-center justify-center shrink-0">
             <BarChart3 size={18} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-ink">Estadísticas del mes</p>
             <p className="text-[11px] text-ink-muted truncate">
-              Abrí reportes · ingresos, pagos y actividad
+              KPIs, alertas, mapa y gráficos
             </p>
           </div>
-          <ChevronRight size={18} className="text-ink-faint shrink-0" />
+          <ChevronDown
+            size={18}
+            className={`text-ink-faint shrink-0 transition-transform ${estadisticasAbiertas ? "rotate-180" : ""}`}
+          />
         </button>
+        {estadisticasAbiertas ? children : null}
       </div>
     </section>
   );

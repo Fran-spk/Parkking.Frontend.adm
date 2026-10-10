@@ -31,10 +31,27 @@
  */
 
 /**
+ * @typedef {object} AccionDto
+ * @property {number} accionId
+ * @property {string} nombre
+ * @property {number} moduloId
+ * @property {string | null} [moduloNombre]
+ */
+
+/**
+ * @typedef {object} UsuarioPermisos
+ * @property {number} usuarioId
+ * @property {{ grupoId: number, nombre: string, estado: number }[]} grupos
+ * @property {AccionDto[]} accionesExtras
+ * @property {AccionDto[]} permisosEfectivos
+ */
+
+/**
  * @typedef {object} AuthMe
  * @property {number} id
  * @property {string | null} nombre
  * @property {string | null} email
+ * @property {UsuarioPermisos | null} [permisos]
  */
 
 /**

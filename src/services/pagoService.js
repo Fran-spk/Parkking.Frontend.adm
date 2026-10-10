@@ -16,6 +16,18 @@ export const pagoService = {
   getCuotas: (abonoId) =>
     api.get(`/pago/abono/${abonoId}/cuotas`).then((r) => r.data),
 
+  anularCuota: (abonoId, { cuotaId, periodoInicio }) =>
+    api.post(`/pago/abono/${abonoId}/cuotas/anular`, {
+      cuotaId: cuotaId || null,
+      periodoInicio: periodoInicio || null,
+    }),
+
+  /** Período siguiente, sin persistir. null si no corresponde. @returns {Promise<Cuota | null>} */
+  getCuotaFutura: (abonoId) =>
+    api
+      .get(`/pago/abono/${abonoId}/cuota-futura`, { validateStatus: (s) => s === 200 || s === 204 })
+      .then((r) => (r.status === 204 ? null : r.data)),
+
   /** @returns {Promise<Cuota[]>} */
   getCuotasPendientes: (abonoId) =>
     api.get(`/pago/abono/${abonoId}/cuotas-pendientes`).then((r) => r.data),
@@ -58,6 +70,11 @@ export const pagoService = {
   /** @returns {Promise<DeudaCliente>} */
   getDeudaCliente: (clienteId) =>
     api.get(`/pago/deuda/cliente/${clienteId}`).then((r) => r.data),
+
+  pagarSena: ({ senaId, metodoDePagoId, recargo, observacion }) =>
+    api
+      .post("/pago/sena", { senaId, metodoDePagoId, recargo, observacion })
+      .then((r) => r.data),
 
   /** @returns {Promise<Pago>} */
   registrar: (data) => api.post("/pago/pagar", data).then((r) => r.data),

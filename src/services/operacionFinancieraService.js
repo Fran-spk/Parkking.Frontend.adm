@@ -17,12 +17,10 @@ export const operacionFinancieraService = {
       .then((r) => r.data),
 
   /** @returns {Promise<OperacionFinanciera>} */
-  crearAjuste: ({ clienteId, abonoId, tipoGastoId, importe, aFavorDelCliente, motivo, grupoFinancieroIds }) =>
+  crearAjuste: ({ clienteId, importe, aFavorDelCliente, motivo, grupoFinancieroIds }) =>
     api
       .post("/operaciones-financieras/ajustes", {
-        clienteId: clienteId ? Number(clienteId) : null,
-        abonoId: abonoId ? Number(abonoId) : null,
-        tipoGastoId: tipoGastoId ? Number(tipoGastoId) : null,
+        clienteId: Number(clienteId),
         importe: Math.abs(Number(importe)),
         aFavorDelCliente: !!aFavorDelCliente,
         motivo,
@@ -34,7 +32,6 @@ export const operacionFinancieraService = {
   crearReintegro: ({
     clienteId,
     abonoId,
-    tipoGastoId,
     importe,
     beneficiario,
     motivo,
@@ -44,8 +41,7 @@ export const operacionFinancieraService = {
     api
       .post("/operaciones-financieras/reintegros", {
         clienteId: clienteId ? Number(clienteId) : null,
-        abonoId: abonoId ? Number(abonoId) : null,
-        tipoGastoId: tipoGastoId ? Number(tipoGastoId) : null,
+        abonoId: Number(abonoId),
         importe: Number(importe),
         beneficiario,
         motivo,
@@ -57,6 +53,9 @@ export const operacionFinancieraService = {
   /** @returns {Promise<Cargo[]>} */
   cargosPorAbono: (abonoId) =>
     api.get("/operaciones-financieras/cargos", { params: { abonoId } }).then((r) => r.data),
+
+  anularCargo: (cargoId) =>
+    api.post(`/operaciones-financieras/cargos/${cargoId}/anular`),
 
   /** @returns {Promise<Reintegro[]>} */
   reintegrosPorAbono: (abonoId) =>

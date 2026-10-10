@@ -28,6 +28,13 @@
  */
 
 /**
+ * @typedef {object} Zona
+ * @property {number} zonaId
+ * @property {string} nombre
+ * @property {boolean} [activo]
+ */
+
+/**
  * @typedef {object} CocheraResumen
  * @property {number} cocheraId
  * @property {string} numero

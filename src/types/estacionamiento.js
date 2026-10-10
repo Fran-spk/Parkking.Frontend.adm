@@ -3,6 +3,7 @@
  * @property {number} estacionamientoId
  * @property {string} nombre
  * @property {string} direccion
+ * @property {string} colorMarca
  * @property {string | null} locadorNombre
  * @property {string | null} locadorDocumento
  * @property {string | null} locadorDomicilio
@@ -12,6 +13,7 @@
  * @property {boolean} activo
  * @property {boolean} imprimirReciboAlCobrar
  * @property {boolean} enviarReciboPorEmail
+ * @property {boolean} trabajarConZonas
  * @property {boolean} contratoSeguroObligatorio
  * @property {number} contratoPlazoMeses
  * @property {boolean} generarContratoAlCrearAbono

@@ -10,6 +10,7 @@ import {
   plazasDe,
   vehiculosDe,
   modalidadLabel,
+  nombreTipoVehiculo,
   MODALIDAD,
 } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
@@ -80,7 +81,7 @@ export default function BuscarPatente() {
     <div className="max-w-3xl space-y-5 animate-fade-in-up">
       <PageHeader
         title="Buscar patente"
-        description="Encontrá abonos por patente (parcial o completa) y entrá al detalle de cobros."
+        description="Encontrá abonos por patente (parcial o completa) y entrá al detalle de pagos."
         loading={loading && !resultados}
         stats={
           resultados
@@ -207,6 +208,11 @@ export default function BuscarPatente() {
                           <span className="font-mono text-xs font-bold bg-surface-muted px-1.5 py-0.5">
                             {v.patente || "S/PAT"}
                           </span>
+                          {nombreTipoVehiculo(v) && (
+                            <span className="text-xs font-semibold text-ink-muted">
+                              {nombreTipoVehiculo(v)}
+                            </span>
+                          )}
                           <span
                             className={`text-[9px] font-bold px-1 py-0.5 ${
                               Number(v.modalidad) === MODALIDAD.FLEXIBLE

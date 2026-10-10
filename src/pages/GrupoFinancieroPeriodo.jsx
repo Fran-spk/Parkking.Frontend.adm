@@ -4,6 +4,7 @@ import { ArrowLeft, Eye } from "lucide-react";
 import PageHeader from "../components/layout/PageHeader";
 import { grupoFinancieroService } from "../services/grupoFinancieroService";
 import { etiquetaMovimiento } from "../types/finanzas.js";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").GrupoFinancieroPeriodo} GrupoFinancieroPeriodo */
 
@@ -88,7 +89,7 @@ export default function GrupoFinancieroPeriodoPage() {
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="mt-1 block text-sm border border-line-strong bg-surface-muted text-ink px-2 py-1.5"
+            className={`${fieldClass} mt-1`}
           />
         </label>
         <label className="text-xs text-ink-muted">
@@ -97,7 +98,7 @@ export default function GrupoFinancieroPeriodoPage() {
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="mt-1 block text-sm border border-line-strong bg-surface-muted text-ink px-2 py-1.5"
+            className={`${fieldClass} mt-1`}
           />
         </label>
         <button type="button" onClick={() => cargar(desde, hasta)} className="text-xs font-semibold bg-brand text-brand-foreground px-3 py-2">

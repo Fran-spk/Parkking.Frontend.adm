@@ -7,6 +7,7 @@ import { clienteService } from "../services/clienteService";
 import { usuarioService } from "../services/usuarioService";
 import { grupoFinancieroService } from "../services/grupoFinancieroService";
 import { etiquetaMovimiento, TipoMovimiento } from "../types/finanzas.js";
+import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Movimiento} Movimiento */
 /** @typedef {import("../types").Cliente} Cliente */
@@ -90,8 +91,6 @@ export default function Movimientos() {
     setFiltros((prev) => ({ ...prev, [campo]: valor }));
   }
 
-  const selectClass = "mt-1 block w-full text-sm border border-line-strong bg-surface-muted text-ink px-2 py-1.5";
-
   return (
     <div className="space-y-5 animate-fade-in-up">
       <PageHeader
@@ -104,55 +103,57 @@ export default function Movimientos() {
       <div className="bg-surface-card px-4 py-3 grid grid-cols-2 lg:grid-cols-3 gap-3">
         <label className="text-xs text-ink-muted">
           Desde
-          <input type="date" value={filtros.desde} onChange={(e) => setFiltro("desde", e.target.value)} className={selectClass} />
+          <input type="date" value={filtros.desde} onChange={(e) => setFiltro("desde", e.target.value)} className={`${fieldClass} mt-1`} />
         </label>
         <label className="text-xs text-ink-muted">
           Hasta
-          <input type="date" value={filtros.hasta} onChange={(e) => setFiltro("hasta", e.target.value)} className={selectClass} />
+          <input type="date" value={filtros.hasta} onChange={(e) => setFiltro("hasta", e.target.value)} className={`${fieldClass} mt-1`} />
         </label>
         <label className="text-xs text-ink-muted">
           Tipo
-          <select value={filtros.tipo} onChange={(e) => setFiltro("tipo", e.target.value)} className={selectClass}>
-            <option value="">Todos</option>
-            {Object.entries(TipoMovimiento).map(([nombre, valor]) => (
-              <option key={nombre} value={valor}>
-                {nombre}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            className="mt-1 w-full"
+            ariaLabel="Tipo"
+            value={filtros.tipo}
+            onChange={(v) => setFiltro("tipo", v)}
+            options={[
+              { value: "", label: "Todos" },
+              ...Object.entries(TipoMovimiento).map(([nombre, valor]) => ({ value: valor, label: nombre })),
+            ]}
+          />
         </label>
         <label className="text-xs text-ink-muted">
           Cliente
-          <select value={filtros.clienteId} onChange={(e) => setFiltro("clienteId", e.target.value)} className={selectClass}>
-            <option value="">Todos</option>
-            {clientes.map((c) => (
-              <option key={c.clienteId} value={c.clienteId}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            className="mt-1 w-full"
+            ariaLabel="Cliente"
+            value={filtros.clienteId}
+            onChange={(v) => setFiltro("clienteId", v)}
+            options={[{ value: "", label: "Todos" }, ...clientes.map((c) => ({ value: c.clienteId, label: c.nombre }))]}
+          />
         </label>
         <label className="text-xs text-ink-muted">
           Usuario
-          <select value={filtros.usuarioId} onChange={(e) => setFiltro("usuarioId", e.target.value)} className={selectClass}>
-            <option value="">Todos</option>
-            {usuarios.map((u) => (
-              <option key={u.usuarioId} value={u.usuarioId}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            className="mt-1 w-full"
+            ariaLabel="Usuario"
+            value={filtros.usuarioId}
+            onChange={(v) => setFiltro("usuarioId", v)}
+            options={[{ value: "", label: "Todos" }, ...usuarios.map((u) => ({ value: u.usuarioId, label: u.nombre }))]}
+          />
         </label>
         <label className="text-xs text-ink-muted">
           Grupo
-          <select value={filtros.grupoFinancieroId} onChange={(e) => setFiltro("grupoFinancieroId", e.target.value)} className={selectClass}>
-            <option value="">Todos</option>
-            {grupos.map((g) => (
-              <option key={g.grupoFinancieroId} value={g.grupoFinancieroId}>
-                {g.nombre}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            className="mt-1 w-full"
+            ariaLabel="Grupo"
+            value={filtros.grupoFinancieroId}
+            onChange={(v) => setFiltro("grupoFinancieroId", v)}
+            options={[
+              { value: "", label: "Todos" },
+              ...grupos.map((g) => ({ value: g.grupoFinancieroId, label: g.nombre })),
+            ]}
+          />
         </label>
         <div className="col-span-2 lg:col-span-3 flex gap-2">
           <button type="button" onClick={() => setAplicados(filtros)} className="text-xs font-semibold bg-brand text-brand-foreground px-3 py-2">

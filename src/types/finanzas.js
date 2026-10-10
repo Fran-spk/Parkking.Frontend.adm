@@ -6,6 +6,7 @@
  * @property {number | null} clienteId
  * @property {number | null} cuentaCorrienteClienteId
  * @property {number | null} pagoId
+ * @property {number | null} abonoId
  * @property {number} importe
  * @property {number} tipo
  * @property {string} tipoDescripcion
@@ -43,17 +44,19 @@
  * @typedef {object} Cargo
  * @property {number} cargoId
  * @property {number} clienteId
- * @property {number | null} abonoId
+ * @property {number} abonoId
  * @property {number} importe
  * @property {string} concepto
  * @property {string} fechaHora
+ * @property {number} [estado]
+ * @property {boolean} [pagado]
  */
 
 /**
  * @typedef {object} Reintegro
  * @property {number} reintegroId
  * @property {number | null} clienteId
- * @property {number | null} abonoId
+ * @property {number} abonoId
  * @property {number} movimientoId
  * @property {number} importe
  * @property {string} beneficiario
@@ -132,7 +135,7 @@ export const tipoMovimientoLabel = {
 /** Cobro, gasto, reintegro o ajuste, para las listas. */
 export function etiquetaMovimiento(movimiento) {
   const tipo = Number(movimiento?.tipo);
-  if (tipo === TipoMovimiento.Ingreso) return movimiento?.pagoId ? "Cobro" : "Ingreso";
+  if (tipo === TipoMovimiento.Ingreso) return movimiento?.pagoId ? "Pago" : "Ingreso";
   if (tipo === TipoMovimiento.Egreso) return "Gasto";
   if (tipo === TipoMovimiento.Reintegro) return "Reintegro";
   if (tipo === TipoMovimiento.Ajuste) return "Ajuste";

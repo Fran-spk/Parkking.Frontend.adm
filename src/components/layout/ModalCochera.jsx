@@ -2,14 +2,23 @@ import { useState, useEffect } from "react";
 import { X, Users, Car, AlertCircle } from "lucide-react";
 import { cocheraService } from "../../services/cocheraService";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
+import FilterSelect, { fieldClass } from "./FilterSelect";
 
 /** @typedef {import("../../types").TipoVehiculo} TipoVehiculo */
 /** @typedef {import("../../types").Cochera} Cochera */
 
-export default function ModalCochera({ cochera = null, categorias = [], onClose, onGuardar }) {
+export default function ModalCochera({
+  cochera = null,
+  categorias = [],
+  zonas = [],
+  exigirZona = false,
+  onClose,
+  onGuardar,
+}) {
   const [numero, setNumero] = useState(cochera?.numero || "");
   const [observacion, setObservacion] = useState(cochera?.observacion || "");
   const [categoriaCocheraId, setCategoriaCocheraId] = useState(cochera?.categoriaCocheraId || "");
+  const [zonaId, setZonaId] = useState(cochera?.zonaId ?? cochera?.zona?.zonaId ?? "");
   const [multipleOcupacion, setMultipleOcupacion] = useState(cochera?.multipleOcupacion || false);
   const [maxOcupacion, setMaxOcupacion] = useState(
     cochera?.maxOcupacion != null ? String(cochera.maxOcupacion) : "2"
@@ -47,6 +56,10 @@ export default function ModalCochera({ cochera = null, categorias = [], onClose,
       setError("Seleccioná una categoría");
       return;
     }
+    if (exigirZona && !zonaId) {
+      setError("Este estacionamiento trabaja con zonas: seleccioná una");
+      return;
+    }
     if (multipleOcupacion) {
       const max = Number(maxOcupacion);
       if (!Number.isFinite(max) || max < 2) {
@@ -60,6 +73,7 @@ export default function ModalCochera({ cochera = null, categorias = [], onClose,
       const payload = {
         numero: numero.toString().trim(),
         categoriaCocheraId: Number(categoriaCocheraId),
+        zonaId: zonaId ? Number(zonaId) : null,
         estadoCochera: Number(estadoCochera),
         observacion: estadoCochera === 0 ? null : observacion.trim() || null,
         multipleOcupacion: Boolean(multipleOcupacion),
@@ -81,8 +95,7 @@ export default function ModalCochera({ cochera = null, categorias = [], onClose,
     }
   }
 
-  const inputClass =
-    "w-full text-sm border border-line-strong bg-surface-card px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand disabled:bg-surface-muted disabled:text-ink-faint";
+  const inputClass = fieldClass;
 
   return (
     <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-50 p-4">
@@ -155,19 +168,31 @@ export default function ModalCochera({ cochera = null, categorias = [], onClose,
             </div>
             <div>
               <label className="pk-label block mb-1.5">Categoría *</label>
-              <select
+              <FilterSelect
+                className="w-full"
+                ariaLabel="Categoría"
                 value={categoriaCocheraId}
-                onChange={(e) => setCategoriaCocheraId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Sin categoría</option>
-                {categorias.map((c) => (
-                  <option key={c.categoriaCocheraId} value={c.categoriaCocheraId}>
-                    {c.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategoriaCocheraId}
+                options={[
+                  { value: "", label: "Sin categoría" },
+                  ...categorias.map((c) => ({ value: c.categoriaCocheraId, label: c.nombre })),
+                ]}
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="pk-label block mb-1.5">Zona{exigirZona ? " *" : ""}</label>
+            <FilterSelect
+              className="w-full"
+              ariaLabel="Zona"
+              value={zonaId}
+              onChange={setZonaId}
+              options={[
+                { value: "", label: exigirZona ? "Seleccioná una zona" : "Sin zona" },
+                ...zonas.map((z) => ({ value: z.zonaId, label: z.nombre })),
+              ]}
+            />
           </div>
 
           <button

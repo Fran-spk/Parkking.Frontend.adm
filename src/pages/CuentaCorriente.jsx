@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import PageHeader from "../components/layout/PageHeader";
 import { cuentaCorrienteService } from "../services/cuentaCorrienteService";
 import { tipoMovimientoLabel } from "../types/finanzas.js";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").CuentaCorriente} CuentaCorriente */
 /** @typedef {import("../types").Movimiento} Movimiento */
@@ -83,7 +84,7 @@ export default function CuentaCorriente() {
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="mt-1 block text-sm border border-line-strong bg-surface-muted text-ink px-2 py-1.5 focus:outline-none focus:border-brand"
+            className={`${fieldClass} mt-1`}
           />
         </label>
         <label className="text-xs text-ink-muted">
@@ -92,7 +93,7 @@ export default function CuentaCorriente() {
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="mt-1 block text-sm border border-line-strong bg-surface-muted text-ink px-2 py-1.5 focus:outline-none focus:border-brand"
+            className={`${fieldClass} mt-1`}
           />
         </label>
         <button

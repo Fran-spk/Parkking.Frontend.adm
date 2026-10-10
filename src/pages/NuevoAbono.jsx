@@ -20,8 +20,10 @@ import { cocheraService } from "../services/cocheraService";
 import { tipoVehiculoService } from "../services/tipoVehiculoService";
 import { tarifaMensualService } from "../services/tarifaMensualService";
 import { abonoService } from "../services/abonoService";
+import { reservaService } from "../services/reservaService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { clienteService } from "../services/clienteService";
+import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Cliente} Cliente */
 /** @typedef {import("../types").Vehiculo} Vehiculo */
@@ -73,7 +75,7 @@ function SectionHeader({ index, title, done }) {
         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black transition-colors ${
           done
             ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-            : "bg-slate-900 text-white shadow-lg shadow-slate-900/15"
+            : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
         }`}
       >
         {done ? <Check size={18} strokeWidth={3} /> : index}
@@ -107,6 +109,7 @@ export default function NuevoAbono() {
   const [tipos, setTipos] = useState(/** @type {TipoVehiculo[]} */ ([]));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const [avisosReserva, setAvisosReserva] = useState([]);
   const [activeSection, setActiveSection] = useState("cliente");
   const [generarContratoAlCrearAbono, setGenerarContratoAlCrearAbono] = useState(true);
 
@@ -298,6 +301,25 @@ export default function NuevoAbono() {
     () => [...new Set([...cocheraIdsFijos, ...plazasFlexibles])],
     [cocheraIdsFijos, plazasFlexibles]
   );
+
+  const plazasKey = plazasSeleccionadas.join(",");
+  useEffect(() => {
+    if (!plazasKey) {
+      setAvisosReserva([]);
+      return;
+    }
+    let cancel = false;
+    Promise.all(plazasSeleccionadas.map((cocheraId) => reservaService.avisos(cocheraId).catch(() => [])))
+      .then((listas) => {
+        if (cancel) return;
+        const unicos = new Map();
+        listas.flat().forEach((aviso) => unicos.set(aviso.reservaId, aviso));
+        setAvisosReserva([...unicos.values()]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [plazasKey]);
 
   const plazasDetalle = useMemo(
     () =>
@@ -503,8 +525,7 @@ export default function NuevoAbono() {
     document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const inputCls =
-    "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+  const inputCls = fieldClass;
 
   const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.id === activeSection));
 
@@ -545,7 +566,7 @@ export default function NuevoAbono() {
                 type="button"
                 onClick={handleCrear}
                 disabled={!puedeCrear}
-                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
+                className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 disabled:hover:bg-brand text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
               >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {guardando ? "Creando..." : "Crear abono"}
@@ -577,7 +598,7 @@ export default function NuevoAbono() {
                       done
                         ? "bg-emerald-500 text-white"
                         : active
-                          ? "bg-slate-900 text-white"
+                          ? "bg-brand text-brand-foreground"
                           : "bg-slate-100 text-slate-400"
                     }`}
                   >
@@ -660,7 +681,7 @@ export default function NuevoAbono() {
                     onClick={() => setMenuEstructura(opt.id)}
                     className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                       menuEstructura === opt.id
-                        ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/15"
+                        ? "bg-brand text-brand-foreground border-brand shadow-md shadow-slate-900/15"
                         : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                     }`}
                   >
@@ -731,7 +752,7 @@ export default function NuevoAbono() {
                             onClick={() => setOrigenVehiculo(v.key, opt.value)}
                             className={`py-2.5 rounded-xl text-sm font-semibold border transition-all disabled:opacity-40 ${
                               v.origen === opt.value
-                                ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/15"
+                                ? "bg-brand text-brand-foreground border-brand shadow-md shadow-slate-900/15"
                                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                             }`}
                           >
@@ -745,29 +766,30 @@ export default function NuevoAbono() {
                           <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
                             Vehículo <span className="text-rose-400">*</span>
                           </label>
-                          <select
-                            value={v.vehiculoId}
-                            onChange={e => seleccionarVehiculoExistente(v.key, e.target.value)}
+                          <FilterSelect
+                            className="w-full"
+                            ariaLabel="Vehículo"
                             disabled={!cliente?.clienteId || cargandoVehiculos}
-                            className={inputCls}
-                          >
-                            <option value="">
-                              {!cliente?.clienteId
-                                ? "Primero elegí un cliente"
-                                : cargandoVehiculos
-                                  ? "Cargando..."
-                                  : libres.length === 0
-                                    ? "No hay vehículos libres"
-                                    : "Seleccioná un vehículo..."}
-                            </option>
-                            {opciones.map(opt => (
-                              <option key={opt.vehiculoId} value={opt.vehiculoId} disabled={opt._disabled}>
-                                {opt.patente}
-                                {opt.modeloVehiculo ? ` — ${opt.modeloVehiculo}` : ""}
-                                {opt._motivo ? ` — ${opt._motivo}` : ""}
-                              </option>
-                            ))}
-                          </select>
+                            value={v.vehiculoId}
+                            onChange={(valor) => seleccionarVehiculoExistente(v.key, valor)}
+                            options={[
+                              {
+                                value: "",
+                                label: !cliente?.clienteId
+                                  ? "Primero elegí un cliente"
+                                  : cargandoVehiculos
+                                    ? "Cargando..."
+                                    : libres.length === 0
+                                      ? "No hay vehículos libres"
+                                      : "Seleccioná un vehículo...",
+                              },
+                              ...opciones.map((opt) => ({
+                                value: opt.vehiculoId,
+                                disabled: opt._disabled,
+                                label: `${opt.patente}${opt.modeloVehiculo ? ` — ${opt.modeloVehiculo}` : ""}${opt._motivo ? ` — ${opt._motivo}` : ""}`,
+                              })),
+                            ]}
+                          />
                         </div>
                       ) : (
                         <div className="grid sm:grid-cols-3 gap-3 mb-3">
@@ -792,16 +814,16 @@ export default function NuevoAbono() {
                           </div>
                           <div>
                             <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Tipo</label>
-                            <select
+                            <FilterSelect
+                              className="w-full"
+                              ariaLabel="Tipo"
                               value={v.tipoVehiculoId}
-                              onChange={e => updateVehiculo(v.key, { tipoVehiculoId: e.target.value })}
-                              className={inputCls}
-                            >
-                              <option value="">Seleccioná...</option>
-                              {tipos.map(t => (
-                                <option key={t.tipoVehiculoId} value={t.tipoVehiculoId}>{t.nombre}</option>
-                              ))}
-                            </select>
+                              onChange={(valor) => updateVehiculo(v.key, { tipoVehiculoId: valor })}
+                              options={[
+                                { value: "", label: "Seleccioná..." },
+                                ...tipos.map((t) => ({ value: t.tipoVehiculoId, label: t.nombre })),
+                              ]}
+                            />
                           </div>
                         </div>
                       )}
@@ -810,24 +832,25 @@ export default function NuevoAbono() {
                         <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
                           Cochera fija <span className="text-rose-400">*</span>
                         </label>
-                        <select
+                        <FilterSelect
+                          className="w-full"
+                          ariaLabel="Cochera fija"
                           value={v.cocheraId}
-                          onChange={e => updateVehiculo(v.key, { cocheraId: e.target.value })}
-                          className={inputCls}
-                        >
-                          <option value="">Elegí una cochera disponible...</option>
-                          {cocherasDisponibles.map(c => (
-                            <option key={c.cocheraId} value={c.cocheraId}>
-                              {c.numero}
-                              {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
-                              {c.multipleOcupacion
-                                ? ` · multi ${c.abonosActivos ?? 0}/${c.capacidadMaxima ?? "—"}`
-                                : (c.abonosActivos ?? 0) > 0
-                                  ? " · ocupada"
-                                  : " · libre"}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(valor) => updateVehiculo(v.key, { cocheraId: valor })}
+                          options={[
+                            { value: "", label: "Elegí una cochera disponible..." },
+                            ...cocherasDisponibles.map((c) => ({
+                              value: c.cocheraId,
+                              label: `${c.numero}${c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}${
+                                c.multipleOcupacion
+                                  ? ` · multi ${c.abonosActivos ?? 0}/${c.capacidadMaxima ?? "—"}`
+                                  : (c.abonosActivos ?? 0) > 0
+                                    ? " · ocupada"
+                                    : " · libre"
+                              }`,
+                            })),
+                          ]}
+                        />
                       </div>
                     </div>
                   );
@@ -891,7 +914,7 @@ export default function NuevoAbono() {
                               onClick={() => setOrigenVehiculo(v.key, opt.value)}
                               className={`py-2 rounded-xl text-xs font-semibold border transition-all disabled:opacity-40 ${
                                 v.origen === opt.value
-                                  ? "bg-slate-900 text-white border-slate-900"
+                                  ? "bg-brand text-brand-foreground border-brand"
                                   : "bg-white text-slate-600 border-slate-200"
                               }`}
                             >
@@ -900,19 +923,21 @@ export default function NuevoAbono() {
                           ))}
                         </div>
                         {esExistente ? (
-                          <select
-                            value={v.vehiculoId}
-                            onChange={e => seleccionarVehiculoExistente(v.key, e.target.value)}
+                          <FilterSelect
+                            className="w-full"
+                            ariaLabel="Vehículo"
                             disabled={!cliente?.clienteId || cargandoVehiculos}
-                            className={inputCls}
-                          >
-                            <option value="">Seleccioná vehículo...</option>
-                            {opciones.map(opt => (
-                              <option key={opt.vehiculoId} value={opt.vehiculoId} disabled={opt._disabled}>
-                                {opt.patente}{opt._motivo ? ` — ${opt._motivo}` : ""}
-                              </option>
-                            ))}
-                          </select>
+                            value={v.vehiculoId}
+                            onChange={(valor) => seleccionarVehiculoExistente(v.key, valor)}
+                            options={[
+                              { value: "", label: "Seleccioná vehículo..." },
+                              ...opciones.map((opt) => ({
+                                value: opt.vehiculoId,
+                                disabled: opt._disabled,
+                                label: `${opt.patente}${opt._motivo ? ` — ${opt._motivo}` : ""}`,
+                              })),
+                            ]}
+                          />
                         ) : (
                           <div className="space-y-2">
                             <input
@@ -922,16 +947,16 @@ export default function NuevoAbono() {
                               maxLength={10}
                               className={`${inputCls} font-mono`}
                             />
-                            <select
+                            <FilterSelect
+                              className="w-full"
+                              ariaLabel="Tipo"
                               value={v.tipoVehiculoId}
-                              onChange={e => updateVehiculo(v.key, { tipoVehiculoId: e.target.value })}
-                              className={inputCls}
-                            >
-                              <option value="">Tipo...</option>
-                              {tipos.map(t => (
-                                <option key={t.tipoVehiculoId} value={t.tipoVehiculoId}>{t.nombre}</option>
-                              ))}
-                            </select>
+                              onChange={(valor) => updateVehiculo(v.key, { tipoVehiculoId: valor })}
+                              options={[
+                                { value: "", label: "Tipo..." },
+                                ...tipos.map((t) => ({ value: t.tipoVehiculoId, label: t.nombre })),
+                              ]}
+                            />
                           </div>
                         )}
                       </div>
@@ -955,7 +980,7 @@ export default function NuevoAbono() {
                             key={id}
                             className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-transparent"
                           >
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-sm font-black">
+                            <div className="w-10 h-10 rounded-xl bg-brand text-brand-foreground flex items-center justify-center text-sm font-black">
                               {c.numero}
                             </div>
                             <div className="min-w-0 flex-1">
@@ -977,28 +1002,27 @@ export default function NuevoAbono() {
                   )}
 
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <select
+                    <FilterSelect
+                      className="flex-1 w-full"
+                      ariaLabel="Cochera"
                       value={plazaParaAgregar}
-                      onChange={e => setPlazaParaAgregar(e.target.value)}
-                      className={`${inputCls} flex-1`}
-                    >
-                      <option value="">
-                        {cocherasParaAgregar.length === 0
-                          ? "No hay cocheras disponibles"
-                          : "Elegí cochera..."}
-                      </option>
-                      {cocherasParaAgregar.map(c => (
-                        <option key={c.cocheraId} value={c.cocheraId}>
-                          {c.numero}
-                          {c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setPlazaParaAgregar}
+                      options={[
+                        {
+                          value: "",
+                          label: cocherasParaAgregar.length === 0 ? "No hay cocheras disponibles" : "Elegí cochera...",
+                        },
+                        ...cocherasParaAgregar.map((c) => ({
+                          value: c.cocheraId,
+                          label: `${c.numero}${c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}`,
+                        })),
+                      ]}
+                    />
                     <button
                       type="button"
                       onClick={agregarPlazaFlexible}
                       disabled={!plazaParaAgregar}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand text-brand-foreground text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40"
                     >
                       <Plus size={16} /> Plaza
                     </button>
@@ -1028,15 +1052,13 @@ export default function NuevoAbono() {
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Periodicidad de cobro</label>
-                <select
+                <FilterSelect
+                  className="w-full"
+                  ariaLabel="Periodicidad de cobro"
                   value={periodicidad}
-                  onChange={e => setPeriodicidad(Number(e.target.value))}
-                  className={inputCls}
-                >
-                  {PERIODICIDAD_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setPeriodicidad(Number(v))}
+                  options={PERIODICIDAD_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                />
               </div>
               <div className="sm:col-span-2 max-w-md">
                 <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Cobrador</label>
@@ -1148,7 +1170,7 @@ export default function NuevoAbono() {
               type="button"
               onClick={handleCrear}
               disabled={!puedeCrear}
-              className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 text-white text-sm font-semibold py-3.5 rounded-2xl shadow-xl shadow-slate-900/25 disabled:opacity-40"
+              className="w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-semibold py-3.5 rounded-2xl shadow-xl shadow-slate-900/25 disabled:opacity-40"
             >
               {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               {guardando ? "Creando abono..." : "Crear abono"}
@@ -1159,7 +1181,7 @@ export default function NuevoAbono() {
         {/* Summary panel */}
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl border border-transparent bg-white  overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Vista previa de abono</p>
             </div>
@@ -1255,7 +1277,7 @@ export default function NuevoAbono() {
                 type="button"
                 onClick={handleCrear}
                 disabled={!puedeCrear}
-                className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/25"
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/25"
               >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar alta
@@ -1264,6 +1286,29 @@ export default function NuevoAbono() {
           </div>
         </aside>
       </div>
+      {avisosReserva.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-overlay">
+          <div className="bg-surface-card w-full max-w-md p-5 space-y-3 shadow-pk-modal">
+            <p className="text-sm font-black text-ink">EXISTEN RESERVAS AUTOMATICAS PARA ESTA COCHERA</p>
+            <ul className="space-y-2">
+              {avisosReserva.map((aviso) => (
+                <li key={aviso.reservaId}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/reservas/${aviso.reservaId}`)}
+                    className="text-sm font-semibold text-brand"
+                  >
+                    {aviso.nombre || "Reserva"} · {aviso.fechaInicio}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => setAvisosReserva([])} className="px-3 py-2 text-sm font-semibold bg-brand text-brand-foreground">
+              Seguir con el alta
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

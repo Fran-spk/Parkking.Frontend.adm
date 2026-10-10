@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, User, Phone, FileText, Check, Loader2, AlertCircle } from "lucide-react";
 import { clienteService } from "../services/clienteService";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 const SECTIONS = [
   { id: "identidad", label: "Identidad", icon: User },
@@ -16,7 +17,7 @@ function SectionHeader({ index, title, done }) {
         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black transition-colors ${
           done
             ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-            : "bg-slate-900 text-white shadow-lg shadow-slate-900/15"
+            : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
         }`}
       >
         {done ? <Check size={18} strokeWidth={3} /> : index}
@@ -26,8 +27,7 @@ function SectionHeader({ index, title, done }) {
   );
 }
 
-const inputCls =
-  "w-full text-sm border border-slate-200 rounded-xl px-3.5 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 transition-all placeholder:text-slate-300";
+const inputCls = fieldClass;
 
 export default function NuevoCliente() {
   const { clienteId } = useParams();
@@ -155,7 +155,7 @@ export default function NuevoCliente() {
                 type="button"
                 onClick={handleGuardar}
                 disabled={!puedeGuardar}
-                className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
+                className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
               >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear cliente"}
@@ -186,7 +186,7 @@ export default function NuevoCliente() {
                       done
                         ? "bg-emerald-500 text-white"
                         : active
-                          ? "bg-slate-900 text-white"
+                          ? "bg-brand text-brand-foreground"
                           : "bg-slate-100 text-slate-400"
                     }`}
                   >
@@ -298,7 +298,7 @@ export default function NuevoCliente() {
               type="button"
               onClick={handleGuardar}
               disabled={!puedeGuardar}
-              className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 text-white text-sm font-semibold py-3.5 rounded-2xl shadow-xl shadow-slate-900/25 disabled:opacity-40"
+              className="w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-semibold py-3.5 rounded-2xl shadow-xl shadow-slate-900/25 disabled:opacity-40"
             >
               {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               {editando ? "Guardar cambios" : "Crear cliente"}
@@ -308,7 +308,7 @@ export default function NuevoCliente() {
 
         <aside className="hidden xl:block">
           <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-slate-900 text-white">
+            <div className="px-5 py-4 bg-brand text-brand-foreground">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
               <p className="text-base font-bold mt-1">Vista previa</p>
             </div>
@@ -337,7 +337,7 @@ export default function NuevoCliente() {
                 type="button"
                 onClick={handleGuardar}
                 disabled={!puedeGuardar}
-                className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/25"
+                className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/25"
               >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 {editando ? "Guardar cambios" : "Confirmar alta"}

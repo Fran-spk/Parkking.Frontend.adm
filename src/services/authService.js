@@ -1,11 +1,20 @@
 import api from "./api";
+import { permisosStore } from "../utils/permisosStore";
 
 /** @typedef {import("../types").LoginResponse} LoginResponse */
+
+function apiErrorMessage(error, fallback) {
+  const data = error.response?.data;
+  if (typeof data === "string") return data;
+  if (data?.mensaje) return data.mensaje;
+  if (data?.title) return data.title;
+  return fallback;
+}
 
 export const authService = {
   /**
    * Realiza el inicio de sesión del usuario.
-   * @param {string} login Nombre de usuario o correo electrónico.
+   * @param {string} login UsuarioName único (no email).
    * @param {string} password Contraseña.
    * @returns {Promise<LoginResponse>}
    */
@@ -13,13 +22,23 @@ export const authService = {
     try {
       const response = await api.post("/Auth/login", { login, password });
       const data = response?.data ? response.data : response;
-      // Guardar información mínima del usuario para el AuthGuard
       localStorage.setItem("parkking_user", JSON.stringify(data || { isAuthenticated: true }));
+      permisosStore.clear();
       return data;
     } catch (error) {
-      const message = error.response?.data || "Error de red o de servidor al iniciar sesión";
-      throw new Error(message);
+      throw new Error(apiErrorMessage(error, "Error de red o de servidor al iniciar sesión"));
     }
+  },
+
+  /**
+   * Usuario + permisos del estacionamiento activo (si hay tenant cookie válida).
+   * @returns {Promise<{ id: number, nombre?: string, email?: string, permisos?: object }>}
+   */
+  async me() {
+    const response = await api.get("/Auth/me");
+    const data = response?.data ?? response;
+    permisosStore.setFromMe(data);
+    return data;
   },
 
   /**
@@ -33,10 +52,9 @@ export const authService = {
     } finally {
       localStorage.removeItem("parkking_user");
       localStorage.removeItem("parkking_estacionamiento");
+      permisosStore.clear();
     }
   },
-
-
 
   /**
    * Retorna el usuario actual del localStorage si está autenticado.
@@ -47,7 +65,7 @@ export const authService = {
       const userStr = localStorage.getItem("parkking_user");
       if (!userStr) return null;
       return JSON.parse(userStr);
-    } catch (e) {
+    } catch {
       localStorage.removeItem("parkking_user");
       return null;
     }
@@ -58,5 +76,5 @@ export const authService = {
    */
   isAuthenticated() {
     return this.getCurrentUser() !== null;
-  }
+  },
 };

@@ -1,6 +1,8 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
+import Checkbox from "../../components/layout/Check";
+import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").TipoVehiculo} TipoVehiculo */
 
@@ -112,11 +114,9 @@ export default function TiposVehiculo({ embedded = false }) {
         <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
           <span className="pk-label">Listado de Vehículos</span>
           <label className="flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={mostrarInactivos}
               onChange={e => setMostrarInactivos(e.target.checked)}
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5"
             />
             Mostrar dados de baja
           </label>
@@ -155,7 +155,7 @@ export default function TiposVehiculo({ embedded = false }) {
                           if (e.key === "Enter") handleModificar(tipo.tipoVehiculoId);
                           if (e.key === "Escape") cancelarEdicion();
                         }}
-                        className="flex-1 text-xs font-medium border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-800"
+                        className={`${fieldClass} flex-1`}
                       />
                       <button
                         onClick={() => handleModificar(tipo.tipoVehiculoId)}
@@ -224,12 +224,12 @@ export default function TiposVehiculo({ embedded = false }) {
               onChange={e => setNuevoNombre(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleAgregar()}
               placeholder="Ej: Auto, Moto, Camioneta..."
-              className="flex-1 text-xs font-semibold border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50/50 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-800"
+              className={`${fieldClass} flex-1`}
             />
             <button
               onClick={handleAgregar}
               disabled={guardando || !nuevoNombre.trim()}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
             >
               <Plus size={15} />
               Agregar

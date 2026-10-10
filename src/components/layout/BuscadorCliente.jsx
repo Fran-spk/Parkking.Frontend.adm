@@ -177,7 +177,7 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
               type="button"
               onClick={handleCrear}
               disabled={guardando}
-              className="flex-1 text-xs font-semibold text-white bg-indigo-600 rounded-xl py-2.5 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex-1 text-xs font-semibold text-brand-foreground bg-brand rounded-xl py-2.5 hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
               {guardando ? "Creando..." : "Crear y seleccionar"}
             </button>

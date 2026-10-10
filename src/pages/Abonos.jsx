@@ -13,6 +13,7 @@ import { abonoService } from "../services/abonoService";
 import ModalEditarAbono from "../components/layout/ModalEditarAbono";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import Checkbox from "../components/layout/Check";
 
 /** @typedef {import("../types").Abono} Abono */
 import { useNavigate } from "react-router-dom";
@@ -23,6 +24,7 @@ import {
   vehiculosDe,
   abonoSearchText,
   modalidadLabel,
+  nombreTipoVehiculo,
   MODALIDAD,
 } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
@@ -64,7 +66,7 @@ function PlazaMark({ label, muted, debt }) {
           ? "bg-slate-100 text-slate-400"
           : debt
             ? "bg-rose-600 text-white shadow-lg shadow-rose-600/20"
-            : "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+            : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/20"
         }`}
     >
       <span
@@ -186,15 +188,10 @@ export default function Abonos() {
           />
 
           <label className="flex items-center gap-2.5 cursor-pointer select-none shrink-0">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={verHistoricos}
-                onChange={(e) => setVerHistoricos(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-900" />
-            </div>
+            <Checkbox
+              checked={verHistoricos}
+              onChange={(e) => setVerHistoricos(e.target.checked)}
+            />
             <span className="text-sm font-semibold text-slate-600">Incluir históricos</span>
           </label>
         </div>
@@ -334,6 +331,11 @@ export default function Abonos() {
                                 }`}
                               >
                                 {v.patente || "S/PAT"}
+                                {nombreTipoVehiculo(v) && (
+                                  <span className="font-sans font-semibold normal-case tracking-normal text-ink-muted">
+                                    {nombreTipoVehiculo(v)}
+                                  </span>
+                                )}
                                 <span
                                   className={`text-[9px] font-bold uppercase tracking-wide px-1 py-px rounded ${
                                     Number(v.modalidad) === MODALIDAD.FLEXIBLE
@@ -428,7 +430,7 @@ export default function Abonos() {
                         className={`inline-flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all ${
                           esDeudor && esActivo
                             ? "bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/20"
-                            : "bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/15"
+                            : "bg-brand text-brand-foreground hover:bg-brand-strong shadow-md shadow-slate-900/15"
                         }`}
                       >
                         <CreditCard size={14} />

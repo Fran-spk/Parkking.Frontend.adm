@@ -10,6 +10,8 @@
  * @property {number} cocheraId
  * @property {string} numero
  * @property {number} categoriaCocheraId
+ * @property {number | null} [zonaId]
+ * @property {{ zonaId: number, nombre: string } | null} [zona]
  * @property {number} estadoCochera
  * @property {string | null} observacion
  * @property {boolean} multipleOcupacion
@@ -25,6 +27,7 @@
  * @typedef {object} CocheraRequest
  * @property {string} numero
  * @property {number} categoriaCocheraId
+ * @property {number | null} [zonaId]
  * @property {number} estadoCochera
  * @property {string} [observacion]
  * @property {boolean} multipleOcupacion

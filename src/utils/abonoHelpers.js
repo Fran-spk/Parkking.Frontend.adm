@@ -79,6 +79,10 @@ export function modalidadLabel(modalidad) {
   return Number(modalidad) === MODALIDAD.FLEXIBLE ? "Flexible" : "Fijo";
 }
 
+export function nombreTipoVehiculo(vehiculo) {
+  return vehiculo?.tipoVehiculo?.nombre || vehiculo?.tipoVehiculoNombre || null;
+}
+
 /** Texto de búsqueda unificado. */
 export function abonoSearchText(abono) {
   const parts = [

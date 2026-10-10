@@ -7,6 +7,7 @@ export default {
         brand: {
           DEFAULT: "var(--pk-brand)",
           muted: "var(--pk-brand-muted)",
+          wash: "var(--pk-brand-wash)",
           soft: "var(--pk-brand-soft)",
           strong: "var(--pk-brand-strong)",
           foreground: "var(--pk-brand-fg)",

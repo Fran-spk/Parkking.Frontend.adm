@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -13,6 +13,7 @@ import { abonoService } from "../services/abonoService";
 import ModalRegistrarPago from "../components/layout/ModalRegistrarPago";
 import PageHeader from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import FilterSelect from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").DeudaPendiente} DeudaPendiente */
 
@@ -85,11 +86,49 @@ export default function PagosPendientes() {
   const abonosUnicos = new Set(filtrados.map((d) => d.abonoId)).size;
 
   /** Mismo panel y mismos datos que el cobro desde el detalle del abono. */
-  async function abrirCobro(deuda) {
-    const busyKey = `${deuda.abonoId}-${deuda.periodoInicio}`;
+  async function abrirPago(deuda) {
+    const busyKey = deuda.senaId
+      ? `sena-${deuda.senaId}`
+      : deuda.cargoId
+      ? `cargo-${deuda.cargoId}`
+      : `${deuda.abonoId}-${deuda.periodoInicio}`;
     try {
       setAbriendoCobroId(busyKey);
       setError(null);
+
+      if (deuda.senaId) {
+        setModalPago({
+          abono: null,
+          sena: {
+            senaId: deuda.senaId,
+            importe: deuda.saldo,
+            clienteNombre: deuda.clienteNombre,
+            cocherasLabel: deuda.cocherasLabel,
+            patentesLabel: deuda.patentesLabel,
+          },
+          cargo: null,
+          cuota: null,
+          cuotas: null,
+          cuotasPendientes: [],
+        });
+        return;
+      }
+
+      if (deuda.cargoId) {
+        const abono = await abonoService.getById(deuda.abonoId);
+        setModalPago({
+          abono,
+          cargo: {
+            cargoId: deuda.cargoId,
+            concepto: deuda.periodoLabel,
+            importe: deuda.saldo,
+          },
+          cuota: null,
+          cuotas: null,
+          cuotasPendientes: [],
+        });
+        return;
+      }
 
       // Misma fuente que PagosAbono: abono completo + timeline de cuotas
       const [abono, cuotas] = await Promise.all([
@@ -98,7 +137,7 @@ export default function PagosPendientes() {
       ]);
 
       const cuotasCobrables = (Array.isArray(cuotas) ? cuotas : []).filter(
-        (c) => !c.esFuturo && Number(c.saldo) > 0 && c.estado !== 2
+        (c) => !c.esFuturo && Number(c.saldo) > 0 && c.estado !== 2 && c.estado !== 3
       );
 
       const cuota =
@@ -124,7 +163,7 @@ export default function PagosPendientes() {
       });
     } catch (err) {
       const msg = err.response?.data;
-      setError(typeof msg === "string" ? msg : "No se pudo abrir el cobro");
+      setError(typeof msg === "string" ? msg : "No se pudo abrir el pago");
     } finally {
       setAbriendoCobroId(null);
     }
@@ -134,12 +173,12 @@ export default function PagosPendientes() {
     <div className="space-y-5 animate-fade-in-up">
       <PageHeader
         title="Pagos pendientes"
-        description="Todas las cuotas con saldo: cobrá una o entrá al abono para combinar varias."
+        description="Cuotas con saldo y cargos sin pagar. Registrá el pago o entrá al abono para combinar cuotas."
         loading={loading}
         stats={[
           { label: "Deudas", value: filtrados.length },
           { label: "Abonos", value: abonosUnicos },
-          { label: "A cobrar", value: formatPrecio(totalSaldo), tone: "danger" },
+          { label: "A pagar", value: formatPrecio(totalSaldo), tone: "danger" },
         ]}
       />
 
@@ -150,22 +189,12 @@ export default function PagosPendientes() {
             onChange={setBusqueda}
             placeholder="Cliente, cochera, patente, período…"
           />
-          <div className="flex gap-1 flex-wrap">
-            {FILTROS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setFiltro(f.id)}
-                className={`px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                  filtro === f.id
-                    ? "bg-brand text-brand-foreground"
-                    : "bg-surface-muted text-ink-muted hover:text-ink"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+          <FilterSelect
+            ariaLabel="Filtrar deudas"
+            value={filtro}
+            onChange={setFiltro}
+            options={FILTROS.map((f) => ({ value: f.id, label: f.label }))}
+          />
         </div>
 
         {loading ? (
@@ -182,7 +211,7 @@ export default function PagosPendientes() {
               <Clock size={20} />
             </div>
             <p className="text-sm font-semibold text-gray-800">Sin deudas pendientes</p>
-            <p className="text-xs text-gray-400 mt-1">No hay cuotas con saldo para este filtro.</p>
+            <p className="text-xs text-gray-400 mt-1">No hay cuotas ni cargos con saldo para este filtro.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -199,7 +228,16 @@ export default function PagosPendientes() {
               </thead>
               <tbody>
                 {filtrados.map((d) => {
-                  const key = `${d.abonoId}-${d.periodoInicio}-${d.cuotaId ?? "x"}`;
+                  const key = d.senaId
+                    ? `sena-${d.senaId}`
+                    : d.cargoId
+                    ? `cargo-${d.cargoId}`
+                    : `${d.abonoId}-${d.periodoInicio}-${d.cuotaId ?? "x"}`;
+                  const busyKey = d.senaId
+                    ? `sena-${d.senaId}`
+                    : d.cargoId
+                    ? `cargo-${d.cargoId}`
+                    : `${d.abonoId}-${d.periodoInicio}`;
                   const parcial = d.estado === 1 || Number(d.montoPagado) > 0;
                   return (
                     <tr key={key} className="border-b border-gray-50 last:border-0 hover:bg-slate-50/60">
@@ -224,6 +262,14 @@ export default function PagosPendientes() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-800 capitalize">{d.periodoLabel}</p>
+                        {d.esSena && (
+                          <span className="text-[10px] font-bold uppercase text-ink-faint">Seña</span>
+                        )}
+                        {d.esCargo && (
+                          <span className="inline-flex mt-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">
+                            Cargo
+                          </span>
+                        )}
                         {d.diasAtraso > 0 && (
                           <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded-md">
                             <AlertTriangle size={10} />
@@ -254,22 +300,22 @@ export default function PagosPendientes() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            title="Cobrar"
-                            disabled={abriendoCobroId === `${d.abonoId}-${d.periodoInicio}`}
-                            onClick={() => abrirCobro(d)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50"
+                            title="Pagar"
+                            disabled={abriendoCobroId === busyKey}
+                            onClick={() => abrirPago(d)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-brand hover:text-brand-foreground transition-colors disabled:opacity-50"
                           >
-                            {abriendoCobroId === `${d.abonoId}-${d.periodoInicio}` ? (
+                            {abriendoCobroId === busyKey ? (
                               <Loader2 size={13} className="animate-spin" />
                             ) : (
                               <CreditCard size={13} />
                             )}{" "}
-                            Cobrar
+                            Pagar
                           </button>
                           <button
                             type="button"
                             title="Ver abono"
-                            onClick={() => navigate(`/pagosAbono/${d.abonoId}`)}
+                            onClick={() => navigate(d.senaId ? `/reservas/${d.reservaId}` : `/pagosAbono/${d.abonoId}`)}
                             className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
                           >
                             <ExternalLink size={14} />
@@ -291,6 +337,8 @@ export default function PagosPendientes() {
           cuota={modalPago.cuota || null}
           cuotas={modalPago.cuotas || null}
           cuotasPendientes={modalPago.cuotasPendientes || []}
+          cargo={modalPago.cargo || null}
+          sena={modalPago.sena || null}
           onClose={() => setModalPago(null)}
           onRegistrado={() => {
             setModalPago(null);

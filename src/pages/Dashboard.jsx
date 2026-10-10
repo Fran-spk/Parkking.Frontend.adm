@@ -8,7 +8,6 @@ import {
   AlertCircle,
   LayoutDashboard,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 
 import HomeProfileHeader from "../components/layout/HomeProfileHeader";
@@ -53,7 +52,7 @@ const Dashboard = () => {
   const [ingresosMes, setIngresosMes] = useState(0);
   const [pagosPendientes, setPagosPendientes] = useState(0);
   const [estacionamiento, setEstacionamiento] = useState(readEstacionamiento);
-  const [mostrarClasico, setMostrarClasico] = useState(false);
+  const [mostrarEstadisticas, setMostrarEstadisticas] = useState(false);
 
   useEffect(() => {
     const options = {
@@ -155,33 +154,10 @@ const Dashboard = () => {
         abonosActivos={data?.cantidadAbonosActivos ?? 0}
         ocupacionPct={data?.porcentajeOcupacion ?? 0}
         pagosPendientes={pagosPendientes}
-      />
-
-      <HomeAbonosFeed
-        alertas={data?.alertasDeudores ?? []}
-        estadoCocheras={data?.estadoCocheras ?? []}
-      />
-
-      {/* ——— Dashboard clásico (conservado) ——— */}
-      <div className="bg-white">
-        <button
-          type="button"
-          onClick={() => setMostrarClasico((v) => !v)}
-          className="w-full px-4 sm:px-6 py-3 flex items-center justify-between text-left hover:bg-surface-muted/60 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="w-4 h-4 text-brand" />
-            <span className="text-sm font-bold text-ink">Vista detallada</span>
-            <span className="text-[11px] text-ink-muted font-medium">KPIs · mapa · gráficos</span>
-          </div>
-          <ChevronDown
-            size={18}
-            className={`text-ink-faint transition-transform ${mostrarClasico ? "rotate-180" : ""}`}
-          />
-        </button>
-
-        {mostrarClasico && (
-          <div className="px-1 sm:px-4 pb-6 pt-4 space-y-8">
+        estadisticasAbiertas={mostrarEstadisticas}
+        onToggleEstadisticas={() => setMostrarEstadisticas((v) => !v)}
+      >
+          <div className="px-1 sm:px-4 pb-6 pt-4 space-y-8 border-t border-line-subtle">
             <div className="flex justify-between items-center bg-white p-4 sm:p-6">
               <div>
                 <div className="text-xs text-brand font-bold flex items-center gap-2 uppercase tracking-wider">
@@ -203,7 +179,7 @@ const Dashboard = () => {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold flex items-center gap-2 text-ink">
                   <AlertCircle className="w-5 h-5 text-danger" />
-                  Alertas de Cobro
+                  Alertas de pago
                 </h2>
 
                 {data?.alertasDeudores?.length > 0 && (
@@ -254,8 +230,12 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+      </HomeProfileHeader>
+
+      <HomeAbonosFeed
+        alertas={data?.alertasDeudores ?? []}
+        estadoCocheras={data?.estadoCocheras ?? []}
+      />
     </div>
   );
 };

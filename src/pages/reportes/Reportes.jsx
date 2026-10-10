@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FileSpreadsheet,
   FileText,
@@ -14,6 +14,7 @@ import {
 import { reportesService } from "../../services/reportesService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { usuarioService } from "../../services/usuarioService";
+import FilterSelect, { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").UsuarioResumen} UsuarioResumen */
 
@@ -161,7 +162,7 @@ export default function Reportes() {
       <div>
         <h1 className="pk-title">Reportes</h1>
         <p className="pk-desc mt-1">
-          Descargá o enviá por mail resúmenes operativos y listados de cobros.
+          Descargá o enviá por mail resúmenes operativos y listados de pagos.
         </p>
       </div>
 
@@ -179,9 +180,9 @@ export default function Reportes() {
       <div className="grid gap-4 md:grid-cols-2">
         {/* PDF dashboard */}
         <section className="relative overflow-hidden rounded-3xl border border-transparent bg-white  p-6 sm:p-7 flex flex-col">
-          <div className="absolute inset-x-0 top-0 h-1 bg-slate-900" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
           <div className="flex items-start gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/20 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center shadow-lg shadow-slate-900/20 shrink-0">
               <FileText size={20} />
             </div>
             <div className="min-w-0">
@@ -198,7 +199,7 @@ export default function Reportes() {
               type="button"
               onClick={handlePdf}
               disabled={loadingPdf}
-              className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-slate-900/15 transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-slate-900/15 transition-all"
             >
               {loadingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               {loadingPdf ? "Generando…" : "Descargar"}
@@ -216,16 +217,16 @@ export default function Reportes() {
 
         {/* Excel pagos */}
         <section className="relative overflow-hidden rounded-3xl border border-transparent bg-white  p-6 sm:p-7 flex flex-col">
-          <div className="absolute inset-x-0 top-0 h-1 bg-indigo-600" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
           <div className="flex items-start gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center shadow-lg shadow-indigo-600/20 shrink-0">
               <FileSpreadsheet size={20} />
             </div>
             <div className="min-w-0">
               <p className="pk-label mb-1">Excel</p>
-              <h2 className="pk-heading">Pagos por fecha de cobro</h2>
+              <h2 className="pk-heading">Pagos por fecha</h2>
               <p className="pk-desc mt-1">
-                Listado de cobros registrados en el rango, con cliente, plazas, montos y
+                Listado de pagos registrados en el rango, con cliente, plazas, montos y
                 método.
               </p>
             </div>
@@ -243,7 +244,7 @@ export default function Reportes() {
                   type="date"
                   value={desde}
                   onChange={(e) => setDesde(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 focus:bg-white"
+                  className={`${fieldClass} pl-9`}
                 />
               </div>
             </div>
@@ -253,7 +254,7 @@ export default function Reportes() {
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-slate-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 focus:bg-white"
+                className={fieldClass}
               />
             </div>
           </div>
@@ -269,7 +270,7 @@ export default function Reportes() {
               type="button"
               onClick={handleExcel}
               disabled={loadingExcel || rangoInvalido}
-              className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
             >
               {loadingExcel ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               {loadingExcel ? "Generando…" : "Descargar"}
@@ -335,7 +336,7 @@ export default function Reportes() {
               <label
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
                   destino === "estacionamiento"
-                    ? "border-slate-900 bg-slate-50"
+                    ? "border-brand bg-slate-50"
                     : "border-slate-200 hover:bg-slate-50/60"
                 }`}
               >
@@ -360,7 +361,7 @@ export default function Reportes() {
               <label
                 className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
                   destino === "usuario"
-                    ? "border-slate-900 bg-slate-50"
+                    ? "border-brand bg-slate-50"
                     : "border-slate-200 hover:bg-slate-50/60"
                 }`}
               >
@@ -377,18 +378,19 @@ export default function Reportes() {
                     Un usuario
                   </div>
                   {destino === "usuario" && (
-                    <select
+                    <FilterSelect
+                      className="mt-2 w-full"
+                      ariaLabel="Usuario"
                       value={usuarioId}
-                      onChange={(e) => setUsuarioId(e.target.value)}
-                      className="mt-2 w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400"
-                    >
-                      <option value="">Seleccioná…</option>
-                      {usuariosConMail.map((u) => (
-                        <option key={u.usuarioId} value={u.usuarioId}>
-                          {(u.nombre || u.usuarioName || "Usuario") + ` · ${u.mail}`}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setUsuarioId}
+                      options={[
+                        { value: "", label: "Seleccioná…" },
+                        ...usuariosConMail.map((u) => ({
+                          value: u.usuarioId,
+                          label: `${u.nombre || u.usuarioName || "Usuario"} · ${u.mail}`,
+                        })),
+                      ]}
+                    />
                   )}
                   {destino === "usuario" && usuariosConMail.length === 0 && (
                     <p className="text-xs text-rose-600 mt-2">
@@ -411,7 +413,7 @@ export default function Reportes() {
                 type="button"
                 disabled={enviandoMail}
                 onClick={confirmarMail}
-                className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 rounded-xl py-2.5"
+                className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-strong disabled:opacity-50 rounded-xl py-2.5"
               >
                 {enviandoMail ? (
                   <Loader2 size={16} className="animate-spin" />

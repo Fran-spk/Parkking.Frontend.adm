@@ -1,6 +1,8 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw, Banknote } from "lucide-react";
 import { metodoDePagoService } from "../../services/metodoDePagoService";
+import Checkbox from "../../components/layout/Check";
+import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").MetodoDePago} MetodoDePago */
 
@@ -103,7 +105,7 @@ export default function MetodosDePago({ embedded = false }) {
         <div>
           <h1 className="pk-title">Métodos de pago</h1>
           <p className="pk-desc mt-1">
-            Definí cómo se pueden cobrar los abonos. La baja es lógica: los cobros ya hechos conservan el método.
+            Definí cómo se pueden pagar los abonos. La baja es lógica: los pagos ya hechos conservan el método.
           </p>
         </div>
       )}
@@ -114,11 +116,9 @@ export default function MetodosDePago({ embedded = false }) {
             <Banknote size={13} /> Listado
           </span>
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={mostrarInactivos}
               onChange={(e) => setMostrarInactivos(e.target.checked)}
-              className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
             />
             Mostrar dados de baja
           </label>
@@ -158,7 +158,7 @@ export default function MetodosDePago({ embedded = false }) {
                           if (e.key === "Enter") handleModificar(metodo.metodoDePagoId);
                           if (e.key === "Escape") cancelarEdicion();
                         }}
-                        className="flex-1 text-xs font-medium border border-line rounded-xl px-3 py-2 focus:outline-none focus:border-brand focus:bg-surface-card text-ink"
+                        className={`${fieldClass} flex-1`}
                       />
                       <button
                         onClick={() => handleModificar(metodo.metodoDePagoId)}
@@ -228,7 +228,7 @@ export default function MetodosDePago({ embedded = false }) {
               onChange={(e) => setNuevoNombre(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
               placeholder="Ej: Mercado Pago, Cheque..."
-              className="flex-1 text-xs font-semibold border border-line rounded-xl px-4 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card transition-all text-ink"
+              className={`${fieldClass} flex-1`}
             />
             <button
               onClick={handleAgregar}

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { documentoService } from "../../services/documentoService";
+import FilterSelect, { fieldClass } from "./FilterSelect";
 
 /** @typedef {import("../../types").Documento} Documento */
 import { vehiculosDe } from "../../utils/abonoHelpers";
@@ -42,13 +43,7 @@ function formatFecha(iso) {
     year: "numeric",
   });
 }
-
-const fieldClass =
-  "w-full text-xs border border-line-strong bg-surface-card px-2.5 py-2 text-ink focus:outline-none focus:border-brand";
-
-/**
- * Panel vertical compacto de archivos adjuntos del abono.
- */
+/** Panel vertical compacto de archivos adjuntos del abono. */
 export default function DocumentosAbono({ abono }) {
   const abonoId = abono?.abonoId ?? abono?.abonoCocheraId;
   const clienteId = abono?.cliente?.clienteId ?? abono?.clienteId;
@@ -220,13 +215,13 @@ export default function DocumentosAbono({ abono }) {
         >
           <div>
             <label className="pk-label block mb-1">Tipo</label>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={fieldClass}>
-              {TIPOS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <FilterSelect
+              className="w-full"
+              ariaLabel="Tipo"
+              value={tipo}
+              onChange={setTipo}
+              options={TIPOS.map((t) => ({ value: t.value, label: t.label }))}
+            />
           </div>
 
           {(tipoMeta.dueno === "Vehiculo" || tipo === "Otro") && (
@@ -234,22 +229,20 @@ export default function DocumentosAbono({ abono }) {
               <label className="pk-label block mb-1">
                 Vehículo {tipo === "Otro" ? "(opc.)" : ""}
               </label>
-              <select
-                value={vehiculoId}
-                onChange={(e) => setVehiculoId(e.target.value)}
-                className={fieldClass}
+              <FilterSelect
+                className="w-full"
+                ariaLabel="Vehículo"
                 required={necesitaVehiculo && tipoMeta.dueno === "Vehiculo"}
-              >
-                <option value="">{tipo === "Otro" ? "— Abono —" : "Elegir…"}</option>
-                {vehiculos.map((v) => {
-                  const id = v.vehiculoId ?? v.id;
-                  return (
-                    <option key={id} value={id}>
-                      {v.patente || `Vehículo #${id}`}
-                    </option>
-                  );
-                })}
-              </select>
+                value={vehiculoId}
+                onChange={setVehiculoId}
+                options={[
+                  { value: "", label: tipo === "Otro" ? "— Abono —" : "Elegir…" },
+                  ...vehiculos.map((v) => {
+                    const id = v.vehiculoId ?? v.id;
+                    return { value: id, label: v.patente || `Vehículo #${id}` };
+                  }),
+                ]}
+              />
             </div>
           )}
 

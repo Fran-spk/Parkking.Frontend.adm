@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Check, X, RotateCcw, Tags } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import { tipoGastoService } from "../../services/tipoGastoService";
+import Checkbox from "../../components/layout/Check";
+import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").TipoGasto} TipoGasto */
 
@@ -103,14 +105,12 @@ export default function TiposGasto() {
             <Tags size={13} /> Listado
           </span>
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={mostrarInactivos}
               onChange={(e) => {
                 setLoading(true);
                 setMostrarInactivos(e.target.checked);
               }}
-              className="border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
             />
             Mostrar dados de baja
           </label>
@@ -142,7 +142,7 @@ export default function TiposGasto() {
                           if (e.key === "Enter") handleModificar(tipo.tipoGastoId);
                           if (e.key === "Escape") setEditandoId(null);
                         }}
-                        className="flex-1 text-xs font-medium border border-line px-3 py-2 focus:outline-none focus:border-brand text-ink"
+                        className={`${fieldClass} flex-1`}
                       />
                       <button type="button" onClick={() => handleModificar(tipo.tipoGastoId)} className="p-2 text-success">
                         <Check size={16} />
@@ -198,7 +198,7 @@ export default function TiposGasto() {
             onChange={(e) => setNuevoNombre(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
             placeholder="Ej: Luz, Limpieza, Expensas"
-            className="flex-1 text-xs font-semibold border border-line px-4 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand text-ink"
+            className={`${fieldClass} flex-1`}
           />
           <button
             type="button"

@@ -1,9 +1,10 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Pencil, Check, X, Clock } from "lucide-react";
 import { tarifaMensualService } from "../../services/tarifaMensualService";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
 import { categoriaCocheraService } from "../../services/categoriaCocheraService";
 import { PERIODICIDAD, PERIODICIDAD_OPTIONS } from "../../utils/periodicidadHelpers";
+import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").TarifaVigente} TarifaVigente */
 /** @typedef {import("../../types").TarifaHistorial} TarifaHistorial */
@@ -132,7 +133,7 @@ function CeldaTarifa({ tipo, categoria, periodicidadCobro, tarifaVigente, onActu
               onChange={e => { setPrecio(e.target.value); setError(null); }}
               onKeyDown={e => { if (e.key === "Enter") guardar(); if (e.key === "Escape") setEditando(false); }}
               placeholder="0"
-              className="w-full text-xs font-semibold border border-gray-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-800"
+              className={fieldClass}
             />
             {error && <p className="text-[10px] text-red-500 font-bold mt-1">{error}</p>}
           </div>
@@ -286,7 +287,7 @@ export default function Tarifas() {
             onClick={() => setPeriodicidad(opt.value)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors ${
               periodicidad === opt.value
-                ? "bg-slate-900 text-white border-slate-900"
+                ? "bg-brand text-brand-foreground border-brand"
                 : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
             }`}
           >

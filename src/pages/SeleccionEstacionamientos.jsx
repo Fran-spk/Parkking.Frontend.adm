@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building, MapPin, ArrowRight, AlertCircle } from "lucide-react";
 import { estacionamientoService } from "../services/estacionamientoService";
+import { authService } from "../services/authService";
 
 /** @typedef {import("../types").EstacionamientoAcceso} EstacionamientoAcceso */
 
@@ -40,6 +41,7 @@ export default function SeleccionEstacionamientos() {
 
       // Guardar el estacionamiento seleccionado para que el resto de la app sepa en cuál está trabajando
       localStorage.setItem("parkking_estacionamiento", JSON.stringify(estacionamiento));
+      await authService.me();
       navigate("/mi-estacionamiento");
     } catch (err) {
       console.error(err);
@@ -52,7 +54,7 @@ export default function SeleccionEstacionamientos() {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Fondos Decorativos y Efecto de Luces (Mismo estilo que el panel derecho del Login) */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
 
       {/* Cuadrícula sutil */}

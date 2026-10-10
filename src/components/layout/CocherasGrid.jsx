@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Car, SlidersHorizontal, Users } from "lucide-react";
+import { Car, Users } from "lucide-react";
+import FilterSelect from "./FilterSelect";
 
 function patenteLabel(cochera) {
   const ocupantes = Array.isArray(cochera.ocupantes) ? cochera.ocupantes : [];
@@ -46,34 +47,18 @@ const CocherasGrid = ({ estadoCocheras }) => {
   const ocupadas = estadoCocheras.filter((c) => c.estado === "Ocupado-Abono").length;
   const libres = total - ocupadas;
 
-  const chip = (key, label, count) => (
-    <button
-      type="button"
-      onClick={() => setFiltro(key)}
-      className={`flex-1 sm:flex-initial text-xs px-3.5 py-1.5 font-bold transition-colors ${
-        filtro === key
-          ? "bg-brand text-brand-foreground"
-          : "bg-surface-card text-ink-muted hover:text-ink hover:bg-surface-muted"
-      }`}
-    >
-      {label} ({count})
-    </button>
-  );
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-surface-muted p-2.5">
-        <div className="flex items-center gap-2 text-xs font-semibold text-ink-muted uppercase tracking-wider px-2">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-ink-faint" />
-          <span>Filtro de espacio</span>
-        </div>
-
-        <div className="flex gap-1 w-full sm:w-auto">
-          {chip("todas", "Todas", total)}
-          {chip("libres", "Libres", libres)}
-          {chip("ocupadas", "Ocupadas", ocupadas)}
-        </div>
-      </div>
+      <FilterSelect
+        ariaLabel="Filtro de espacio"
+        value={filtro}
+        onChange={setFiltro}
+        options={[
+          { value: "todas", label: `Todas (${total})` },
+          { value: "libres", label: `Libres (${libres})` },
+          { value: "ocupadas", label: `Ocupadas (${ocupadas})` },
+        ]}
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 max-h-[400px] overflow-y-auto pr-1">
         {cocherasFiltradas.map((cochera) => {

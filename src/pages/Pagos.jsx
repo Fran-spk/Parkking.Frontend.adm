@@ -7,6 +7,7 @@ import { pagoService } from "../services/pagoService";
 import ModalDetallePago from "../components/layout/ModalDetallePago";
 import PageHeader from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Pago} Pago */
 
@@ -135,7 +136,7 @@ export default function Pagos() {
           showFullMonthYearPicker
           placeholderText="Desde"
           isClearable
-          className="text-sm border border-line-strong bg-surface-card px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand w-36"
+          className={`${fieldClass} w-36`}
         />
 
         <DatePicker
@@ -148,7 +149,7 @@ export default function Pagos() {
           placeholderText="Hasta"
           isClearable
           minDate={desde}
-          className="text-sm border border-line-strong bg-surface-card px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand w-36"
+          className={`${fieldClass} w-36`}
         />
 
         {(desde || hasta || busqueda) && (

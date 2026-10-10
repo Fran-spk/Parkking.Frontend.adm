@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { grupoFinancieroService } from "../../services/grupoFinancieroService";
+import Checkbox from "./Check";
 
 /** @typedef {import("../../types").GrupoFinanciero} GrupoFinanciero */
 
@@ -38,11 +39,9 @@ export default function SelectorGrupos({ value = [], onChange }) {
                 on ? "border-brand bg-brand-muted text-ink" : "border-line text-ink-muted"
               }`}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={on}
                 onChange={() => toggle(g.grupoFinancieroId)}
-                className="border-line-strong text-brand"
               />
               {g.nombre}
             </label>

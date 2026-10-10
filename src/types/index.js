@@ -49,6 +49,7 @@
  *
  * @typedef {import('./shared.js').TipoVehiculo} TipoVehiculo
  * @typedef {import('./shared.js').CategoriaCochera} CategoriaCochera
+ * @typedef {import('./shared.js').Zona} Zona
  * @typedef {import('./shared.js').ClienteResumen} ClienteResumen
  * @typedef {import('./shared.js').CocheraResumen} CocheraResumen
  *

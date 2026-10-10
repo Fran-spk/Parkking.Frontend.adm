@@ -11,6 +11,7 @@ export default function Navbar({ onMenuClick }) {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
   const [estacionamiento, setEstacionamiento] = useState(null);
+  const [ahora, setAhora] = useState(() => new Date());
 
   useEffect(() => {
     const stored = localStorage.getItem("parkking_estacionamiento");
@@ -49,7 +50,31 @@ export default function Navbar({ onMenuClick }) {
 
   const sucursal = estacionamiento?.nombre || estacionamiento?.Nombre || "";
   const direccion = estacionamiento?.direccion || estacionamiento?.Direccion || "";
-  const userInitial = user?.nombre?.charAt(0).toUpperCase() || "U";
+  // Login guarda { usuario: { nombre, mail, ... } }; Auth/me es plano { nombre, email }
+  const nombreCompleto =
+    user?.usuario?.nombre ||
+    user?.nombre ||
+    user?.Nombre ||
+    user?.usuario?.mail ||
+    user?.email ||
+    "";
+
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fechaSistema = ahora.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const horaSistema = ahora.toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
   return (
     <header
@@ -76,7 +101,7 @@ export default function Navbar({ onMenuClick }) {
           aria-label="Ir al inicio"
           title="Inicio"
         >
-          <div className="w-8 h-8 bg-ink text-white flex items-center justify-center shrink-0 group-hover:bg-brand transition-colors">
+          <div className="w-8 h-8 bg-brand text-brand-foreground flex items-center justify-center shrink-0">
             <span className="text-sm font-black leading-none">P</span>
           </div>
           <div className="flex flex-col min-w-0 text-left">
@@ -105,21 +130,21 @@ export default function Navbar({ onMenuClick }) {
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
-        {user && (
-          <button
-            onClick={() => navigate("/configuracion/perfil")}
-            className="hidden sm:flex items-center gap-2 pr-1 py-1 px-2 hover:bg-surface-muted transition-all group"
-            aria-label="Mi Perfil"
-          >
-            <div className="w-7 h-7 rounded-full bg-brand-muted text-brand font-black text-xs flex items-center justify-center group-hover:bg-brand-soft transition-colors">
-              {userInitial}
-            </div>
-            <span className="text-[11px] font-bold text-ink group-hover:text-brand truncate max-w-[120px] transition-colors">
-              {user.nombre}
-            </span>
-          </button>
-        )}
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          onClick={() => navigate("/configuracion/perfil")}
+          className="hidden sm:block text-[13px] font-bold text-ink hover:text-brand transition-colors whitespace-nowrap"
+          aria-label="Mi perfil"
+          title="Mi perfil"
+        >
+          {nombreCompleto || "Mi perfil"}
+        </button>
+        <time
+          dateTime={ahora.toISOString()}
+          className="hidden sm:block text-[12px] font-semibold text-ink-muted tabular-nums whitespace-nowrap"
+        >
+          {fechaSistema} {horaSistema}
+        </time>
 
         <div className="hidden sm:block h-5 w-px bg-line-subtle mx-1" />
 

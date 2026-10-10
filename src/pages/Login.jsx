@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Lock,
@@ -11,6 +11,7 @@ import {
   ParkingSquare,
 } from "lucide-react";
 import { authService } from "../services/authService";
+import { applyColorMarca, COLOR_MARCA_DEFAULT } from "../theme/parkking.theme.js";
 
 const inputClass =
   "w-full pl-10 pr-4 py-2.5 text-sm border border-line-strong bg-surface-muted text-ink placeholder:text-ink-faint focus:outline-none focus:border-brand focus:bg-surface-card transition-colors disabled:opacity-50";
@@ -22,6 +23,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    applyColorMarca(COLOR_MARCA_DEFAULT);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,7 +80,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="pk-label block">Usuario o correo</label>
+              <label className="pk-label block">Usuario</label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-ink-faint group-focus-within:text-ink transition-colors">
                   <Mail size={16} />
@@ -84,7 +89,7 @@ export default function Login() {
                   type="text"
                   value={loginInput}
                   onChange={(e) => setLoginInput(e.target.value)}
-                  placeholder="admin o admin@parkking.com"
+                  placeholder="admin2"
                   required
                   disabled={loading}
                   autoComplete="username"

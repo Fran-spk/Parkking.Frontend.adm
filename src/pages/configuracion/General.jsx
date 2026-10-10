@@ -1,16 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building } from "lucide-react";
+import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw } from "lucide-react";
 import { estacionamientoService } from "../../services/estacionamientoService";
+import { applyColorMarca, colorMarcaForeground, COLOR_MARCA_DEFAULT } from "../../theme/parkking.theme.js";
 
 /** @typedef {import("../../types").Estacionamiento} Estacionamiento */
 import CategoriasCochera from "./CategoriasCochera";
+import Zonas from "./Zonas";
 import TiposVehiculo from "./TiposVehiculo";
 import MetodosDePago from "./MetodosDePago";
+import Checkbox from "../../components/layout/Check";
 
 const TABS = [
   { id: "general", label: "General", icon: SlidersHorizontal },
   { id: "categorias", label: "Categorías", icon: Building },
+  { id: "zonas", label: "Zonas", icon: Map },
   { id: "tipos", label: "Tipos de vehículo", icon: Car },
   { id: "metodos", label: "Métodos de pago", icon: Banknote },
 ];
@@ -19,6 +23,7 @@ function GeneralForm() {
   const [form, setForm] = useState({
     nombre: "",
     direccion: "",
+    colorMarca: COLOR_MARCA_DEFAULT,
     locadorNombre: "",
     locadorDocumento: "",
     locadorDomicilio: "",
@@ -27,6 +32,7 @@ function GeneralForm() {
     porcentajeRecargo: 0,
     imprimirReciboAlCobrar: true,
     enviarReciboPorEmail: false,
+    trabajarConZonas: false,
     contratoSeguroObligatorio: true,
     contratoPlazoMeses: 12,
     generarContratoAlCrearAbono: true,
@@ -48,6 +54,7 @@ function GeneralForm() {
       setForm({
         nombre: data.nombre ?? "",
         direccion: data.direccion ?? "",
+        colorMarca: data.colorMarca || COLOR_MARCA_DEFAULT,
         locadorNombre: data.locadorNombre ?? "",
         locadorDocumento: data.locadorDocumento ?? "",
         locadorDomicilio: data.locadorDomicilio ?? "",
@@ -56,6 +63,7 @@ function GeneralForm() {
         porcentajeRecargo: data.porcentajeRecargo,
         imprimirReciboAlCobrar: data.imprimirReciboAlCobrar !== false,
         enviarReciboPorEmail: !!data.enviarReciboPorEmail,
+        trabajarConZonas: !!data.trabajarConZonas,
         contratoSeguroObligatorio: data.contratoSeguroObligatorio !== false,
         contratoPlazoMeses:
           data.contratoPlazoMeses && Number(data.contratoPlazoMeses) > 0
@@ -79,6 +87,10 @@ function GeneralForm() {
 
   async function handleGuardar(e) {
     e.preventDefault();
+    if (!/^#[0-9a-fA-F]{6}$/.test(form.colorMarca)) {
+      setError("El color debe ser un RGB hexadecimal, por ejemplo #0f172a");
+      return;
+    }
     if (!form.nombre.trim()) {
       setError("El nombre del estacionamiento es obligatorio");
       return;
@@ -105,6 +117,7 @@ function GeneralForm() {
       await estacionamientoService.modificar({
         nombre: form.nombre.trim(),
         direccion: form.direccion.trim(),
+        colorMarca: form.colorMarca,
         locadorNombre: form.locadorNombre.trim() || null,
         locadorDocumento: form.locadorDocumento.trim() || null,
         locadorDomicilio: form.locadorDomicilio.trim() || null,
@@ -113,11 +126,13 @@ function GeneralForm() {
         porcentajeRecargo: Number(form.porcentajeRecargo),
         imprimirReciboAlCobrar: form.imprimirReciboAlCobrar,
         enviarReciboPorEmail: form.enviarReciboPorEmail,
+        trabajarConZonas: form.trabajarConZonas,
         contratoSeguroObligatorio: form.contratoSeguroObligatorio,
         contratoPlazoMeses: Number(form.contratoPlazoMeses),
         generarContratoAlCrearAbono: form.generarContratoAlCrearAbono,
         emailAvisos: form.emailAvisos.trim(),
       });
+      applyColorMarca(form.colorMarca);
       setExito(true);
       setTimeout(() => setExito(false), 3000);
     } catch (err) {
@@ -184,6 +199,45 @@ function GeneralForm() {
       </div>
 
       <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
+        <h3 className="pk-label pb-2 border-b border-line-subtle">Apariencia</h3>
+        <p className="pk-caption -mt-2">
+          Color de los botones y del elemento activo del menú. Cada estacionamiento guarda el suyo.
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            aria-label="Color de marca"
+            value={/^#[0-9a-fA-F]{6}$/.test(form.colorMarca) ? form.colorMarca : COLOR_MARCA_DEFAULT}
+            onChange={(e) => set("colorMarca", e.target.value)}
+            className="h-11 w-14 cursor-pointer border border-line bg-surface-card p-1"
+          />
+          <input
+            type="text"
+            value={form.colorMarca}
+            maxLength={7}
+            spellCheck={false}
+            onChange={(e) => set("colorMarca", e.target.value)}
+            className="w-28 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand uppercase"
+          />
+          <span
+            className="inline-flex items-center px-3 py-2.5 text-xs font-semibold"
+            style={{ background: form.colorMarca, color: colorMarcaForeground(form.colorMarca) }}
+          >
+            Botón
+          </span>
+          <button
+            type="button"
+            disabled={form.colorMarca.toLowerCase() === COLOR_MARCA_DEFAULT}
+            onClick={() => set("colorMarca", COLOR_MARCA_DEFAULT)}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted disabled:opacity-40"
+          >
+            <RotateCcw size={13} />
+            Restablecer
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
         <h3 className="pk-label pb-2 border-b border-line-subtle">Locador (contrato)</h3>
         <p className="pk-caption -mt-2">
           Datos del titular en el PDF. Si el domicilio queda vacío, se usa la dirección del
@@ -244,11 +298,9 @@ function GeneralForm() {
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer select-none mb-2 pk-caption font-semibold text-ink">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.aplicaRecargo}
                 onChange={(e) => set("aplicaRecargo", e.target.checked)}
-                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
               />
               <span>Aplicar recargo por mora</span>
             </label>
@@ -268,32 +320,42 @@ function GeneralForm() {
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.imprimirReciboAlCobrar}
                 onChange={(e) => set("imprimirReciboAlCobrar", e.target.checked)}
-                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
               />
-              <span>Imprimir recibo al cobrar</span>
+              <span>Imprimir recibo al pagar</span>
             </label>
             <p className="pk-caption mt-1 ml-6">
-              Si está activo, al cobrar se abre la vista previa del recibo.
+              Si está activo, al registrar el pago se abre la vista previa del recibo.
             </p>
           </div>
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <input
-                type="checkbox"
+              <Checkbox
+                checked={form.trabajarConZonas}
+                onChange={(e) => set("trabajarConZonas", e.target.checked)}
+              />
+              <span>Trabajar con zonas</span>
+            </label>
+            <p className="pk-caption mt-1 ml-6">
+              Si está activo, cada cochera tiene que pertenecer a una zona. Para activarlo, todas
+              las cocheras activas ya tienen que tener zona.
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+              <Checkbox
                 checked={form.enviarReciboPorEmail}
                 onChange={(e) => set("enviarReciboPorEmail", e.target.checked)}
-                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
               />
-              <span>Enviar recibo por email al cobrar</span>
+              <span>Enviar recibo por email al pagar</span>
             </label>
             <p className="pk-caption mt-1 ml-6">
               Si está activo, al registrar un pago se manda el recibo al email del abono o del
-              cliente. Si no hay destinatario, el cobro igual se confirma.
+              cliente. Si no hay destinatario, el pago igual se confirma.
             </p>
           </div>
 
@@ -323,11 +385,9 @@ function GeneralForm() {
         <div className="space-y-3">
           <div>
             <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.generarContratoAlCrearAbono}
                 onChange={(e) => set("generarContratoAlCrearAbono", e.target.checked)}
-                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
               />
               <span>Generar contrato automáticamente al crear un abono</span>
             </label>
@@ -339,11 +399,9 @@ function GeneralForm() {
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={form.contratoSeguroObligatorio}
                 onChange={(e) => set("contratoSeguroObligatorio", e.target.checked)}
-                className="rounded border-line-strong text-brand focus:ring-brand h-3.5 w-3.5"
               />
               <span>Seguro del vehículo obligatorio</span>
             </label>
@@ -399,7 +457,7 @@ export default function General() {
       <div>
         <h1 className="pk-title">Datos del estacionamiento</h1>
         <p className="pk-desc mt-1">
-          Identidad, reglas de cobro y catálogos operativos (categorías, vehículos y métodos de pago).
+          Identidad, reglas de cobro y catálogos operativos (categorías, zonas, vehículos y métodos de pago).
         </p>
       </div>
 
@@ -426,6 +484,7 @@ export default function General() {
 
       {tab === "general" && <GeneralForm />}
       {tab === "categorias" && <CategoriasCochera embedded />}
+      {tab === "zonas" && <Zonas embedded />}
       {tab === "tipos" && <TiposVehiculo embedded />}
       {tab === "metodos" && <MetodosDePago embedded />}
     </div>

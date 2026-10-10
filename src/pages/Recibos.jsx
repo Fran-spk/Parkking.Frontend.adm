@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Printer, Ban, AlertCircle, Receipt, Loader2, Mail, History } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
@@ -8,6 +8,7 @@ import { estacionamientoService } from "../services/estacionamientoService";
 import { imprimirReciboPdf } from "../utils/imprimirRecibo";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import { fieldClass } from "../components/layout/FilterSelect";
 
 /** @typedef {import("../types").Recibo} Recibo */
 /** @typedef {import("../types").Estacionamiento} Estacionamiento */
@@ -185,7 +186,7 @@ export default function Recibos() {
     <div className="space-y-5 animate-fade-in-up">
       <PageHeader
         title="Recibos"
-        description="Comprobantes de cobro. Reimprimí o anulá sin borrar el pago."
+        description="Comprobantes de pago. Reimprimí o anulá sin borrar el pago."
         loading={loading}
         stats={[
           { label: "Vigentes", value: stats.vigentes },
@@ -220,7 +221,7 @@ export default function Recibos() {
           locale={es}
           placeholderText="Desde"
           isClearable
-          className="w-full lg:w-36 text-sm border border-line-strong px-3 py-2.5"
+          className={`${fieldClass} lg:w-36`}
         />
         <DatePicker
           selected={hasta}
@@ -229,7 +230,7 @@ export default function Recibos() {
           locale={es}
           placeholderText="Hasta"
           isClearable
-          className="w-full lg:w-36 text-sm border border-line-strong px-3 py-2.5"
+          className={`${fieldClass} lg:w-36`}
         />
         <PageHeaderAction type="submit">Buscar</PageHeaderAction>
       </form>
