@@ -1,22 +1,27 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw } from "lucide-react";
+import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw, CalendarClock, Tags } from "lucide-react";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { applyColorMarca, colorMarcaForeground, COLOR_MARCA_DEFAULT } from "../../theme/parkking.theme.js";
+import { ACCIONES, permisosStore } from "../../utils/permisosStore";
 
 /** @typedef {import("../../types").Estacionamiento} Estacionamiento */
 import CategoriasCochera from "./CategoriasCochera";
 import Zonas from "./Zonas";
 import TiposVehiculo from "./TiposVehiculo";
 import MetodosDePago from "./MetodosDePago";
+import ReservasConfig from "./ReservasConfig";
+import TiposGasto from "./TiposGasto";
 import Checkbox from "../../components/layout/Check";
 
 const TABS = [
-  { id: "general", label: "General", icon: SlidersHorizontal },
-  { id: "categorias", label: "Categorías", icon: Building },
-  { id: "zonas", label: "Zonas", icon: Map },
-  { id: "tipos", label: "Tipos de vehículo", icon: Car },
-  { id: "metodos", label: "Métodos de pago", icon: Banknote },
+  { id: "general", label: "General", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { id: "categorias", label: "Categorías", icon: Building, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { id: "zonas", label: "Zonas", icon: Map, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { id: "tipos", label: "Tipos de vehículo", icon: Car, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { id: "metodos", label: "Métodos de pago", icon: Banknote, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { id: "reservas", label: "Reservas", icon: CalendarClock, anyOf: [ACCIONES.ConfigurarReservas] },
+  { id: "gastos", label: "Tipos de gasto", icon: Tags, anyOf: [ACCIONES.AdministrarTiposDeGasto] },
 ];
 
 function GeneralForm() {
@@ -37,6 +42,9 @@ function GeneralForm() {
     contratoPlazoMeses: 12,
     generarContratoAlCrearAbono: true,
     emailAvisos: "",
+    avisoDeudaActivo: false,
+    diaInicioAvisoDeuda: 10,
+    frecuenciaAvisoDeuda: 0,
   });
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -71,6 +79,9 @@ function GeneralForm() {
             : 12,
         generarContratoAlCrearAbono: data.generarContratoAlCrearAbono !== false,
         emailAvisos: data.emailAvisos ?? "",
+        avisoDeudaActivo: data.diaInicioAvisoDeuda != null,
+        diaInicioAvisoDeuda: data.diaInicioAvisoDeuda ?? 10,
+        frecuenciaAvisoDeuda: Number(data.frecuenciaAvisoDeuda) || 0,
       });
     } catch {
       setError("No se pudo cargar la configuración");
@@ -111,6 +122,13 @@ function GeneralForm() {
       setError("El plazo del contrato debe estar entre 1 y 120 meses");
       return;
     }
+    if (
+      form.avisoDeudaActivo &&
+      (form.diaInicioAvisoDeuda < 1 || form.diaInicioAvisoDeuda > 31)
+    ) {
+      setError("El día de inicio del aviso de deuda debe estar entre 1 y 31");
+      return;
+    }
     try {
       setGuardando(true);
       setError(null);
@@ -131,6 +149,8 @@ function GeneralForm() {
         contratoPlazoMeses: Number(form.contratoPlazoMeses),
         generarContratoAlCrearAbono: form.generarContratoAlCrearAbono,
         emailAvisos: form.emailAvisos.trim(),
+        diaInicioAvisoDeuda: form.avisoDeudaActivo ? Number(form.diaInicioAvisoDeuda) : null,
+        frecuenciaAvisoDeuda: Number(form.frecuenciaAvisoDeuda) || 0,
       });
       applyColorMarca(form.colorMarca);
       setExito(true);
@@ -360,6 +380,40 @@ function GeneralForm() {
           </div>
 
           <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+              <Checkbox
+                checked={form.avisoDeudaActivo}
+                onChange={(e) => set("avisoDeudaActivo", e.target.checked)}
+              />
+              <span>Avisar por mail quién debe</span>
+            </label>
+            <p className="pk-caption mt-1 ml-6">
+              Desde el día elegido hasta fin de mes, a los usuarios con la acción Recibir aviso de
+              deuda. Una vez en el mes, o todos los días.
+            </p>
+            <div className="flex items-center gap-3 ml-6 mt-2">
+              <input
+                type="number"
+                min={1}
+                max={31}
+                value={form.diaInicioAvisoDeuda}
+                onChange={(e) => set("diaInicioAvisoDeuda", e.target.value)}
+                disabled={!form.avisoDeudaActivo}
+                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand disabled:opacity-40"
+              />
+              <select
+                value={form.frecuenciaAvisoDeuda}
+                onChange={(e) => set("frecuenciaAvisoDeuda", Number(e.target.value))}
+                disabled={!form.avisoDeudaActivo}
+                className="pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand disabled:opacity-40"
+              >
+                <option value={0}>Una vez en el mes</option>
+                <option value={1}>Todos los días</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
             <label className="pk-caption font-semibold block mb-1.5">Email de avisos</label>
             <input
               type="email"
@@ -443,10 +497,15 @@ function GeneralForm() {
 
 export default function General() {
   const [params, setParams] = useSearchParams();
+  const permisosVersion = useSyncExternalStore(permisosStore.subscribe, permisosStore.getSnapshot);
+  const visibleTabs = useMemo(
+    () => TABS.filter((t) => !t.anyOf?.length || permisosStore.tieneAlgun(...t.anyOf)),
+    [permisosVersion]
+  );
   const tab = useMemo(() => {
-    const t = params.get("tab") || "general";
-    return TABS.some((x) => x.id === t) ? t : "general";
-  }, [params]);
+    const t = params.get("tab") || visibleTabs[0]?.id || "general";
+    return visibleTabs.some((x) => x.id === t) ? t : visibleTabs[0]?.id || "general";
+  }, [params, visibleTabs]);
 
   function setTab(id) {
     setParams(id === "general" ? {} : { tab: id }, { replace: true });
@@ -457,12 +516,12 @@ export default function General() {
       <div>
         <h1 className="pk-title">Datos del estacionamiento</h1>
         <p className="pk-desc mt-1">
-          Identidad, reglas de cobro y catálogos operativos (categorías, zonas, vehículos y métodos de pago).
+          Identidad, reglas de cobro y catálogos del estacionamiento.
         </p>
       </div>
 
       <div className="flex flex-wrap gap-1.5 p-1 bg-surface-muted rounded-xl border border-line-subtle w-fit max-w-full">
-        {TABS.map(({ id, label, icon: Icon }) => {
+        {visibleTabs.map(({ id, label, icon: Icon }) => {
           const active = tab === id;
           return (
             <button
@@ -487,6 +546,8 @@ export default function General() {
       {tab === "zonas" && <Zonas embedded />}
       {tab === "tipos" && <TiposVehiculo embedded />}
       {tab === "metodos" && <MetodosDePago embedded />}
+      {tab === "reservas" && <ReservasConfig embedded />}
+      {tab === "gastos" && <TiposGasto embedded />}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   ParkingSquare,
 } from "lucide-react";
 import { authService } from "../services/authService";
+import { estacionamientoService } from "../services/estacionamientoService";
 import { applyColorMarca, COLOR_MARCA_DEFAULT } from "../theme/parkking.theme.js";
 
 const inputClass =
@@ -40,7 +41,7 @@ export default function Login() {
 
     try {
       await authService.login(loginInput, password);
-      navigate("/seleccion-estacionamientos");
+      await estacionamientoService.entrar(navigate);
     } catch (err) {
       console.error(err);
       setError(err.message || "Usuario o contraseña incorrectos.");

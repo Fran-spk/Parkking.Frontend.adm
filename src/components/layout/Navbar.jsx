@@ -6,12 +6,27 @@ import {
   LogOut,
 } from "lucide-react";
 import { authService } from "../../services/authService";
+import { estacionamientoService } from "../../services/estacionamientoService";
 
 export default function Navbar({ onMenuClick }) {
   const navigate = useNavigate();
   const user = authService.getCurrentUser();
   const [estacionamiento, setEstacionamiento] = useState(null);
+  const [puedeCambiar, setPuedeCambiar] = useState(false);
   const [ahora, setAhora] = useState(() => new Date());
+
+  useEffect(() => {
+    let cancelled = false;
+    estacionamientoService
+      .getEstacionamientos()
+      .then((lista) => {
+        if (!cancelled) setPuedeCambiar(Array.isArray(lista) && lista.length > 1);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem("parkking_estacionamiento");
@@ -121,13 +136,15 @@ export default function Navbar({ onMenuClick }) {
 
         <div className="hidden sm:block h-6 w-px bg-line-subtle mx-1 shrink-0" />
 
-        <button
-          onClick={handleChangeEstacionamiento}
-          className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-surface-card text-[10px] font-bold uppercase tracking-wider text-ink-muted hover:bg-surface-muted hover:text-brand transition-colors shrink-0"
-        >
-          <RefreshCcw size={11} />
-          Cambiar Sucursal
-        </button>
+        {puedeCambiar && (
+          <button
+            onClick={handleChangeEstacionamiento}
+            className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-surface-card text-[10px] font-bold uppercase tracking-wider text-ink-muted hover:bg-surface-muted hover:text-brand transition-colors shrink-0"
+          >
+            <RefreshCcw size={11} />
+            Cambiar Sucursal
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-3 shrink-0">

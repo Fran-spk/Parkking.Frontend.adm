@@ -24,7 +24,7 @@ export default function Layout() {
         if (cancelled) return;
         // Sin tenant válido: volver al selector
         if (!me?.permisos && !localStorage.getItem("parkking_estacionamiento")) {
-          navigate("/seleccion-estacionamientos", { replace: true });
+          await estacionamientoService.entrar(navigate);
         }
       } catch (err) {
         if (err?.response?.status === 401) {

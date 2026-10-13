@@ -1,0 +1,44 @@
+name: Deploy producción
+
+on:
+  push:
+    branches: [produccion]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build
+        run: npm ci && npm run build
+
+      - name: Subir estáticos
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "dist/*"
+          target: "/tmp/parkking-front"
+          strip_components: 1
+          overwrite: true
+
+      - name: Publicar
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            sudo find /var/www/parkking -mindepth 1 -delete
+            sudo cp -a /tmp/parkking-front/. /var/www/parkking/
+            sudo chown -R www-data:www-data /var/www/parkking
+            rm -rf /tmp/parkking-front

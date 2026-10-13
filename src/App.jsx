@@ -27,11 +27,9 @@ import MensajesEnviados from "./pages/MensajesEnviados";
 import PerfilConfig from "./pages/configuracion/Perfil";
 import GeneralConfig from "./pages/configuracion/General";
 import TarifasConfig from "./pages/configuracion/Tarifas";
-import TiposGastoConfig from "./pages/configuracion/TiposGasto";
 import ReglasAsignacionConfig from "./pages/configuracion/ReglasAsignacion";
 import UsuariosConfig from "./pages/configuracion/Usuarios";
 import GruposSeguridad from "./pages/configuracion/GruposSeguridad";
-import ReservasConfig from "./pages/configuracion/ReservasConfig";
 import PagosAbono from "./pages/PagosAbono";
 import CargoAbono from "./pages/CargoAbono";
 import ReintegroAbono from "./pages/ReintegroAbono";
@@ -89,8 +87,8 @@ export default function App() {
             <Route path="tipos-vehiculo" element={<Navigate to="/configuracion/general?tab=tipos" replace />} />
             <Route path="metodos-pago" element={<Navigate to="/configuracion/general?tab=metodos" replace />} />
             <Route path="tarifas" element={<TarifasConfig />} />
-            <Route path="reservas" element={<ReservasConfig />} />
-            <Route path="tipos-gasto" element={<TiposGastoConfig />} />
+            <Route path="reservas" element={<Navigate to="/configuracion/general?tab=reservas" replace />} />
+            <Route path="tipos-gasto" element={<Navigate to="/configuracion/general?tab=gastos" replace />} />
             <Route path="grupos-financieros" element={<Navigate to="/grupos-financieros" replace />} />
             <Route path="reglas-asignacion" element={<ReglasAsignacionConfig />} />
             <Route path="grupos" element={<GruposSeguridad />} />

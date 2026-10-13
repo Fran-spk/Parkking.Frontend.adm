@@ -10,7 +10,6 @@ import {
   ChevronUp,
   SlidersHorizontal,
   DollarSign,
-  Tags,
   Layers,
   GitBranch,
   List,
@@ -69,10 +68,8 @@ const sections = [
 
 const CONFIG_ITEMS = [
   { to: "/configuracion/perfil", label: "Mi perfil", icon: User },
-  { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento] },
+  { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento, ACCIONES.ConfigurarReservas, ACCIONES.AdministrarTiposDeGasto] },
   { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign, anyOf: [ACCIONES.VerTarifas, ACCIONES.AdministrarTarifas] },
-  { to: "/configuracion/reservas", label: "Reservas", icon: CalendarClock, anyOf: [ACCIONES.ConfigurarReservas] },
-  { to: "/configuracion/tipos-gasto", label: "Tipos de gasto", icon: Tags, anyOf: [ACCIONES.AdministrarTiposDeGasto] },
   { to: "/configuracion/reglas-asignacion", label: "Reglas de asignación", icon: GitBranch, anyOf: [ACCIONES.AdministrarReglasAsignacion] },
   { to: "/configuracion/grupos", label: "Grupos de seguridad", icon: Shield, anyOf: [ACCIONES.AdministrarGrupos] },
   { to: "/configuracion/usuarios", label: "Usuarios y accesos", icon: UserCog, anyOf: [ACCIONES.VerUsuarios, ACCIONES.AsignarPermisos] },

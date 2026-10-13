@@ -7,7 +7,7 @@ import { fieldClass } from "../../components/layout/FilterSelect";
 
 /** @typedef {import("../../types").TipoGasto} TipoGasto */
 
-export default function TiposGasto() {
+export default function TiposGasto({ embedded = false }) {
   const [tipos, setTipos] = useState(/** @type {TipoGasto[]} */ ([]));
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -89,15 +89,17 @@ export default function TiposGasto() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <PageHeader
-        title="Tipos de gasto"
-        description="Catálogo para clasificar gastos. La baja es lógica: no se borra el nombre."
-        stats={[
-          { label: "Listados", value: tipos.length },
-          { label: "Activos", value: tipos.filter((t) => t.activo).length },
-        ]}
-      />
+    <div className={embedded ? "space-y-4" : "space-y-6 animate-fade-in-up"}>
+      {!embedded && (
+        <PageHeader
+          title="Tipos de gasto"
+          description="Catálogo para clasificar gastos. La baja es lógica: no se borra el nombre."
+          stats={[
+            { label: "Listados", value: tipos.length },
+            { label: "Activos", value: tipos.filter((t) => t.activo).length },
+          ]}
+        />
+      )}
 
       <div className="bg-surface-card p-5 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-line-subtle">

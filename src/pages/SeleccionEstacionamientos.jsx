@@ -17,18 +17,22 @@ export default function SeleccionEstacionamientos() {
     const fetchEstacionamientos = async () => {
       try {
         const data = await estacionamientoService.getEstacionamientos();
-        // Asumiendo que data es un array de objetos EstacionamientoUsuarioDto
-        setEstacionamientos(data || []);
+        const items = data || [];
+        if (items.length === 1) {
+          await estacionamientoService.entrar(navigate);
+          return;
+        }
+        setEstacionamientos(items);
+        setLoading(false);
       } catch (err) {
         console.error(err);
         setError(err.message || "Error al cargar los estacionamientos.");
-      } finally {
         setLoading(false);
       }
     };
 
     fetchEstacionamientos();
-  }, []);
+  }, [navigate]);
 
   const handleSelect = async (estacionamiento) => {
     if (isSelecting) return;

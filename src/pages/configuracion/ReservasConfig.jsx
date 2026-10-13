@@ -8,7 +8,7 @@ function errorDe(e, fallback) {
   return typeof msg === "string" ? msg : msg?.mensaje || fallback;
 }
 
-export default function ReservasConfig() {
+export default function ReservasConfig({ embedded = false }) {
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -48,11 +48,13 @@ export default function ReservasConfig() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <PageHeader
-        title="Reservas"
-        description="Reglas del módulo de reservas. No forman parte de los datos del estacionamiento."
-      />
+    <div className={embedded ? "space-y-4" : "space-y-6 animate-fade-in-up"}>
+      {!embedded && (
+        <PageHeader
+          title="Reservas"
+          description="Seña y reservas automáticas del estacionamiento."
+        />
+      )}
 
       {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
 

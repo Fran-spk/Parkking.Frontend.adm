@@ -30,6 +30,7 @@ import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 /** @typedef {import("../types").Cochera} Cochera */
 /** @typedef {import("../types").TipoVehiculo} TipoVehiculo */
 import { MODALIDAD, modalidadLabel } from "../utils/abonoHelpers";
+import { newKey } from "../utils/newKey";
 import {
   PERIODICIDAD,
   PERIODICIDAD_OPTIONS,
@@ -52,7 +53,7 @@ const MENU_ESTRUCTURA = { FIJOS: "fijos", FLEXIBLES: "flexibles" };
 
 function emptyVehiculo(modalidad = MODALIDAD.FIJO) {
   return {
-    key: crypto.randomUUID(),
+    key: newKey(),
     origen: ORIGEN_VEHICULO.NUEVO,
     vehiculoId: "",
     patente: "",
@@ -808,7 +809,7 @@ export default function NuevoAbono() {
                             <input
                               value={v.modeloVehiculo}
                               onChange={e => updateVehiculo(v.key, { modeloVehiculo: e.target.value })}
-                              placeholder="Ej: Golf"
+                              placeholder="Modelo"
                               className={inputCls}
                             />
                           </div>

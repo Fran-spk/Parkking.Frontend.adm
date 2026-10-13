@@ -5,7 +5,6 @@ import {
   Download,
   Loader2,
   CalendarRange,
-  Sparkles,
   Mail,
   X,
   Building2,
@@ -284,25 +283,6 @@ export default function Reportes() {
               <Mail size={16} />
               Enviar por mail
             </button>
-          </div>
-        </section>
-
-        {/* Slot próximo */}
-        <section className="md:col-span-2 relative overflow-hidden rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-6 sm:p-7 opacity-80">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-300 flex items-center justify-center shrink-0">
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <p className="pk-label mb-1">Próximamente</p>
-              <h2 className="text-base font-bold text-slate-500 tracking-tight">
-                Más reportes
-              </h2>
-              <p className="pk-desc mt-1">
-                Acá vamos a sumar un tercer tipo cuando lo definamos (caja, ocupación,
-                etc.).
-              </p>
-            </div>
           </div>
         </section>
       </div>

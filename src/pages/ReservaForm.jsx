@@ -6,6 +6,7 @@ import { clienteService } from "../services/clienteService";
 import { cocheraService } from "../services/cocheraService";
 import { tipoVehiculoService } from "../services/tipoVehiculoService";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
+import { newKey } from "../utils/newKey";
 import Checkbox from "../components/layout/Check";
 import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 
@@ -17,7 +18,7 @@ function errorDe(e, fallback) {
 }
 
 function vacioVehiculo() {
-  return { key: crypto.randomUUID(), patente: "", tipoVehiculoId: "", modalidad: 0, cocheraId: "" };
+  return { key: newKey(), patente: "", tipoVehiculoId: "", modalidad: 0, cocheraId: "" };
 }
 
 export default function ReservaForm() {
@@ -74,7 +75,7 @@ export default function ReservaForm() {
       setVehiculos(
         (reserva.vehiculos || []).length
           ? reserva.vehiculos.map((v) => ({
-              key: crypto.randomUUID(),
+              key: newKey(),
               patente: v.patente || "",
               tipoVehiculoId: String(v.tipoVehiculoId),
               modalidad: Number(v.modalidad),

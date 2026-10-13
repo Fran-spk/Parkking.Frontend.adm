@@ -6,6 +6,7 @@ import { clienteService } from "../services/clienteService";
 import { cocheraService } from "../services/cocheraService";
 import { tipoVehiculoService } from "../services/tipoVehiculoService";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
+import { newKey } from "../utils/newKey";
 import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
 import ModalRegistrarPago from "../components/layout/ModalRegistrarPago";
 import { ACCIONES, permisosStore } from "../utils/permisosStore";
@@ -61,7 +62,7 @@ export default function ReservaDetalle() {
     });
     setVehiculos(
       (reserva.vehiculos || []).map((v) => ({
-        key: crypto.randomUUID(),
+        key: newKey(),
         patente: v.patente || "",
         tipoVehiculoId: String(v.tipoVehiculoId || ""),
         modalidad: Number(v.modalidad) || 0,
@@ -257,7 +258,7 @@ export default function ReservaDetalle() {
               <p className="text-xs font-semibold">Vehículos</p>
               <button
                 type="button"
-                onClick={() => setVehiculos((prev) => [...prev, { key: crypto.randomUUID(), patente: "", tipoVehiculoId: "", modalidad: 0, cocheraId: "" }])}
+                onClick={() => setVehiculos((prev) => [...prev, { key: newKey(), patente: "", tipoVehiculoId: "", modalidad: 0, cocheraId: "" }])}
                 className="text-xs font-semibold"
               >
                 Agregar

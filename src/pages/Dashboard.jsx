@@ -18,6 +18,7 @@ import AlertasDeudores from "../components/layout/AlertasDeudores";
 import GraficoIngresos from "../components/layout/GraficoIngresos";
 import GraficoVehiculos from "../components/layout/GraficoVehiculos";
 import { dashboardService } from "../services/dashboardService";
+import { estacionamientoService } from "../services/estacionamientoService";
 import { pagoService } from "../services/pagoService";
 
 /** @typedef {import("../types").Dashboard} Dashboard */
@@ -119,7 +120,7 @@ const Dashboard = () => {
           Reintentar
         </button>
         <button
-          onClick={() => (window.location.href = "/seleccion-estacionamientos")}
+          onClick={() => estacionamientoService.entrar(navigate)}
           className="mt-3 text-sm font-semibold text-brand hover:text-brand-strong"
         >
           Elegir estacionamiento

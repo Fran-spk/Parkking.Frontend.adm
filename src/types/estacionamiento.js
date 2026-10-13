@@ -18,6 +18,8 @@
  * @property {number} contratoPlazoMeses
  * @property {boolean} generarContratoAlCrearAbono
  * @property {string} emailAvisos
+ * @property {number | null} diaInicioAvisoDeuda
+ * @property {number} frecuenciaAvisoDeuda
  */
 
 /**
