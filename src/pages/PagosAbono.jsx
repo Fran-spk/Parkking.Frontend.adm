@@ -870,7 +870,7 @@ export default function PagosAbono() {
                 <FileText size={13} />
               )}
               Contrato
-            </button>
+                </button>
             {esActivo && (cuotasCobrables.length > 0 || cargosImpagos.length > 0) && !modoMultiPago && (
               <PageHeaderAction
                 onClick={() =>
@@ -896,8 +896,8 @@ export default function PagosAbono() {
               >
                 <Wallet size={14} /> Pagar
               </PageHeaderAction>
-            )}
-          </div>
+              )}
+            </div>
         }
         stats={[
           { label: "Cobrado", value: formatPrecio(totalRecaudado) },
@@ -923,7 +923,7 @@ export default function PagosAbono() {
             )}
           </div>
         </div>
-        <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2">
           <Car size={14} className="text-ink-faint mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="pk-label">Vehículos</p>
@@ -949,13 +949,13 @@ export default function PagosAbono() {
                     </span>
                   </div>
                 ))}
-              </div>
+            </div>
             )}
+            </div>
           </div>
-        </div>
-        <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2">
           <Calendar size={14} className="text-ink-faint mt-0.5 shrink-0" />
-          <div>
+            <div>
             <p className="pk-label">Ingreso / cobro</p>
             <p className="text-sm font-semibold text-ink">{formatFecha(abono.fechaInicio)}</p>
             <p className="text-[11px] text-ink-muted mt-0.5">
@@ -963,13 +963,13 @@ export default function PagosAbono() {
             </p>
           </div>
         </div>
-        <div>
+            <div>
           <p className="pk-label">Periodicidad</p>
           <p className="text-sm font-semibold text-ink">
             {periodicidadLabel(abono.periodicidadCobro)}
-          </p>
-        </div>
-        <div>
+              </p>
+            </div>
+          <div>
           <p className="pk-label">Precio período</p>
           <p className="text-sm font-semibold text-ink">
             {abono.precioAcordado
@@ -1001,7 +1001,7 @@ export default function PagosAbono() {
                   }`}
                 >
                   {v.label}
-                </button>
+                        </button>
               );
             })}
           </div>
@@ -1042,7 +1042,7 @@ export default function PagosAbono() {
                     Generar pago ({cuotasSeleccionadas.length}) · {formatPrecio(totalSeleccion)}
                   </button>
                 )}
-              </div>
+            </div>
             </div>
 
             {vista !== "extras" && (
@@ -1185,7 +1185,7 @@ export default function PagosAbono() {
                                 {nombreTipoVehiculo(vehiculoFijo)
                                   ? ` · ${nombreTipoVehiculo(vehiculoFijo)}`
                                   : ""}
-                              </span>
+                          </span>
                             ) : (
                               <span className="font-semibold text-warning-ink">Flexible</span>
                             )}

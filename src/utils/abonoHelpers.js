@@ -83,6 +83,50 @@ export function nombreTipoVehiculo(vehiculo) {
   return vehiculo?.tipoVehiculo?.nombre || vehiculo?.tipoVehiculoNombre || null;
 }
 
+export const FILTROS_ABONO = [
+  { value: "todos", label: "Todos" },
+  { value: "deuda", label: "Con deuda" },
+  { value: "aldia", label: "Al día" },
+];
+
+export function esActivo(abono) {
+  return abono?.activo === true || abono?.activo === "true" || abono?.estado === 1;
+}
+
+export function deudaDe(abono) {
+  return Number(abono?.deuda ?? abono?.montoDeuda ?? 0);
+}
+
+export function estadoAbono(abono) {
+  if (!esActivo(abono)) return { id: "baja", label: "Dado de baja", texto: "text-ink-faint" };
+  const deuda = deudaDe(abono);
+  if (deuda > 0) return { id: "deuda", label: `Debe ${plataAbono(deuda)}`, texto: "text-danger-ink" };
+  return { id: "aldia", label: "Al día", texto: "text-success-ink" };
+}
+
+export function pasaFiltroAbono(abono, filtro) {
+  if (filtro === "deuda") return esActivo(abono) && deudaDe(abono) > 0;
+  if (filtro === "aldia") return esActivo(abono) && deudaDe(abono) <= 0;
+  return true;
+}
+
+export function resumenAbonos(abonos) {
+  const activos = abonos.filter(esActivo);
+  const conDeuda = activos.filter((a) => deudaDe(a) > 0);
+  const deudaTotal = conDeuda.reduce((s, a) => s + deudaDe(a), 0);
+  return {
+    activos: activos.length,
+    conDeuda: conDeuda.length,
+    alDia: activos.length - conDeuda.length,
+    deudaTotal,
+    cantidades: Object.fromEntries(FILTROS_ABONO.map((f) => [f.value, abonos.filter((a) => pasaFiltroAbono(a, f.value)).length])),
+  };
+}
+
+export function plataAbono(n) {
+  return Number(n ?? 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+}
+
 /** Texto de búsqueda unificado. */
 export function abonoSearchText(abono) {
   const parts = [

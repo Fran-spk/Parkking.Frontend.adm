@@ -3,19 +3,12 @@ import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
-import {
-  ArrowLeft,
-  User,
-  Car,
-  FileText,
-  Plus,
-  Trash2,
-  AlertCircle,
-  Check,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Check, Loader2 } from "lucide-react";
 
 import BuscadorCliente from "../components/layout/BuscadorCliente";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
+import Patente from "../components/layout/Patente";
+import { plata } from "../utils/clienteHelpers";
 import { cocheraService } from "../services/cocheraService";
 import { tipoVehiculoService } from "../services/tipoVehiculoService";
 import { tarifaMensualService } from "../services/tarifaMensualService";
@@ -43,9 +36,9 @@ import {
 } from "../utils/periodicidadHelpers";
 
 const SECTIONS = [
-  { id: "cliente", label: "Cliente", icon: User },
-  { id: "estructura", label: "Plazas y vehículos", icon: Car },
-  { id: "condiciones", label: "Condiciones", icon: FileText },
+  { id: "cliente", label: "Cliente" },
+  { id: "estructura", label: "Plazas y vehículos" },
+  { id: "condiciones", label: "Condiciones" },
 ];
 
 const ORIGEN_VEHICULO = { EXISTENTE: "existente", NUEVO: "nuevo" };
@@ -64,27 +57,20 @@ function emptyVehiculo(modalidad = MODALIDAD.FIJO) {
   };
 }
 
-function formatMoney(n) {
-  if (n == null || n === "") return "—";
-  return `$${Number(n).toLocaleString("es-AR")}`;
-}
+const labelCls = "pk-label block mb-1.5";
 
-function SectionHeader({ index, title, done }) {
+function Seccion({ id, titulo, nota, extra, children }) {
   return (
-    <div className="flex items-start gap-4 mb-6">
-      <div
-        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black transition-colors ${
-          done
-            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
-            : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
-        }`}
-      >
-        {done ? <Check size={18} strokeWidth={3} /> : index}
-      </div>
-      <div>
-        <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
-      </div>
-    </div>
+    <section id={id} className="scroll-mt-36 bg-surface-card">
+      <header className="flex items-baseline justify-between gap-3 px-5 py-3 border-b border-line">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-ink">{titulo}</h2>
+          {nota ? <p className="pk-caption mt-0.5">{nota}</p> : null}
+        </div>
+        {extra}
+      </header>
+      <div className="px-5 py-4">{children}</div>
+    </section>
   );
 }
 
@@ -527,194 +513,112 @@ export default function NuevoAbono() {
   }
 
   const inputCls = fieldClass;
-
-  const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.id === activeSection));
-
   return (
-    <div className="min-h-[calc(100vh-2rem)] -mx-1">
-      {/* Top bar + steps */}
-      <div className="sticky top-16 z-30 -mx-4 px-4 lg:-mx-8 lg:px-8 py-3 mb-8 bg-gray-50/95 backdrop-blur-md border-b border-slate-200/70">
-        <div className="max-w-6xl mx-auto space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                type="button"
-                onClick={() => navigate("/abonos")}
-                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight truncate">
-                    Nuevo abono
-                  </h1>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5 truncate">
-                  Paso {activeIdx + 1} de {SECTIONS.length}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => navigate("/abonos")}
-                className="hidden sm:inline-flex text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2.5 rounded-xl hover:bg-white transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleCrear}
-                disabled={!puedeCrear}
-                className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 disabled:hover:bg-brand text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20 transition-all"
-              >
-                {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {guardando ? "Creando..." : "Crear abono"}
-              </button>
-            </div>
+    <div className="space-y-5 pb-12 animate-fade-in-up">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate("/abonos")}
+            className="pk-icon-btn p-1.5 text-ink-muted hover:text-ink hover:bg-surface-muted"
+            aria-label="Volver"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="pk-title">Nuevo abono</h1>
+            <p className="pk-desc mt-1">Cliente, plazas y cómo se cobra.</p>
           </div>
-
-          {/* Stepper en cabecera */}
-          <nav aria-label="Pasos del alta" className="flex items-stretch gap-1 sm:gap-2 overflow-x-auto pb-0.5">
-            {SECTIONS.map((s, i) => {
-              const Icon = s.icon;
-              const active = activeSection === s.id;
-              const done = checklist[s.id];
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => scrollTo(s.id)}
-                  className={`flex-1 min-w-[7.5rem] flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border transition-all text-left ${
-                    active
-                      ? "bg-white border-slate-200 shadow-sm ring-1 ring-slate-900/5"
-                      : done
-                        ? "bg-emerald-50/80 border-emerald-100 hover:bg-emerald-50"
-                        : "bg-white/60 border-transparent hover:bg-white hover:border-slate-200"
-                  }`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                      done
-                        ? "bg-emerald-500 text-white"
-                        : active
-                          ? "bg-brand text-brand-foreground"
-                          : "bg-slate-100 text-slate-400"
-                    }`}
-                  >
-                    {done ? <Check size={14} strokeWidth={2.5} /> : <Icon size={14} />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Paso {i + 1}
-                    </p>
-                    <p className={`text-sm font-semibold truncate ${active ? "text-slate-900" : done ? "text-emerald-800" : "text-slate-600"}`}>
-                      {s.label}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate("/abonos")}
+            className="hidden sm:inline-flex px-3 py-2 text-sm font-semibold text-ink-muted border border-line-strong"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleCrear}
+            disabled={!puedeCrear}
+            className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5"
+          >
+            {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {guardando ? "Creando…" : "Crear abono"}
+          </button>
         </div>
       </div>
 
-      {error && (
-        <div className="max-w-6xl mx-auto mb-5 flex items-start gap-2.5 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
+      <FiltroSegmentado
+        ariaLabel="Secciones"
+        value={activeSection}
+        onChange={scrollTo}
+        opciones={SECTIONS.map((s) => ({
+          value: s.id,
+          label: checklist[s.id] ? `${s.label} · listo` : s.label,
+        }))}
+      />
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-8 pb-16">
-        {/* Main sections */}
-        <div className="space-y-6 min-w-0">
-          {/* 1. Cliente */}
-          <section id="sec-cliente" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
-            <SectionHeader
-              index={1}
-              title="Cliente"
-              done={checklist.cliente}
-            />
-            <div className="max-w-xl">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">
-                Titular <span className="text-rose-400">*</span>
-              </label>
-              <BuscadorCliente
-                size="lg"
-                onSeleccionar={onSeleccionarCliente}
-              />
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_18rem] gap-5">
+        <div className="space-y-5 min-w-0">
+          <Seccion id="sec-cliente" titulo="Cliente" nota="El titular del contrato.">
+            <div className="max-w-xl space-y-3">
+              <label className={labelCls}>Titular</label>
+              <BuscadorCliente size="lg" onSeleccionar={onSeleccionarCliente} />
               {cliente && (
-                <div className="mt-4 flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 font-black flex items-center justify-center">
-                    {cliente.nombre?.charAt(0)?.toUpperCase() || "C"}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-900 truncate">{cliente.nombre}</p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {[cliente.documento && `DNI ${cliente.documento}`, cliente.telefono, cliente.email]
-                        .filter(Boolean)
-                        .join(" · ") || "Sin contacto"}
-                    </p>
-                  </div>
+                <div className="border-l-[3px] border-l-brand bg-surface-page px-3 py-2.5">
+                  <p className="font-semibold text-ink truncate">{cliente.nombre}</p>
+                  <p className="pk-caption truncate">
+                    {[cliente.documento && `DNI ${cliente.documento}`, cliente.telefono, cliente.email]
+                      .filter(Boolean)
+                      .join(" · ") || "Sin contacto"}
+                  </p>
                 </div>
               )}
             </div>
-          </section>
+          </Seccion>
 
-          {/* 2. Plazas y vehículos */}
-          <section id="sec-estructura" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-              <SectionHeader
-                index={2}
-                title="Plazas y vehículos"
-                done={checklist.estructura}
+          <Seccion
+            id="sec-estructura"
+            titulo="Plazas y vehículos"
+            nota={
+              menuEstructura === MENU_ESTRUCTURA.FIJOS
+                ? "Cada vehículo queda en una cochera."
+                : "Los flexibles rotan entre las plazas del abono. El precio acordado es obligatorio."
+            }
+            extra={
+              <FiltroSegmentado
+                ariaLabel="Tipo de plaza"
+                value={menuEstructura}
+                onChange={setMenuEstructura}
+                opciones={[
+                  { value: MENU_ESTRUCTURA.FIJOS, label: "Fijos", cantidad: vehiculosFijos.length },
+                  { value: MENU_ESTRUCTURA.FLEXIBLES, label: "Flexibles", cantidad: vehiculosFlex.length },
+                ]}
               />
-              <div className="grid grid-cols-2 gap-2 shrink-0 w-full sm:w-64">
-                {[
-                  { id: MENU_ESTRUCTURA.FIJOS, label: "Fijos" },
-                  { id: MENU_ESTRUCTURA.FLEXIBLES, label: "Flexibles" },
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setMenuEstructura(opt.id)}
-                    className={`py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                      menuEstructura === opt.id
-                        ? "bg-brand text-brand-foreground border-brand shadow-md shadow-slate-900/15"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+            }
+          >
             {!cliente?.clienteId && (
-              <p className="text-sm text-slate-500 mb-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
-                Seleccioná un cliente primero.
-              </p>
+              <p className="mb-4 text-sm text-ink-muted bg-surface-page px-3 py-2">Elegí un cliente primero.</p>
             )}
 
             {menuEstructura === MENU_ESTRUCTURA.FIJOS && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">
-                    Primero el vehículo; debajo, la cochera fija.
-                  </p>
+              <div className="space-y-3">
+                <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={agregarVehiculoDelMenu}
-                    className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand"
                   >
                     <Plus size={14} /> Agregar vehículo
                   </button>
                 </div>
 
                 {vehiculosFijos.length === 0 && (
-                  <p className="text-sm text-slate-400 rounded-xl bg-slate-50 px-4 py-3">
+                  <p className="text-sm text-ink-muted bg-surface-page px-3 py-2">
                     Sin vehículos fijos. Agregá uno o pasá a Flexibles.
                   </p>
                 )}
@@ -722,51 +626,37 @@ export default function NuevoAbono() {
                 {vehiculosFijos.map((v, idx) => {
                   const esExistente = v.origen === ORIGEN_VEHICULO.EXISTENTE;
                   const opciones = todosVehiculosParaSelect(v.key);
-                  const libres = opciones.filter(o => !o._disabled);
+                  const libres = opciones.filter((o) => !o._disabled);
                   return (
-                    <div
-                      key={v.key}
-                      className="relative rounded-2xl border border-transparent bg-slate-50/40 p-4 sm:p-5"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                          Vehículo fijo {idx + 1}
-                        </span>
+                    <div key={v.key} className="border-l-[3px] border-l-brand bg-surface-page px-4 py-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="pk-label">Fijo {idx + 1}</span>
                         <button
                           type="button"
-                          onClick={() => setVehiculos(prev => prev.filter(x => x.key !== v.key))}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                          onClick={() => setVehiculos((prev) => prev.filter((x) => x.key !== v.key))}
+                          className="pk-icon-btn p-1.5 text-ink-faint hover:text-danger-ink"
+                          title="Quitar"
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 mb-4 max-w-md">
-                        {[
+                      <FiltroSegmentado
+                        ariaLabel="Origen del vehículo"
+                        value={v.origen}
+                        onChange={(origen) => {
+                          if (!cliente?.clienteId && origen === ORIGEN_VEHICULO.EXISTENTE) return;
+                          setOrigenVehiculo(v.key, origen);
+                        }}
+                        opciones={[
                           { value: ORIGEN_VEHICULO.EXISTENTE, label: "Del sistema" },
                           { value: ORIGEN_VEHICULO.NUEVO, label: "Crear nuevo" },
-                        ].map(opt => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            disabled={!cliente?.clienteId && opt.value === ORIGEN_VEHICULO.EXISTENTE}
-                            onClick={() => setOrigenVehiculo(v.key, opt.value)}
-                            className={`py-2.5 rounded-xl text-sm font-semibold border transition-all disabled:opacity-40 ${
-                              v.origen === opt.value
-                                ? "bg-brand text-brand-foreground border-brand shadow-md shadow-slate-900/15"
-                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
+                        ]}
+                      />
 
                       {esExistente ? (
-                        <div className="mb-3">
-                          <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                            Vehículo <span className="text-rose-400">*</span>
-                          </label>
+                        <div className="mt-3">
+                          <label className={labelCls}>Vehículo</label>
                           <FilterSelect
                             className="w-full"
                             ariaLabel="Vehículo"
@@ -779,10 +669,10 @@ export default function NuevoAbono() {
                                 label: !cliente?.clienteId
                                   ? "Primero elegí un cliente"
                                   : cargandoVehiculos
-                                    ? "Cargando..."
+                                    ? "Cargando…"
                                     : libres.length === 0
                                       ? "No hay vehículos libres"
-                                      : "Seleccioná un vehículo...",
+                                      : "Seleccioná un vehículo",
                               },
                               ...opciones.map((opt) => ({
                                 value: opt.vehiculoId,
@@ -793,35 +683,35 @@ export default function NuevoAbono() {
                           />
                         </div>
                       ) : (
-                        <div className="grid sm:grid-cols-3 gap-3 mb-3">
+                        <div className="grid sm:grid-cols-3 gap-3 mt-3">
                           <div>
-                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Patente</label>
+                            <label className={labelCls}>Patente</label>
                             <input
                               value={v.patente}
-                              onChange={e => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
+                              onChange={(e) => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
                               placeholder="ABC123"
                               maxLength={10}
                               className={`${inputCls} font-mono tracking-wider`}
                             />
                           </div>
                           <div>
-                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Modelo</label>
+                            <label className={labelCls}>Modelo</label>
                             <input
                               value={v.modeloVehiculo}
-                              onChange={e => updateVehiculo(v.key, { modeloVehiculo: e.target.value })}
+                              onChange={(e) => updateVehiculo(v.key, { modeloVehiculo: e.target.value })}
                               placeholder="Modelo"
                               className={inputCls}
                             />
                           </div>
                           <div>
-                            <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Tipo</label>
+                            <label className={labelCls}>Tipo</label>
                             <FilterSelect
                               className="w-full"
                               ariaLabel="Tipo"
                               value={v.tipoVehiculoId}
                               onChange={(valor) => updateVehiculo(v.key, { tipoVehiculoId: valor })}
                               options={[
-                                { value: "", label: "Seleccioná..." },
+                                { value: "", label: "Seleccioná" },
                                 ...tipos.map((t) => ({ value: t.tipoVehiculoId, label: t.nombre })),
                               ]}
                             />
@@ -829,17 +719,15 @@ export default function NuevoAbono() {
                         </div>
                       )}
 
-                      <div className="mt-1">
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                          Cochera fija <span className="text-rose-400">*</span>
-                        </label>
+                      <div className="mt-3">
+                        <label className={labelCls}>Cochera fija</label>
                         <FilterSelect
                           className="w-full"
                           ariaLabel="Cochera fija"
                           value={v.cocheraId}
                           onChange={(valor) => updateVehiculo(v.key, { cocheraId: valor })}
                           options={[
-                            { value: "", label: "Elegí una cochera disponible..." },
+                            { value: "", label: "Elegí una cochera" },
                             ...cocherasDisponibles.map((c) => ({
                               value: c.cocheraId,
                               label: `${c.numero}${c.categoriaCochera ? ` — ${c.categoriaCochera.nombre}` : ""}${
@@ -861,89 +749,73 @@ export default function NuevoAbono() {
 
             {menuEstructura === MENU_ESTRUCTURA.FLEXIBLES && (
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Vehículos</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="pk-label">Vehículos</p>
                     <button
                       type="button"
                       onClick={agregarVehiculoDelMenu}
-                      className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-xl transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand"
                     >
                       <Plus size={14} /> Agregar
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Sin plaza fija. El precio acordado es obligatorio (no hay tarifa de lista).
-                  </p>
 
                   {vehiculosFlex.length === 0 && (
-                    <p className="text-sm text-slate-400 rounded-xl bg-amber-50/50 px-4 py-3">
-                      Sin vehículos flexibles todavía.
-                    </p>
+                    <p className="text-sm text-ink-muted bg-surface-page px-3 py-2">Sin vehículos flexibles.</p>
                   )}
 
                   {vehiculosFlex.map((v, idx) => {
                     const esExistente = v.origen === ORIGEN_VEHICULO.EXISTENTE;
                     const opciones = todosVehiculosParaSelect(v.key);
-                    const libres = opciones.filter(o => !o._disabled);
                     return (
-                      <div
-                        key={v.key}
-                        className="relative rounded-2xl border border-amber-100/80 bg-amber-50/30 p-4"
-                      >
+                      <div key={v.key} className="border-l-[3px] border-l-warning bg-surface-page px-4 py-3">
                         <div className="flex items-center justify-between mb-3">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-amber-700/70">
-                            Flexible {idx + 1}
-                          </span>
+                          <span className="pk-label">Flexible {idx + 1}</span>
                           <button
                             type="button"
-                            onClick={() => setVehiculos(prev => prev.filter(x => x.key !== v.key))}
-                            className="p-1.5 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                            onClick={() => setVehiculos((prev) => prev.filter((x) => x.key !== v.key))}
+                            className="pk-icon-btn p-1.5 text-ink-faint hover:text-danger-ink"
+                            title="Quitar"
                           >
                             <Trash2 size={14} />
                           </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          {[
+                        <FiltroSegmentado
+                          ariaLabel="Origen del vehículo"
+                          value={v.origen}
+                          onChange={(origen) => {
+                            if (!cliente?.clienteId && origen === ORIGEN_VEHICULO.EXISTENTE) return;
+                            setOrigenVehiculo(v.key, origen);
+                          }}
+                          opciones={[
                             { value: ORIGEN_VEHICULO.EXISTENTE, label: "Del sistema" },
                             { value: ORIGEN_VEHICULO.NUEVO, label: "Crear nuevo" },
-                          ].map(opt => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              disabled={!cliente?.clienteId && opt.value === ORIGEN_VEHICULO.EXISTENTE}
-                              onClick={() => setOrigenVehiculo(v.key, opt.value)}
-                              className={`py-2 rounded-xl text-xs font-semibold border transition-all disabled:opacity-40 ${
-                                v.origen === opt.value
-                                  ? "bg-brand text-brand-foreground border-brand"
-                                  : "bg-white text-slate-600 border-slate-200"
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
+                          ]}
+                        />
                         {esExistente ? (
-                          <FilterSelect
-                            className="w-full"
-                            ariaLabel="Vehículo"
-                            disabled={!cliente?.clienteId || cargandoVehiculos}
-                            value={v.vehiculoId}
-                            onChange={(valor) => seleccionarVehiculoExistente(v.key, valor)}
-                            options={[
-                              { value: "", label: "Seleccioná vehículo..." },
-                              ...opciones.map((opt) => ({
-                                value: opt.vehiculoId,
-                                disabled: opt._disabled,
-                                label: `${opt.patente}${opt._motivo ? ` — ${opt._motivo}` : ""}`,
-                              })),
-                            ]}
-                          />
+                          <div className="mt-3">
+                            <FilterSelect
+                              className="w-full"
+                              ariaLabel="Vehículo"
+                              disabled={!cliente?.clienteId || cargandoVehiculos}
+                              value={v.vehiculoId}
+                              onChange={(valor) => seleccionarVehiculoExistente(v.key, valor)}
+                              options={[
+                                { value: "", label: "Seleccioná un vehículo" },
+                                ...opciones.map((opt) => ({
+                                  value: opt.vehiculoId,
+                                  disabled: opt._disabled,
+                                  label: `${opt.patente}${opt._motivo ? ` — ${opt._motivo}` : ""}`,
+                                })),
+                              ]}
+                            />
+                          </div>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-2 mt-3">
                             <input
                               value={v.patente}
-                              onChange={e => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
+                              onChange={(e) => updateVehiculo(v.key, { patente: e.target.value.toUpperCase() })}
                               placeholder="Patente"
                               maxLength={10}
                               className={`${inputCls} font-mono`}
@@ -954,7 +826,7 @@ export default function NuevoAbono() {
                               value={v.tipoVehiculoId}
                               onChange={(valor) => updateVehiculo(v.key, { tipoVehiculoId: valor })}
                               options={[
-                                { value: "", label: "Tipo..." },
+                                { value: "", label: "Tipo" },
                                 ...tipos.map((t) => ({ value: t.tipoVehiculoId, label: t.nombre })),
                               ]}
                             />
@@ -965,43 +837,34 @@ export default function NuevoAbono() {
                   })}
                 </div>
 
-                <div className="space-y-4">
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Cocheras del abono</p>
-                  <p className="text-[11px] text-slate-500">
-                    Plazas disponibles para los flexibles (independientes del vehículo).
-                  </p>
-
+                <div className="space-y-3">
+                  <p className="pk-label">Cocheras del abono</p>
                   {plazasFlexibles.length > 0 && (
-                    <div className="space-y-2">
-                      {plazasFlexibles.map(id => {
-                        const c = cocherasDisponibles.find(x => x.cocheraId === id);
+                    <ul className="divide-y divide-line border-y border-line">
+                      {plazasFlexibles.map((id) => {
+                        const c = cocherasDisponibles.find((x) => x.cocheraId === id);
                         if (!c) return null;
                         return (
-                          <div
-                            key={id}
-                            className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-transparent"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-brand text-brand-foreground flex items-center justify-center text-sm font-black">
+                          <li key={id} className="flex items-center gap-3 py-2">
+                            <span className="px-1.5 py-0.5 bg-surface-muted text-[11px] font-bold text-ink tabular-nums">
                               {c.numero}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-slate-800 truncate">
-                                {c.categoriaCochera?.nombre || "Sin categoría"}
-                              </p>
-                            </div>
+                            </span>
+                            <span className="text-sm text-ink truncate flex-1">
+                              {c.categoriaCochera?.nombre || "Sin categoría"}
+                            </span>
                             <button
                               type="button"
                               onClick={() => quitarPlazaFlexible(id)}
-                              className="p-2 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                              className="pk-icon-btn p-1.5 text-ink-faint hover:text-danger-ink"
+                              title="Quitar plaza"
                             >
                               <Trash2 size={14} />
                             </button>
-                          </div>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   )}
-
                   <div className="flex flex-col sm:flex-row gap-2">
                     <FilterSelect
                       className="flex-1 w-full"
@@ -1011,7 +874,7 @@ export default function NuevoAbono() {
                       options={[
                         {
                           value: "",
-                          label: cocherasParaAgregar.length === 0 ? "No hay cocheras disponibles" : "Elegí cochera...",
+                          label: cocherasParaAgregar.length === 0 ? "No hay cocheras disponibles" : "Elegí cochera",
                         },
                         ...cocherasParaAgregar.map((c) => ({
                           value: c.cocheraId,
@@ -1023,7 +886,7 @@ export default function NuevoAbono() {
                       type="button"
                       onClick={agregarPlazaFlexible}
                       disabled={!plazaParaAgregar}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-brand text-brand-foreground text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand text-brand-foreground text-sm font-semibold hover:bg-brand-strong disabled:opacity-40"
                     >
                       <Plus size={16} /> Plaza
                     </button>
@@ -1031,28 +894,16 @@ export default function NuevoAbono() {
                 </div>
               </div>
             )}
-          </section>
-          {/* 4. Condiciones */}
-          <section id="sec-condiciones" className="scroll-mt-48 bg-white rounded-3xl border border-transparent  p-6 sm:p-8 lg:p-10">
-            <SectionHeader
-              index={3}
-              title="Condiciones"
-              done={checklist.condiciones}
-            />
+          </Seccion>
 
+          <Seccion id="sec-condiciones" titulo="Condiciones" nota="Desde cuándo se cobra y a qué precio.">
             <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
               <div>
-                <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Fecha de ingreso</label>
-                <DatePicker
-                  selected={fechaInicio}
-                  onChange={setFechaInicio}
-                  locale={es}
-                  dateFormat="dd/MM/yyyy"
-                  className={inputCls}
-                />
+                <label className={labelCls}>Fecha de ingreso</label>
+                <DatePicker selected={fechaInicio} onChange={setFechaInicio} locale={es} dateFormat="dd/MM/yyyy" className={inputCls} />
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Periodicidad de cobro</label>
+                <label className={labelCls}>Periodicidad</label>
                 <FilterSelect
                   className="w-full"
                   ariaLabel="Periodicidad de cobro"
@@ -1062,10 +913,10 @@ export default function NuevoAbono() {
                 />
               </div>
               <div className="sm:col-span-2 max-w-md">
-                <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">Cobrador</label>
+                <label className={labelCls}>Cobrador</label>
                 <input
                   value={cobrador}
-                  onChange={e => setCobrador(e.target.value)}
+                  onChange={(e) => setCobrador(e.target.value)}
                   placeholder="Opcional"
                   className={inputCls}
                 />
@@ -1073,37 +924,31 @@ export default function NuevoAbono() {
             </div>
 
             {opcionesPolitica.length > 0 && (
-              <div className="mt-4 max-w-3xl space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500 mb-1">
-                  Tratamiento del mes / período de ingreso
-                </p>
+              <div className="mt-4 max-w-3xl space-y-1">
+                <p className={labelCls}>Primer período</p>
                 {!puedeProrratear && (
-                  <p className="text-[11px] text-slate-500 mb-2">
-                    Ingreso el día 1 o 2: no se prorratea.
-                  </p>
+                  <p className="pk-caption mb-2">Ingreso el día 1 o 2: no se prorratea.</p>
                 )}
                 {opcionesPolitica.map((opt) => {
-                  const disabled =
-                    opt.value === POLITICA_PRIMER_PERIODO.PRORRATEAR && !puedeProrratear;
+                  const disabled = opt.value === POLITICA_PRIMER_PERIODO.PRORRATEAR && !puedeProrratear;
+                  const activo = politicaPrimerPeriodo === opt.value;
                   return (
                     <label
                       key={opt.value}
-                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer ${
-                        politicaPrimerPeriodo === opt.value
-                          ? "border-indigo-200 bg-indigo-50/70"
-                          : "border-transparent bg-slate-50"
+                      className={`flex items-start gap-3 px-3 py-2.5 border-l-[3px] cursor-pointer ${
+                        activo ? "border-l-brand bg-surface-page" : "border-l-transparent hover:bg-surface-page"
                       } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                     >
                       <input
                         type="radio"
                         name="politicaPrimerPeriodo"
                         value={opt.value}
-                        checked={politicaPrimerPeriodo === opt.value}
+                        checked={activo}
                         disabled={disabled}
                         onChange={() => setPoliticaPrimerPeriodo(opt.value)}
-                        className="mt-1 h-4 w-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                        className="mt-1"
                       />
-                      <span className="text-sm font-medium text-slate-800">{opt.label}</span>
+                      <span className="text-sm font-medium text-ink">{opt.label}</span>
                     </label>
                   );
                 })}
@@ -1111,41 +956,36 @@ export default function NuevoAbono() {
             )}
 
             {planCobro && (
-              <div className="mt-4 max-w-3xl rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">
-                  Primera cuota
-                </p>
-                <p className="text-sm font-semibold text-indigo-950 capitalize">
+              <div className="mt-4 max-w-3xl border-l-[3px] border-l-brand bg-surface-page px-4 py-3">
+                <p className="pk-label">Primera cuota</p>
+                <p className="text-sm font-semibold text-ink capitalize mt-1">
                   {planCobro.label}
-                  <span className="text-indigo-400 font-medium"> · {planCobro.periodicidadLabel}</span>
+                  <span className="pk-caption font-medium normal-case"> · {planCobro.periodicidadLabel}</span>
                 </p>
-                {planCobro.montoPrimera != null ? (
-                  <p className="text-base font-black text-indigo-900 mt-1.5">
-                    {formatMoney(planCobro.montoPrimera)}
+                {planCobro.montoPrimera != null && (
+                  <p className="pk-amount text-ink mt-1">
+                    {plata(planCobro.montoPrimera)}
                     {planCobro.prorratea && planCobro.montoBase != null && (
-                      <span className="ml-2 text-xs font-semibold text-amber-700">
-                        (prorrateado de {formatMoney(planCobro.montoBase)})
+                      <span className="ml-2 text-xs font-semibold text-warning-ink">
+                        prorrateado de {plata(planCobro.montoBase)}
                       </span>
                     )}
                   </p>
-                ) : null}
+                )}
               </div>
             )}
 
             <div className="mt-5 max-w-md">
-              <label className="text-[11px] font-semibold text-slate-500 block mb-1.5">
-                Precio acordado
-                {tieneFlexible && <span className="text-rose-400"> *</span>}
-              </label>
+              <label className={labelCls}>Precio acordado{tieneFlexible ? " · obligatorio" : ""}</label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint text-sm font-semibold">$</span>
                 <input
                   type="number"
                   value={precioAcordado}
-                  onChange={e => setPrecioAcordado(e.target.value)}
+                  onChange={(e) => setPrecioAcordado(e.target.value)}
                   placeholder={
                     tieneFlexible
-                      ? "Obligatorio (sin tarifa de lista)"
+                      ? "Obligatorio"
                       : precioSugerido != null
                         ? String(precioSugerido)
                         : "Opcional"
@@ -1154,77 +994,55 @@ export default function NuevoAbono() {
                 />
               </div>
               {tieneFlexible ? (
-                <p className="mt-1.5 text-[11px] text-amber-700">
-                  Con flexibles no se sugiere precio de lista: cargá el acordado.
-                </p>
+                <p className="mt-1.5 pk-caption text-warning-ink">Con flexibles no hay tarifa de lista.</p>
               ) : precioSugerido != null && !precioAcordado ? (
-                <p className="mt-1.5 text-[11px] text-slate-500">
-                  Sugerido por tarifas: {formatMoney(precioSugerido)}
-                </p>
+                <p className="mt-1.5 pk-caption">Sugerido por tarifas: {plata(precioSugerido)}</p>
               ) : null}
             </div>
-          </section>
+          </Seccion>
 
-          {/* Bottom CTA mobile */}
-          <div className="xl:hidden sticky bottom-3 z-20">
-            <button
-              type="button"
-              onClick={handleCrear}
-              disabled={!puedeCrear}
-              className="w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-semibold py-3.5 rounded-2xl shadow-xl shadow-slate-900/25 disabled:opacity-40"
-            >
-              {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-              {guardando ? "Creando abono..." : "Crear abono"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleCrear}
+            disabled={!puedeCrear}
+            className="xl:hidden w-full inline-flex items-center justify-center gap-2 bg-brand text-brand-foreground text-sm font-semibold py-3 disabled:opacity-40"
+          >
+            {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {guardando ? "Creando…" : "Crear abono"}
+          </button>
         </div>
 
-        {/* Summary panel */}
         <aside className="hidden xl:block">
-          <div className="sticky top-44 rounded-3xl border border-transparent bg-white  overflow-hidden">
-            <div className="px-5 py-4 bg-brand text-brand-foreground">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
-              <p className="text-base font-bold mt-1">Vista previa de abono</p>
-            </div>
-            <div className="p-5 space-y-4 text-sm">
+          <div className="sticky top-20 bg-surface-card border-l-[3px] border-l-brand">
+            <header className="px-4 py-3 border-b border-line">
+              <p className="pk-label">Resumen</p>
+              <p className="text-sm font-bold text-ink mt-1 truncate">{cliente?.nombre || "Sin cliente"}</p>
+            </header>
+            <div className="px-4 py-3 space-y-4 text-sm">
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Cliente</p>
-                <p className="font-semibold text-slate-900">{cliente?.nombre || "Sin seleccionar"}</p>
-              </div>
-              <div className="h-px bg-slate-100" />
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                  Plazas · {plazasDetalle.length}
-                </p>
+                <p className="pk-label mb-1.5">Plazas · {plazasDetalle.length}</p>
                 {plazasDetalle.length === 0 ? (
-                  <p className="text-slate-400">Ninguna aún</p>
+                  <p className="text-ink-muted">Ninguna</p>
                 ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {plazasDetalle.map(c => (
-                      <span key={c.cocheraId} className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-lg">
+                  <div className="flex flex-wrap gap-1">
+                    {plazasDetalle.map((c) => (
+                      <span key={c.cocheraId} className="px-1.5 py-0.5 bg-surface-muted text-[11px] font-bold text-ink tabular-nums">
                         {c.numero}
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="h-px bg-slate-100" />
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">
-                  Vehículos · {vehiculosCompletos.length}
-                </p>
+                <p className="pk-label mb-1.5">Vehículos · {vehiculosCompletos.length}</p>
                 {vehiculosCompletos.length === 0 ? (
-                  <p className="text-slate-400">Opcional</p>
+                  <p className="text-ink-muted">Ninguno</p>
                 ) : (
-                  <ul className="space-y-2">
-                    {vehiculosCompletos.map(v => (
+                  <ul className="space-y-1.5">
+                    {vehiculosCompletos.map((v) => (
                       <li key={v.key} className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-800">{v.patente}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          Number(v.modalidad) === MODALIDAD.FLEXIBLE
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-indigo-50 text-indigo-700"
-                        }`}>
+                        {v.patente ? <Patente valor={v.patente} size="sm" /> : <span className="pk-caption">Sin patente</span>}
+                        <span className={`pk-caption font-semibold ${Number(v.modalidad) === MODALIDAD.FLEXIBLE ? "text-warning-ink" : "text-ink-muted"}`}>
                           {modalidadLabel(v.modalidad)}
                         </span>
                       </li>
@@ -1232,53 +1050,40 @@ export default function NuevoAbono() {
                   </ul>
                 )}
               </div>
-              <div className="h-px bg-slate-100" />
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Plan de cobro</p>
+                <p className="pk-label mb-1">Plan de cobro</p>
                 {planCobro ? (
                   <>
-                    <p className="font-semibold text-slate-900 capitalize">{planCobro.label}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="font-semibold text-ink capitalize">{planCobro.label}</p>
+                    <p className="pk-caption">
                       {planCobro.periodicidadLabel}
                       {planCobro.prorratea ? " · prorrateado" : ""}
-                      {politicaPrimerPeriodo === POLITICA_PRIMER_PERIODO.OMITIR_MES_ENTRANTE
-                        ? " · omite mes entrante"
-                        : ""}
+                      {politicaPrimerPeriodo === POLITICA_PRIMER_PERIODO.OMITIR_MES_ENTRANTE ? " · omite el mes" : ""}
                     </p>
-                    {planCobro.montoPrimera != null && (
-                      <p className="text-sm font-bold text-slate-800 mt-1">
-                        {formatMoney(planCobro.montoPrimera)}
-                      </p>
-                    )}
                   </>
                 ) : (
-                  <p className="text-slate-400">—</p>
+                  <p className="text-ink-muted">—</p>
                 )}
               </div>
-              <div className="h-px bg-slate-100" />
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Precio</p>
-                  <p className="text-xl font-black text-slate-900 tracking-tight">
-                    {precioAcordado
-                      ? formatMoney(precioAcordado)
-                      : !tieneFlexible && precioSugerido != null
-                        ? formatMoney(precioSugerido)
-                        : "—"}
-                  </p>
-                  {tieneFlexible && !precioAcordado && (
-                    <p className="text-[10px] text-amber-600 mt-0.5">Requiere precio acordado</p>
-                  )}
-                  {!tieneFlexible && !precioAcordado && precioSugerido != null && (
-                    <p className="text-[10px] text-slate-400 mt-0.5">Tarifa sugerida</p>
-                  )}
-                </div>
+              <div>
+                <p className="pk-label mb-1">Precio</p>
+                <p className="pk-amount text-ink">
+                  {precioAcordado
+                    ? plata(precioAcordado)
+                    : !tieneFlexible && precioSugerido != null
+                      ? plata(precioSugerido)
+                      : "—"}
+                </p>
+                {tieneFlexible && !precioAcordado && <p className="pk-caption text-warning-ink">Falta el acordado</p>}
+                {!tieneFlexible && !precioAcordado && precioSugerido != null && (
+                  <p className="pk-caption">Tarifa sugerida</p>
+                )}
               </div>
               <button
                 type="button"
                 onClick={handleCrear}
                 disabled={!puedeCrear}
-                className="w-full mt-2 inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-600/25"
+                className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-2.5"
               >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar alta
@@ -1287,10 +1092,11 @@ export default function NuevoAbono() {
           </div>
         </aside>
       </div>
+
       {avisosReserva.length > 0 && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-surface-overlay">
           <div className="bg-surface-card w-full max-w-md p-5 space-y-3 shadow-pk-modal">
-            <p className="text-sm font-black text-ink">EXISTEN RESERVAS AUTOMATICAS PARA ESTA COCHERA</p>
+            <p className="text-sm font-bold text-ink">Hay reservas automáticas en estas cocheras</p>
             <ul className="space-y-2">
               {avisosReserva.map((aviso) => (
                 <li key={aviso.reservaId}>
@@ -1313,4 +1119,3 @@ export default function NuevoAbono() {
     </div>
   );
 }
-

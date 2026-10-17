@@ -15,9 +15,11 @@ import {
   List,
   Scale,
   Banknote,
+  Map,
   ParkingSquare,
   CalendarClock,
   Clock,
+  History,
   Search,
   Receipt,
   FileBarChart,
@@ -29,6 +31,13 @@ import {
 import { ACCIONES, permisosStore } from "../../utils/permisosStore";
 
 const sections = [
+  {
+    title: "Rotativo",
+    links: [
+      { to: "/rotativo", label: "Ingreso y salida", icon: Clock, end: true },
+      { to: "/rotativo/historico", label: "Estadías", icon: History },
+    ],
+  },
   {
     title: "Estacionamiento",
     links: [
@@ -70,6 +79,8 @@ const CONFIG_ITEMS = [
   { to: "/configuracion/perfil", label: "Mi perfil", icon: User },
   { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento, ACCIONES.ConfigurarReservas, ACCIONES.AdministrarTiposDeGasto] },
   { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign, anyOf: [ACCIONES.VerTarifas, ACCIONES.AdministrarTarifas] },
+  { to: "/configuracion/tarifas-estadia", label: "Tarifas de estadía", icon: DollarSign },
+  { to: "/configuracion/general?tab=rotativo", label: "Zonas de rotativo", icon: Map },
   { to: "/configuracion/reglas-asignacion", label: "Reglas de asignación", icon: GitBranch, anyOf: [ACCIONES.AdministrarReglasAsignacion] },
   { to: "/configuracion/grupos", label: "Grupos de seguridad", icon: Shield, anyOf: [ACCIONES.AdministrarGrupos] },
   { to: "/configuracion/usuarios", label: "Usuarios y accesos", icon: UserCog, anyOf: [ACCIONES.VerUsuarios, ACCIONES.AsignarPermisos] },
@@ -125,11 +136,11 @@ export default function Sidebar({ open }) {
               </h4>
 
               <div className="space-y-0.5">
-                {section.links.map(({ to, label, icon: Icon }) => (
+                {section.links.map(({ to, label, icon: Icon, end }) => (
                   <NavLink
                     key={to}
                     to={to}
-                    end={to === "/"}
+                    end={to === "/" || !!end}
                     className={({ isActive }) =>
                       `flex items-center gap-3.5 py-2.5 rounded-none text-[13px] transition-all group ${
                         isActive
@@ -187,32 +198,35 @@ export default function Sidebar({ open }) {
                 isConfigOpen ? "max-h-[40rem] opacity-100 py-1" : "max-h-0 opacity-0 pointer-events-none"
               }`}
             >
-              {visibleConfig.map(({ to, label, icon: Icon }) => (
+              {visibleConfig.map(({ to, label, icon: Icon }) => {
+                const path = to.split("?")[0];
+                const tab = new URLSearchParams(to.split("?")[1] || "").get("tab");
+                const activo =
+                  location.pathname === path &&
+                  (tab
+                    ? new URLSearchParams(location.search).get("tab") === tab
+                    : path !== "/configuracion/general" || !new URLSearchParams(location.search).get("tab") || new URLSearchParams(location.search).get("tab") === "general");
+                return (
                 <NavLink
                   key={to}
                   to={to}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 py-2 px-3 rounded-none text-[12px] transition-all group ${
-                      isActive
-                        ? "bg-brand-muted text-brand font-bold border-l-[3px] border-brand pl-2"
-                        : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink"
-                    }`
-                  }
+                  className={`flex items-center gap-3 py-2 px-3 rounded-none text-[12px] transition-all group ${
+                    activo
+                      ? "bg-brand-muted text-brand font-bold border-l-[3px] border-brand pl-2"
+                      : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink"
+                  }`}
                 >
-                  {({ isActive }) => (
-                    <>
-                      <Icon
-                        size={17}
-                        strokeWidth={isActive ? 2.25 : 1.85}
-                        className={`shrink-0 transition-colors duration-200 ${
-                          isActive ? "text-brand" : "text-ink-faint group-hover:text-ink-muted"
-                        }`}
-                      />
-                      <span className="tracking-tight leading-none">{label}</span>
-                    </>
-                  )}
+                  <Icon
+                    size={17}
+                    strokeWidth={activo ? 2.25 : 1.85}
+                    className={`shrink-0 transition-colors duration-200 ${
+                      activo ? "text-brand" : "text-ink-faint group-hover:text-ink-muted"
+                    }`}
+                  />
+                  <span className="tracking-tight leading-none">{label}</span>
                 </NavLink>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

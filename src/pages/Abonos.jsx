@@ -1,147 +1,160 @@
-import { useState, useEffect, useMemo } from "react";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  CreditCard,
-  Car,
-  AlertTriangle,
-  ChevronRight,
-  Phone,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CreditCard, Pencil, Plus, Trash2 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import ModalEditarAbono from "../components/layout/ModalEditarAbono";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
 import Checkbox from "../components/layout/Check";
-
-/** @typedef {import("../types").Abono} Abono */
-import { useNavigate } from "react-router-dom";
+import Patente from "../components/layout/Patente";
+import Paginacion, { paginaDe } from "../components/layout/Paginacion";
 import {
+  FILTROS_ABONO,
   abonoIdOf,
-  labelCocheras,
-  plazasDe,
-  vehiculosDe,
   abonoSearchText,
+  deudaDe,
+  esActivo,
+  estadoAbono,
+  labelCocheras,
   modalidadLabel,
-  nombreTipoVehiculo,
-  MODALIDAD,
+  pasaFiltroAbono,
+  plataAbono,
+  plazasDe,
+  resumenAbonos,
+  vehiculosDe,
 } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
-
-function formatPrecio(precio) {
-  if (precio == null || precio === "") return null;
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  }).format(Number(precio));
-}
+import { fechaCorta, haceCuanto } from "../utils/clienteHelpers";
 
 function periodicidadLabel(value) {
   return PERIODICIDAD_OPTIONS.find((o) => o.value === Number(value))?.label || "Mensual";
 }
 
-function formatFecha(fecha) {
-  if (!fecha) return "—";
-  return new Date(fecha).toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+function Cocheras({ abono }) {
+  const nums = plazasDe(abono)
+    .map((p) => p.cochera?.numero)
+    .filter(Boolean);
+  if (nums.length === 0) return <span className="text-ink-faint">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1">
+      {nums.slice(0, 3).map((n) => (
+        <span key={n} className="px-1.5 py-0.5 bg-surface-muted text-[11px] font-bold text-ink tabular-nums">
+          {n}
+        </span>
+      ))}
+      {nums.length > 3 && <span className="pk-caption">+{nums.length - 3}</span>}
+    </span>
+  );
 }
 
-function PlazaMark({ label, muted, debt }) {
-  const parts = String(label || "—")
-    .split(/[·,]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const primary = parts[0] || "—";
-  const extra = parts.length > 1 ? `+${parts.length - 1}` : null;
-
+function Patentes({ abono }) {
+  const vehiculos = vehiculosDe(abono);
+  if (vehiculos.length === 0) return <span className="text-ink-faint">—</span>;
   return (
-    <div
-      className={`relative w-[4.25rem] h-[4.25rem] rounded-2xl flex flex-col items-center justify-center shrink-0 transition-colors
-        ${muted
-          ? "bg-slate-100 text-slate-400"
-          : debt
-            ? "bg-rose-600 text-white shadow-lg shadow-rose-600/20"
-            : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/20"
-        }`}
-    >
-      <span
-        className={`text-[9px] font-bold uppercase tracking-[0.14em] leading-none ${
-          muted ? "text-slate-400" : debt ? "text-rose-200" : "text-slate-400"
-        }`}
-      >
-        Plaza
-      </span>
-      <span className="text-lg font-black leading-tight tracking-tight mt-0.5 tabular-nums truncate max-w-[3.5rem] text-center">
-        {primary}
-      </span>
-      {extra && (
-        <span
-          className={`absolute -top-1.5 -right-1.5 min-w-[1.35rem] h-5 px-1 rounded-full text-[10px] font-black flex items-center justify-center border-2 border-white
-            ${debt ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-700"}`}
-        >
-          {extra}
+    <span className="inline-flex items-center gap-1">
+      {vehiculos.slice(0, 2).map((v, i) => (
+        <span key={v.abonoVehiculoId ?? `${v.patente}-${i}`} className="inline-flex items-center gap-1">
+          {v.patente ? <Patente valor={v.patente} size="sm" /> : null}
+          <span className="pk-caption hidden 2xl:inline">
+            {modalidadLabel(v.modalidad)?.slice(0, 3)}
+          </span>
         </span>
+      ))}
+      {vehiculos.length > 2 && <span className="pk-caption">+{vehiculos.length - 2}</span>}
+    </span>
+  );
+}
+
+function Cuenta({ abono }) {
+  const estado = estadoAbono(abono);
+  return (
+    <div className="leading-tight">
+      <p className={`text-sm font-semibold tabular-nums ${estado.texto}`}>{estado.label}</p>
+      {deudaDe(abono) > 0 && abono.diasAtraso > 0 && (
+        <p className="pk-caption tabular-nums">{abono.diasAtraso} d</p>
       )}
     </div>
   );
 }
 
+function Acciones({ abono, onPagos, onEditar, onBaja }) {
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
+  const activo = esActivo(abono);
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <button type="button" title="Pagos" onClick={onPagos} className={icono}>
+        <CreditCard size={15} />
+      </button>
+      {activo && (
+        <>
+          <button type="button" title="Editar" onClick={onEditar} className={icono}>
+            <Pencil size={15} />
+          </button>
+          <button
+            type="button"
+            title="Dar de baja"
+            onClick={onBaja}
+            className={`${icono} hover:text-danger-ink`}
+          >
+            <Trash2 size={15} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Vacio({ texto }) {
+  return <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">{texto}</div>;
+}
+
 export default function Abonos() {
-  const [abonos, setAbonos] = useState(/** @type {Abono[]} */ ([]));
+  const navigate = useNavigate();
+  const [abonos, setAbonos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState("todos");
   const [verHistoricos, setVerHistoricos] = useState(false);
   const [modalEditar, setModalEditar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [pagina, setPagina] = useState(1);
 
-  useEffect(() => {
-    cargarAbonos();
-  }, [verHistoricos]);
-
-  async function cargarAbonos() {
+  const cargarAbonos = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = verHistoricos
-        ? await abonoService.getAllAbonos()
-        : await abonoService.getOcupadas();
-      setAbonos(data);
+      const data = await abonoService.listado(verHistoricos);
+      setAbonos(Array.isArray(data) ? data : []);
     } catch {
-      setError("No se pudo conectar con el servidor");
+      setError("No se pudieron cargar los abonos");
     } finally {
       setLoading(false);
     }
-  }
+  }, [verHistoricos]);
 
-  const abonosFiltrados = abonos.filter((a) => {
+  useEffect(() => {
+    cargarAbonos();
+  }, [cargarAbonos]);
+
+  const resumen = useMemo(() => resumenAbonos(abonos), [abonos]);
+  const visibles = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
-    if (!q) return true;
-    return abonoSearchText(a).includes(q);
-  });
+    return abonos.filter((a) => pasaFiltroAbono(a, filtro) && (!q || abonoSearchText(a).includes(q)));
+  }, [abonos, filtro, busqueda]);
 
-  const stats = useMemo(() => {
-    const activos = abonos.filter((a) => a.activo === true || a.activo === "true");
-    const deudores = activos.filter(
-      (a) => a.diasAtraso > 0 || a.esDeudor === true || a.montoDeuda > 0
-    );
-    return {
-      total: abonos.length,
-      activos: activos.length,
-      deudores: deudores.length,
-    };
-  }, [abonos]);
+  const paginaClave = `${filtro}|${busqueda}|${verHistoricos}`;
+  useEffect(() => {
+    setPagina(1);
+  }, [paginaClave]);
+
+  const visPage = paginaDe(visibles, pagina);
+  const hayFiltros = filtro !== "todos" || busqueda.trim() !== "";
 
   async function handleDarDeBaja(abono) {
-    const confirmado = confirm(
-      `¿Dar de baja el abono de ${abono.cliente?.nombre} (cocheras ${labelCocheras(abono)})?\n\nEsta acción liberará las plazas.`
-    );
-    if (!confirmado) return;
+    if (!confirm(`¿Dar de baja el abono de ${abono.cliente?.nombre} (cocheras ${labelCocheras(abono)})?\n\nEsta acción libera las plazas.`)) {
+      return;
+    }
     try {
       await abonoService.darDeBaja(abonoIdOf(abono));
       cargarAbonos();
@@ -152,10 +165,10 @@ export default function Abonos() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in-up">
+    <div className="space-y-5 pb-12 animate-fade-in-up">
       <PageHeader
         title="Abonos"
-        description="Contratos activos, plazas y vehículos habilitados."
+        description="Contratos, plazas y el estado de cada cuenta."
         loading={loading}
         action={
           <PageHeaderAction onClick={() => navigate("/abonos/nuevo")}>
@@ -164,313 +177,174 @@ export default function Abonos() {
           </PageHeaderAction>
         }
         stats={[
-          { label: "Listados", value: stats.total },
-          { label: "Activos", value: stats.activos },
-          { label: "Con deuda", value: stats.deudores, tone: "danger" },
+          { label: "Activos", value: resumen.activos, onClick: () => setFiltro("todos") },
+          { label: "Al día", value: resumen.alDia, tone: "success", onClick: () => setFiltro("aldia") },
+          { label: "Con deuda", value: resumen.conDeuda, tone: "danger", onClick: () => setFiltro("deuda") },
+          { label: "Deuda total", value: plataAbono(resumen.deudaTotal), tone: "danger", onClick: () => setFiltro("deuda") },
         ]}
       />
 
-      {error && (
-        <div className="px-4 py-3 bg-danger-muted text-danger-ink text-sm flex items-center gap-2">
-          <AlertTriangle size={15} className="shrink-0" />
-          {error}
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchField
+          value={busqueda}
+          onChange={setBusqueda}
+          placeholder="Cliente, cochera, patente o cobrador"
+          className="w-full sm:w-80"
+        />
+        <FiltroSegmentado
+          ariaLabel="Filtrar abonos"
+          value={filtro}
+          onChange={setFiltro}
+          opciones={FILTROS_ABONO.map((f) => ({ ...f, cantidad: resumen.cantidades[f.value] }))}
+        />
+        {hayFiltros && (
+          <button
+            type="button"
+            className="text-xs font-semibold text-brand"
+            onClick={() => {
+              setFiltro("todos");
+              setBusqueda("");
+            }}
+          >
+            Limpiar filtros
+          </button>
+        )}
+        <label className="ml-auto flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <Checkbox checked={verHistoricos} onChange={(e) => setVerHistoricos(e.target.checked)} />
+          Ver dados de baja
+        </label>
+      </div>
+
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando abonos…</span>
         </div>
-      )}
-
-      {/* Toolbar + lista */}
-      <div className="bg-surface-card overflow-hidden">
-        <div className="px-4 sm:px-5 py-3.5 border-b border-line flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <SearchField
-            value={busqueda}
-            onChange={setBusqueda}
-            placeholder="Cochera, cliente, patente o cobrador…"
-            className="relative flex-1 max-w-md"
-          />
-
-          <label className="flex items-center gap-2.5 cursor-pointer select-none shrink-0">
-            <Checkbox
-              checked={verHistoricos}
-              onChange={(e) => setVerHistoricos(e.target.checked)}
-            />
-            <span className="text-sm font-semibold text-slate-600">Incluir históricos</span>
-          </label>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-10 h-10 border-[3px] border-slate-100 border-t-slate-900 rounded-full animate-spin" />
-            <p className="text-sm font-semibold text-slate-500">Cargando abonos…</p>
-          </div>
-        ) : abonosFiltrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
-              <Car className="w-6 h-6 text-slate-300" />
-            </div>
-            <h4 className="pk-heading">Sin resultados</h4>
-            <p className="pk-desc mt-1 max-w-xs">
-              No hay abonos que coincidan con la búsqueda
-              {verHistoricos ? "" : " activa"}.
-            </p>
-            {!busqueda && (
-              <button
-                type="button"
-                onClick={() => navigate("/abonos/nuevo")}
-                className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 rounded-xl transition-colors"
-              >
-                <Plus size={15} /> Crear el primero
-              </button>
-            )}
-          </div>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {abonosFiltrados.map((abono, index) => {
-              const id = abonoIdOf(abono);
-              const esActivo = abono.activo === true || abono.activo === "true";
-              const esDeudor =
-                abono.diasAtraso > 0 || abono.esDeudor === true || abono.montoDeuda > 0;
-              const plazas = plazasDe(abono);
-              const vehiculos = vehiculosDe(abono);
-              const primeraCat = plazas[0]?.cochera?.categoriaCochera?.nombre;
-              const precio = formatPrecio(abono.precioAcordado);
-              const delay = Math.min(index * 40, 280);
-
-              return (
-                <li
-                  key={id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(`/pagosAbono/${id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/pagosAbono/${id}`);
-                    }
-                  }}
-                  className={`group relative transition-colors cursor-pointer ${
-                    !esActivo
-                      ? "bg-slate-50/40"
-                      : esDeudor
-                        ? "hover:bg-rose-50/40"
-                        : "hover:bg-slate-50/70"
-                  }`}
-                  style={{ animationDelay: `${delay}ms` }}
-                >
-                  {/* Accent edge */}
-                  <div
-                    className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full ${
-                      !esActivo
-                        ? "bg-slate-200"
-                        : esDeudor
-                          ? "bg-rose-500"
-                          : "bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    }`}
-                  />
-
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-5 px-4 sm:px-5 py-4 sm:py-5">
-                    {/* Plaza + identidad */}
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <PlazaMark
-                        label={labelCocheras(abono)}
-                        muted={!esActivo}
-                        debt={esActivo && esDeudor}
-                      />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3
-                            className={`text-base font-bold tracking-tight truncate ${
-                              !esActivo
-                                ? "text-slate-400 line-through"
-                                : esDeudor
-                                  ? "text-rose-700"
-                                  : "text-slate-900"
-                            }`}
-                          >
-                            {abono.cliente?.nombre ?? "Sin cliente"}
-                          </h3>
-                          {esActivo ? (
-                            esDeudor ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
-                                <AlertTriangle size={10} />
-                                Deuda
-                                {abono.diasAtraso > 0 ? ` · ${abono.diasAtraso}d` : ""}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                Activo
-                              </span>
-                            )
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                              Baja
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="pk-caption mt-0.5 truncate">
-                          {plazas.length > 1
-                            ? `${plazas.length} plazas · ${labelCocheras(abono)}`
-                            : primeraCat || "Sin categoría"}
-                          {abono.cliente?.telefono ? ` · ${abono.cliente.telefono}` : ""}
-                        </p>
-
-                        {/* Patentes */}
-                        <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                          {vehiculos.length === 0 ? (
-                            <span className="text-[11px] text-slate-400 font-medium">
-                              Sin vehículos
-                            </span>
-                          ) : (
-                            vehiculos.slice(0, 4).map((v, i) => (
-                              <span
-                                key={v.abonoVehiculoId ?? `${v.patente}-${i}`}
-                                className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-bold px-2 py-1 rounded-lg border ${
-                                  esActivo
-                                    ? "bg-white border-slate-200 text-slate-800"
-                                    : "bg-slate-100 border-slate-100 text-slate-400"
-                                }`}
-                              >
-                                {v.patente || "S/PAT"}
-                                {nombreTipoVehiculo(v) && (
-                                  <span className="font-sans font-semibold normal-case tracking-normal text-ink-muted">
-                                    {nombreTipoVehiculo(v)}
-                                  </span>
-                                )}
-                                <span
-                                  className={`text-[9px] font-bold uppercase tracking-wide px-1 py-px rounded ${
-                                    Number(v.modalidad) === MODALIDAD.FLEXIBLE
-                                      ? "bg-amber-50 text-amber-700"
-                                      : "bg-indigo-50 text-indigo-600"
-                                  }`}
-                                >
-                                  {modalidadLabel(v.modalidad)?.slice(0, 3) || "Fij"}
-                                </span>
-                              </span>
-                            ))
-                          )}
-                          {vehiculos.length > 4 && (
-                            <span className="text-[11px] font-semibold text-slate-400">
-                              +{vehiculos.length - 4}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Meta + precio */}
-                    <div className="flex items-center justify-between lg:justify-end gap-4 lg:gap-8 pl-[4.25rem] lg:pl-0 sm:pl-0">
-                      <div className="hidden sm:flex flex-col items-start lg:items-end gap-1 min-w-[7.5rem]">
-                        <span className="inline-flex text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                          {periodicidadLabel(abono.periodicidadCobro)}
-                        </span>
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          Desde {formatFecha(abono.fechaInicio)}
-                        </p>
-                        {abono.cobrador && (
-                          <p className="text-[11px] text-slate-400 truncate max-w-[9rem]">
-                            {abono.cobrador}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="text-right shrink-0 min-w-[5.5rem]">
-                        <p className="pk-label mb-0.5">Monto</p>
-                        <p
-                          className={`text-lg font-black tracking-tight tabular-nums ${
-                            !esActivo ? "text-slate-400" : "text-slate-900"
-                          }`}
-                        >
-                          {precio || (
-                            <span className="text-sm font-bold text-slate-500">Lista</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Acciones */}
-                    <div className="flex items-center gap-1.5 pl-[4.25rem] lg:pl-0 sm:pl-0 lg:opacity-80 lg:group-hover:opacity-100 transition-opacity">
-                      {abono.cliente?.telefono && (
-                        <a
-                          href={`https://wa.me/549${String(abono.cliente.telefono).replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="WhatsApp"
-                          className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Phone size={15} />
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/pagosAbono/${id}/cargo`);
-                        }}
-                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100"
-                      >
-                        Cargo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/pagosAbono/${id}/reintegro`);
-                        }}
-                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100"
-                      >
-                        Reintegro
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/pagosAbono/${id}`);
-                        }}
-                        className={`inline-flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all ${
-                          esDeudor && esActivo
-                            ? "bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/20"
-                            : "bg-brand text-brand-foreground hover:bg-brand-strong shadow-md shadow-slate-900/15"
+      ) : abonos.length === 0 ? (
+        <Vacio texto="Todavía no hay abonos. Cargá el primero con Nuevo abono." />
+      ) : visibles.length === 0 ? (
+        <Vacio texto="Ningún abono coincide con la búsqueda." />
+      ) : (
+        <>
+          <div className="hidden md:block bg-surface-card overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[22%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[12%] hidden lg:table-column" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <th className="pk-label font-bold pl-4 pr-3 py-2.5">Cliente</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cocheras</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Patentes</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cuota</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cuenta</th>
+                  <th className="pk-label font-bold px-3 py-2.5 hidden lg:table-cell">Último pago</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {visPage.map((abono) => {
+                  const id = abonoIdOf(abono);
+                  const activo = esActivo(abono);
+                  const deuda = deudaDe(abono);
+                  return (
+                    <tr
+                      key={id}
+                      onClick={() => navigate(`/pagosAbono/${id}`)}
+                      className={`border-b border-line cursor-pointer hover:bg-surface-page ${activo ? "" : "opacity-55"}`}
+                    >
+                      <td
+                        className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${
+                          deuda > 0 ? "border-l-danger" : "border-l-transparent"
                         }`}
                       >
-                        <CreditCard size={14} />
-                        Pagos
-                        <ChevronRight size={13} className="opacity-60" />
-                      </button>
-                      {esActivo && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalEditar(abono);
-                            }}
-                            title="Editar"
-                            className="p-2.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDarDeBaja(abono);
-                            }}
-                            title="Dar de baja"
-                            className="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </>
-                      )}
+                        <p className="font-semibold text-ink truncate">{abono.cliente?.nombre ?? "Sin cliente"}</p>
+                        <p className="pk-caption truncate">
+                          {[abono.cliente?.telefono, abono.cobrador && `Cobra ${abono.cobrador}`].filter(Boolean).join(" · ") || "\u00a0"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <Cocheras abono={abono} />
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <Patentes abono={abono} />
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="font-semibold text-ink tabular-nums">
+                          {abono.precioAcordado != null ? plataAbono(abono.precioAcordado) : "Lista"}
+                        </p>
+                        <p className="pk-caption">
+                          {periodicidadLabel(abono.periodicidadCobro)} · {fechaCorta(abono.fechaInicio)}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <Cuenta abono={abono} />
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden hidden lg:table-cell">
+                        {abono.ultimoPago ? (
+                          <div className="leading-tight">
+                            <p className="text-ink tabular-nums">{fechaCorta(abono.ultimoPago)}</p>
+                            <p className="pk-caption">{haceCuanto(abono.ultimoPago)}</p>
+                          </div>
+                        ) : (
+                          <span className="text-ink-faint">—</span>
+                        )}
+                      </td>
+                      <td className="pl-2 pr-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <Acciones
+                          abono={abono}
+                          onPagos={() => navigate(`/pagosAbono/${id}`)}
+                          onEditar={() => setModalEditar(abono)}
+                          onBaja={() => handleDarDeBaja(abono)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="md:hidden bg-surface-card divide-y divide-line">
+            {visPage.map((abono) => {
+              const id = abonoIdOf(abono);
+              const activo = esActivo(abono);
+              const deuda = deudaDe(abono);
+              return (
+                <li key={id} className={activo ? "" : "opacity-55"}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/pagosAbono/${id}`)}
+                    className={`w-full text-left px-4 py-3 border-l-[3px] ${deuda > 0 ? "border-l-danger" : "border-l-transparent"}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-semibold text-ink truncate">{abono.cliente?.nombre ?? "Sin cliente"}</span>
+                      <Cuenta abono={abono} />
                     </div>
-                  </div>
+                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                      <Cocheras abono={abono} />
+                      <Patentes abono={abono} />
+                    </div>
+                    <p className="pk-caption mt-1 tabular-nums">
+                      {abono.precioAcordado != null ? plataAbono(abono.precioAcordado) : "Lista"} · {periodicidadLabel(abono.periodicidadCobro)}
+                    </p>
+                  </button>
                 </li>
               );
             })}
           </ul>
-        )}
-      </div>
+
+          <Paginacion pagina={pagina} total={visibles.length} onChange={setPagina} />
+        </>
+      )}
 
       {modalEditar && (
         <ModalEditarAbono

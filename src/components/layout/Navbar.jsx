@@ -95,7 +95,7 @@ export default function Navbar({ onMenuClick }) {
     <header
       className="
         fixed top-0 right-0 left-0 z-20
-        bg-surface-card border-b border-line-subtle
+        bg-brand text-brand-foreground border-b border-black/10
         shadow-pk-soft
         px-4 lg:px-6 h-14 flex items-center justify-between gap-4
       "
@@ -103,7 +103,7 @@ export default function Navbar({ onMenuClick }) {
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuClick}
-          className="p-1.5 -ml-1 text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors shrink-0"
+          className="p-1.5 -ml-1 text-brand-foreground hover:bg-white/10 transition-colors shrink-0"
           aria-label="Abrir menú"
         >
           <Menu size={18} />
@@ -116,16 +116,16 @@ export default function Navbar({ onMenuClick }) {
           aria-label="Ir al inicio"
           title="Inicio"
         >
-          <div className="w-8 h-8 bg-brand text-brand-foreground flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 bg-brand-foreground text-brand flex items-center justify-center shrink-0">
             <span className="text-sm font-black leading-none">P</span>
           </div>
           <div className="flex flex-col min-w-0 text-left">
-            <span className="text-sm font-black text-ink leading-tight tracking-tight group-hover:text-brand transition-colors">
+            <span className="text-sm font-black text-brand-foreground leading-tight tracking-tight">
               Parkking
             </span>
             {sucursal ? (
               <span
-                className="text-[10px] font-medium text-ink-faint truncate max-w-[160px] sm:max-w-[220px]"
+                className="text-[10px] font-medium text-brand-foreground truncate max-w-[160px] sm:max-w-[220px]"
                 title={direccion || sucursal}
               >
                 {sucursal}
@@ -134,12 +134,12 @@ export default function Navbar({ onMenuClick }) {
           </div>
         </button>
 
-        <div className="hidden sm:block h-6 w-px bg-line-subtle mx-1 shrink-0" />
+        <div className="hidden sm:block h-6 w-px bg-white/25 mx-1 shrink-0" />
 
         {puedeCambiar && (
           <button
             onClick={handleChangeEstacionamiento}
-            className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 bg-surface-card text-[10px] font-bold uppercase tracking-wider text-ink-muted hover:bg-surface-muted hover:text-brand transition-colors shrink-0"
+            className="hidden sm:flex items-center gap-1.5 py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider text-brand-foreground hover:bg-white/10 transition-colors shrink-0"
           >
             <RefreshCcw size={11} />
             Cambiar Sucursal
@@ -150,7 +150,7 @@ export default function Navbar({ onMenuClick }) {
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={() => navigate("/configuracion/perfil")}
-          className="hidden sm:block text-[13px] font-bold text-ink hover:text-brand transition-colors whitespace-nowrap"
+          className="hidden sm:block text-[13px] font-bold text-brand-foreground hover:bg-white/10 transition-colors whitespace-nowrap px-2 py-1"
           aria-label="Mi perfil"
           title="Mi perfil"
         >
@@ -158,16 +158,16 @@ export default function Navbar({ onMenuClick }) {
         </button>
         <time
           dateTime={ahora.toISOString()}
-          className="hidden sm:block text-[12px] font-semibold text-ink-muted tabular-nums whitespace-nowrap"
+          className="hidden sm:block text-[12px] font-semibold text-brand-foreground tabular-nums whitespace-nowrap"
         >
           {fechaSistema} {horaSistema}
         </time>
 
-        <div className="hidden sm:block h-5 w-px bg-line-subtle mx-1" />
+        <div className="hidden sm:block h-5 w-px bg-white/25 mx-1" />
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 py-1.5 px-3 text-[11px] font-semibold text-ink-faint hover:bg-danger-muted/80 hover:text-danger transition-all group"
+          className="flex items-center gap-1.5 py-1.5 px-3 text-[11px] font-semibold text-brand-foreground hover:bg-white/10 transition-all group"
           aria-label="Cerrar sesión"
         >
           <LogOut

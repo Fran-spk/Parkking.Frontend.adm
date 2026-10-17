@@ -9,6 +9,10 @@ export const clienteService = {
   getAll: (includeInactivos = false) =>
     api.get("/cliente", { params: { includeInactivos } }).then((r) => r.data),
 
+  /** Clientes con abonos, cocheras, patentes, deuda y último pago. */
+  listado: (includeInactivos = false) =>
+    api.get("/cliente/listado", { params: { includeInactivos } }).then((r) => r.data),
+
   /** @returns {Promise<Cliente>} */
   getById: (id) => api.get(`/cliente/${id}`).then((r) => r.data),
 

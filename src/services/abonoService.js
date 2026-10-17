@@ -31,6 +31,10 @@ async function messageFromBlob(data) {
 }
 
 export const abonoService = {
+  /** Abonos con deuda y último pago. */
+  listado: (includeInactivos = false) =>
+    api.get(`${BASE}/listado`, { params: { includeInactivos } }).then((r) => r.data),
+
   /** @returns {Promise<Abono[]>} */
   getOcupadas: () =>
     api.get(`${BASE}/ocupadas`).then(r => r.data),

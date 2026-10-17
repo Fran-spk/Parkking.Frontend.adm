@@ -20,6 +20,8 @@
  * @property {string} emailAvisos
  * @property {number | null} diaInicioAvisoDeuda
  * @property {number} frecuenciaAvisoDeuda
+ * @property {number} operatoriaRotativo
+ * @property {number} toleranciaRotativoMinutos
  */
 
 /**

@@ -11,6 +11,7 @@ import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { pagoService } from "../../services/pagoService";
+import { estadiaService } from "../../services/estadiaService";
 import { reciboService } from "../../services/reciboService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { metodoDePagoService } from "../../services/metodoDePagoService";
@@ -21,6 +22,7 @@ import { abonoIdOf, labelCocheras, labelPatentes } from "../../utils/abonoHelper
 import { imprimirReciboPdf } from "../../utils/imprimirRecibo";
 import Checkbox from "./Check";
 import FilterSelect from "./FilterSelect";
+import DescuentoEstadia from "./DescuentoEstadia";
 
 const formatCurrency = (val) =>
   new Intl.NumberFormat("es-AR", {
@@ -28,6 +30,17 @@ const formatCurrency = (val) =>
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(Number(val) || 0);
+
+function saldoConDescuento(bruto, tipo, valor) {
+  const base = Math.round((Number(bruto) || 0) * 100) / 100;
+  if (tipo === "" || tipo == null) return base;
+  const v = Number(valor);
+  if (!Number.isFinite(v) || v <= 0) return base;
+  const descuento = Number(tipo) === 0
+    ? Math.round(base * Math.min(v, 100)) / 100
+    : v;
+  return Math.max(0, Math.round((base - descuento) * 100) / 100);
+}
 
 function parsePeriodoDate(value) {
   if (!value) return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -66,6 +79,8 @@ export default function ModalRegistrarPago({
   cargo = null,
   sena = null,
   deudas = null,
+  estadia = null,
+  estadiasAbiertas = null,
   onClose,
   onRegistrado,
 }) {
@@ -124,6 +139,27 @@ export default function ModalRegistrarPago({
   const [error, setError] = useState(null);
   const [periodoBloqueado, setPeriodoBloqueado] = useState(false);
   const [elegidas, setElegidas] = useState(() => new Set((deudas || []).map((d) => d.key)));
+  const [patenteEstadia, setPatenteEstadia] = useState(estadia?.patente || "");
+  const [descuentoTipo, setDescuentoTipo] = useState("");
+  const [descuentoValor, setDescuentoValor] = useState("");
+  const [descuentoMotivo, setDescuentoMotivo] = useState("");
+
+  const modoEstadia = estadia != null || estadiasAbiertas != null;
+  const estadiaElegida = useMemo(() => {
+    if (!modoEstadia) return null;
+    if (estadia) return estadia;
+    const buscada = patenteEstadia.replace(/[\s-]/g, "").toUpperCase();
+    if (!buscada) return null;
+    return (estadiasAbiertas || []).find(
+      (e) => String(e.patente || "").replace(/[\s-]/g, "").toUpperCase() === buscada
+    ) || null;
+  }, [modoEstadia, estadia, estadiasAbiertas, patenteEstadia]);
+  const saldoEstadia = useMemo(() => {
+    if (!estadiaElegida) return 0;
+    return saldoConDescuento(estadiaElegida.saldo, descuentoTipo, descuentoValor);
+  }, [estadiaElegida, descuentoTipo, descuentoValor]);
+  const estadiaSinCobro = !!estadiaElegida && (estadiaElegida.esAbonado || saldoEstadia <= 0);
+  const puedeDescontar = !!estadiaElegida && !estadiaElegida.esAbonado && Number(estadiaElegida.saldo) > 0;
 
   useEffect(() => {
     metodoDePagoService
@@ -177,11 +213,12 @@ export default function ModalRegistrarPago({
   }, [esMulti, listaFija, montosPorCuota]);
 
   const saldoMaximo = useMemo(() => {
+    if (estadiaElegida) return saldoEstadia;
     if (esMulti) return lineasMulti.reduce((acc, l) => acc + l.saldo, 0);
     if (cuotaDelPeriodo?.saldo != null) return Number(cuotaDelPeriodo.saldo);
     if (sugerido?.monto != null) return Number(sugerido.monto);
     return null;
-  }, [esMulti, lineasMulti, cuotaDelPeriodo, sugerido]);
+  }, [estadiaElegida, saldoEstadia, esMulti, lineasMulti, cuotaDelPeriodo, sugerido]);
 
   const periodoLabel = esMulti
     ? `${listaFija.length} períodos`
@@ -236,7 +273,7 @@ export default function ModalRegistrarPago({
     }
     if (saldoMaximo != null && n > saldoMaximo) {
       setMonto(String(saldoMaximo));
-      setError(`No podés pagar más que el saldo de la cuota (${formatCurrency(saldoMaximo)}).`);
+      setError(`No podés pagar más que el saldo (${formatCurrency(saldoMaximo)}).`);
       return;
     }
     if (error && error.includes("más que el saldo")) setError(null);
@@ -265,7 +302,14 @@ export default function ModalRegistrarPago({
   }
 
   useEffect(() => {
-    if (!abonoId || sena) return;
+    if (!estadiaElegida) return;
+    setMonto(String(estadiaElegida.esAbonado ? 0 : saldoEstadia));
+    setPeriodoBloqueado(false);
+    setError(null);
+  }, [estadiaElegida, saldoEstadia]);
+
+  useEffect(() => {
+    if (modoEstadia || !abonoId || sena) return;
 
     if (esConjunto) {
       setPeriodoBloqueado(false);
@@ -382,6 +426,39 @@ export default function ModalRegistrarPago({
     setError(null);
 
     try {
+      if (modoEstadia) {
+        if (!estadiaElegida) throw new Error("No hay una estadía abierta con esa patente.");
+        const body = {};
+        if (!estadiaSinCobro) {
+          if (!metodoDePagoId) throw new Error("Seleccioná un método de pago.");
+          if (montoNumerico <= 0) throw new Error("El monto debe ser mayor a cero");
+          if (excedeSaldo) throw new Error("El monto no puede superar el saldo.");
+          body.importe = montoNumerico;
+          body.metodoDePagoId = Number(metodoDePagoId);
+        }
+        if (descuentoTipo !== "" && descuentoValor !== "") {
+          body.descuentoTipo = Number(descuentoTipo);
+          body.descuentoValor = Number(descuentoValor);
+          body.descuentoMotivo = descuentoMotivo.trim();
+        }
+        const registrado = await estadiaService.salir(estadiaElegida.estadiaId, body);
+        try {
+          const datos = await estacionamientoService.get();
+          if (datos?.imprimirReciboAlCobrar !== false && registrado?.reciboId) {
+            const recibo = await reciboService.getById(registrado.reciboId);
+            await imprimirReciboPdf(recibo, {
+              nombreEstacionamiento: datos.nombre,
+              direccion: datos.direccion,
+            });
+          }
+        } catch {
+          /* el cobro ya quedó */
+        }
+        onRegistrado();
+        onClose();
+        return;
+      }
+
       if (periodoBloqueado) {
         throw new Error("No se puede registrar un pago sobre una cuota ya pagada.");
       }
@@ -509,14 +586,15 @@ export default function ModalRegistrarPago({
     }
   };
 
-  const confirmarDeshabilitado =
-    enviando ||
-    loadingSugerido ||
-    periodoBloqueado ||
-    !metodoDePagoId ||
-    metodos.length === 0 ||
-    montoNumerico <= 0 ||
-    excedeSaldo;
+  const confirmarDeshabilitado = modoEstadia
+    ? enviando || !estadiaElegida || (!estadiaSinCobro && (!metodoDePagoId || metodos.length === 0 || montoNumerico <= 0 || excedeSaldo))
+    : enviando ||
+      loadingSugerido ||
+      periodoBloqueado ||
+      !metodoDePagoId ||
+      metodos.length === 0 ||
+      montoNumerico <= 0 ||
+      excedeSaldo;
 
   useEffect(() => {
     const html = document.documentElement;
@@ -543,7 +621,9 @@ export default function ModalRegistrarPago({
         <div className="shrink-0 bg-brand px-4 py-2.5 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wide text-white/70">
-              {esConjunto
+              {modoEstadia
+                ? "Cobrar salida"
+                : esConjunto
                 ? "Pagar deuda"
                 : sena
                 ? "Cobrar seña"
@@ -555,14 +635,15 @@ export default function ModalRegistrarPago({
                     ? "Adelantar cuota"
                     : "Pagar cuota"}
             </p>
-            <p className="text-sm font-bold text-brand-foreground truncate">{clienteNombre}</p>
+            <p className="text-sm font-bold text-brand-foreground truncate">
+              {modoEstadia ? (estadiaElegida?.patente || patenteEstadia || "Patente") : clienteNombre}
+            </p>
             <p className="text-[11px] text-white/75 truncate">
-              Cochera {cocheras}
-              {patentes ? ` · ${patentes}` : ""}
-              {periodoLabel && !esConjunto ? ` · ${periodoLabel}` : ""}
-              {esConjunto
-                ? ` · ${deudas.filter((d) => elegidas.has(d.key)).length} de ${deudas.length}`
-                : ""}
+              {modoEstadia
+                ? estadiaElegida
+                  ? `${estadiaElegida.tipoVehiculoNombre || ""}${estadiaElegida.zonaNombre ? ` · ${estadiaElegida.zonaNombre}` : ""}${estadiaElegida.esAbonado ? " · Abonado" : ""}`
+                  : "Sin estadía abierta"
+                : `Cochera ${cocheras}${patentes ? ` · ${patentes}` : ""}${periodoLabel && !esConjunto ? ` · ${periodoLabel}` : ""}${esConjunto ? ` · ${deudas.filter((d) => elegidas.has(d.key)).length} de ${deudas.length}` : ""}`}
             </p>
           </div>
           <button
@@ -586,7 +667,35 @@ export default function ModalRegistrarPago({
               .join(" · ") || "\u00a0"}
           </p>
           <div className="shrink-0 max-h-[42%] overflow-y-auto px-4 py-2 space-y-2">
-            {esConjunto ? (
+            {modoEstadia ? (
+              <div className="space-y-2">
+                {!estadia && (
+                  <label className="block">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Patente</span>
+                    <input
+                      value={patenteEstadia}
+                      onChange={(e) => setPatenteEstadia(e.target.value)}
+                      className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                    />
+                  </label>
+                )}
+                {estadiaElegida ? (
+                  <div className="flex items-center gap-2 w-full bg-surface-muted px-3 py-1.5 border border-line">
+                    <span className="text-sm font-semibold text-ink">
+                      {estadiaSinCobro
+                        ? "Se cierra sin pago"
+                        : `Saldo ${formatCurrency(saldoEstadia)}${
+                            saldoEstadia < Number(estadiaElegida.saldo)
+                              ? ` · antes ${formatCurrency(estadiaElegida.saldo)}`
+                              : ""
+                          }`}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-ink-muted">No hay una estadía abierta con esa patente.</p>
+                )}
+              </div>
+            ) : esConjunto ? (
               <div className="space-y-1">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">
                   Deudas · se cobran completas
@@ -704,6 +813,7 @@ export default function ModalRegistrarPago({
           </div>
 
           <div className="shrink-0 px-4 pb-2 space-y-2">
+            {!estadiaSinCobro && (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Forma de pago</label>
               {metodos.length === 0 ? (
@@ -721,9 +831,10 @@ export default function ModalRegistrarPago({
                 />
               )}
             </div>
+            )}
 
-            {!esMulti && !esConjunto && (
-              <div className="grid grid-cols-2 gap-2">
+            {!esMulti && !esConjunto && !estadiaSinCobro && (
+              <div className={`grid gap-2 ${modoEstadia ? "grid-cols-1" : "grid-cols-2"}`}>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Monto</span>
                   <input
@@ -749,6 +860,7 @@ export default function ModalRegistrarPago({
                     </button>
                   )}
                 </label>
+                {!modoEstadia && (
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Recargo</span>
                   <input
@@ -762,6 +874,7 @@ export default function ModalRegistrarPago({
                     className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 tabular-nums"
                   />
                 </label>
+                )}
               </div>
             )}
 
@@ -781,6 +894,19 @@ export default function ModalRegistrarPago({
               </label>
             )}
 
+            {puedeDescontar && (
+              <DescuentoEstadia
+                tipo={descuentoTipo}
+                valor={descuentoValor}
+                motivo={descuentoMotivo}
+                onChange={(d) => {
+                  setDescuentoTipo(d.tipo);
+                  setDescuentoValor(d.valor);
+                  setDescuentoMotivo(d.motivo);
+                }}
+              />
+            )}
+
             {esPagoParcial && !periodoBloqueado && (
               <p className="text-[11px] text-warning-ink bg-warning-muted border border-warning/30 px-2 py-1">
                 Pago parcial. Queda {formatCurrency(pendienteTrasPago)}.
@@ -789,7 +915,7 @@ export default function ModalRegistrarPago({
 
             {montoNumerico > 0 && pendienteTrasPago != null && pendienteTrasPago <= 0.009 && !periodoBloqueado && (
               <p className="text-[11px] font-semibold text-success-ink bg-success-muted border border-success/25 px-2 py-1">
-                {esMulti ? "Todas las cuotas quedan saldadas." : "La cuota queda saldada."}
+                {esMulti ? "Todas las cuotas quedan saldadas." : modoEstadia ? "La estadía queda saldada." : "La cuota queda saldada."}
               </p>
             )}
 
@@ -811,6 +937,7 @@ export default function ModalRegistrarPago({
               </div>
             )}
 
+            {!modoEstadia && (
             <label className="block">
               <span className="text-[10px] font-bold uppercase tracking-wide text-ink-faint">Observación</span>
               <input
@@ -823,6 +950,7 @@ export default function ModalRegistrarPago({
                 className="mt-0.5 w-full bg-surface-muted border border-line-strong px-2 py-1.5 text-sm text-ink outline-none focus:border-brand disabled:opacity-50 placeholder:text-ink-faint"
               />
             </label>
+            )}
 
             {error && (
               <p className="flex items-start gap-1.5 bg-danger-muted text-danger text-xs font-semibold px-2 py-1 border border-line">
@@ -838,7 +966,7 @@ export default function ModalRegistrarPago({
                 {loadingSugerido ? "…" : formatCurrency(totalCobro)}
               </p>
               <p className="text-[11px] text-ink-muted truncate">
-                {esConjunto ? "Deudas" : esMulti ? "Cuotas" : "Monto"} {formatCurrency(montoNumerico)}
+                {modoEstadia ? "Saldo" : esConjunto ? "Deudas" : esMulti ? "Cuotas" : "Monto"} {formatCurrency(montoNumerico)}
                 {recargoNumerico > 0 ? ` + recargo ${formatCurrency(recargoNumerico)}` : ""}
               </p>
             </div>

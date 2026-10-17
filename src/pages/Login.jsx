@@ -8,7 +8,6 @@ import {
   ArrowRight,
   AlertCircle,
   ShieldCheck,
-  ParkingSquare,
 } from "lucide-react";
 import { authService } from "../services/authService";
 import { estacionamientoService } from "../services/estacionamientoService";
@@ -51,10 +50,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-page flex items-stretch overflow-hidden text-ink">
-      {/* Formulario */}
-      <div className="w-full lg:w-[45%] flex flex-col justify-between p-8 lg:p-12 bg-surface-card relative z-10">
-        <div className="flex items-center gap-2.5 animate-fade-in-up">
+    <div className="min-h-screen bg-surface-page flex items-center justify-center p-6 text-ink">
+      <div className="w-full max-w-md bg-surface-card border border-line p-8 flex flex-col gap-8">
+        <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-brand text-brand-foreground flex items-center justify-center">
             <span className="text-sm font-black leading-none">P</span>
           </div>
@@ -64,7 +62,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="max-w-md w-full mx-auto my-auto py-12 space-y-8 animate-fade-in-up">
+        <div className="w-full space-y-8">
           <div className="space-y-2">
             <h1 className="pk-title text-[1.75rem]">Bienvenido de vuelta</h1>
             <p className="pk-desc">
@@ -149,87 +147,6 @@ export default function Login() {
             <ShieldCheck size={14} className="text-success" />
             Acceso seguro
           </span>
-        </div>
-      </div>
-
-      {/* Panel branding */}
-      <div className="hidden lg:flex lg:w-[55%] bg-brand relative items-center justify-center p-12 overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: "radial-gradient(#fff 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-
-        <div className="relative max-w-lg w-full space-y-10 z-10 animate-fade-in-up">
-          <div className="bg-white/[0.06] border border-white/10 p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-              <div className="flex items-center gap-2">
-                <ParkingSquare size={16} className="text-white/70" />
-                <span className="text-[10px] text-white/50 tracking-wider font-bold uppercase">
-                  Panel central
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-white/40">Parkking</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-left">
-              <div className="bg-white/[0.06] p-4 border border-white/5">
-                <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">
-                  Ocupación
-                </span>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black text-white tabular-nums">82%</span>
-                  <span className="text-[10px] text-emerald-300 font-bold">+5% hoy</span>
-                </div>
-              </div>
-              <div className="bg-white/[0.06] p-4 border border-white/5">
-                <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider">
-                  Ingreso diario
-                </span>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-white tabular-nums">$45.200</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-2 text-left">
-              <div className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-emerald-400" />
-                  <div>
-                    <p className="text-xs font-bold text-white">Cochera 04 · Ocupada</p>
-                    <p className="text-[10px] text-white/40 font-mono">AF-123-JK</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-white/70 bg-white/10 px-2 py-0.5">
-                  Activo
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 bg-white/30" />
-                  <div>
-                    <p className="text-xs font-bold text-white">Cochera 15 · Libre</p>
-                    <p className="text-[10px] text-white/40">Disponible para abono</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5">
-                  Libre
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-center">
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Control claro para tu estacionamiento
-            </h2>
-            <p className="text-sm text-white/55 max-w-sm mx-auto leading-relaxed">
-              Cocheras, abonos, cobros y métricas en una sola plataforma.
-            </p>
-          </div>
         </div>
       </div>
     </div>

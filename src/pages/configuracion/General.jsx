@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw, CalendarClock, Tags } from "lucide-react";
+import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw, CalendarClock, Tags, Clock } from "lucide-react";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { applyColorMarca, colorMarcaForeground, COLOR_MARCA_DEFAULT } from "../../theme/parkking.theme.js";
 import { ACCIONES, permisosStore } from "../../utils/permisosStore";
@@ -12,6 +12,7 @@ import TiposVehiculo from "./TiposVehiculo";
 import MetodosDePago from "./MetodosDePago";
 import ReservasConfig from "./ReservasConfig";
 import TiposGasto from "./TiposGasto";
+import ZonasRotativo from "./ZonasRotativo";
 import Checkbox from "../../components/layout/Check";
 
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { id: "metodos", label: "Métodos de pago", icon: Banknote, anyOf: [ACCIONES.EditarEstacionamiento] },
   { id: "reservas", label: "Reservas", icon: CalendarClock, anyOf: [ACCIONES.ConfigurarReservas] },
   { id: "gastos", label: "Tipos de gasto", icon: Tags, anyOf: [ACCIONES.AdministrarTiposDeGasto] },
+  { id: "rotativo", label: "Zonas de rotativo", icon: Clock, anyOf: [ACCIONES.EditarEstacionamiento] },
 ];
 
 function GeneralForm() {
@@ -45,6 +47,8 @@ function GeneralForm() {
     avisoDeudaActivo: false,
     diaInicioAvisoDeuda: 10,
     frecuenciaAvisoDeuda: 0,
+    operatoriaRotativo: 0,
+    toleranciaRotativoMinutos: 0,
   });
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -82,6 +86,8 @@ function GeneralForm() {
         avisoDeudaActivo: data.diaInicioAvisoDeuda != null,
         diaInicioAvisoDeuda: data.diaInicioAvisoDeuda ?? 10,
         frecuenciaAvisoDeuda: Number(data.frecuenciaAvisoDeuda) || 0,
+        operatoriaRotativo: Number(data.operatoriaRotativo) || 0,
+        toleranciaRotativoMinutos: Number(data.toleranciaRotativoMinutos) || 0,
       });
     } catch {
       setError("No se pudo cargar la configuración");
@@ -151,6 +157,8 @@ function GeneralForm() {
         emailAvisos: form.emailAvisos.trim(),
         diaInicioAvisoDeuda: form.avisoDeudaActivo ? Number(form.diaInicioAvisoDeuda) : null,
         frecuenciaAvisoDeuda: Number(form.frecuenciaAvisoDeuda) || 0,
+        operatoriaRotativo: Number(form.operatoriaRotativo) || 0,
+        toleranciaRotativoMinutos: Number(form.toleranciaRotativoMinutos) || 0,
       });
       applyColorMarca(form.colorMarca);
       setExito(true);
@@ -481,6 +489,37 @@ function GeneralForm() {
         </div>
       </div>
 
+      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
+        <h3 className="pk-label pb-2 border-b border-line-subtle">Rotativo</h3>
+        <p className="pk-caption -mt-2">
+          La operatoria es de las estadías. No cambia las zonas de las cocheras. La tolerancia es una sola para la playa: minutos de gracia al cumplir una fracción. En cero está apagada.
+        </p>
+        <div>
+          <label className="pk-caption font-semibold block mb-1">Operatoria</label>
+          <select
+            value={form.operatoriaRotativo}
+            onChange={(e) => set("operatoriaRotativo", Number(e.target.value))}
+            className="w-full pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
+          >
+            <option value={0}>Libre, sin zona</option>
+            <option value={1}>Por zona de rotativo</option>
+          </select>
+        </div>
+        <div>
+          <label className="pk-caption font-semibold block mb-1">Tolerancia</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={0}
+              value={form.toleranciaRotativoMinutos}
+              onChange={(e) => set("toleranciaRotativoMinutos", e.target.value)}
+              className="w-24 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
+            />
+            <span className="pk-caption">minutos</span>
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-end">
         <button
           type="submit"
@@ -548,6 +587,7 @@ export default function General() {
       {tab === "metodos" && <MetodosDePago embedded />}
       {tab === "reservas" && <ReservasConfig embedded />}
       {tab === "gastos" && <TiposGasto embedded />}
+      {tab === "rotativo" && <ZonasRotativo embedded />}
     </div>
   );
 }

@@ -1,242 +1,188 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Phone, Mail, Car, ChevronRight, RotateCcw, Wallet } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { MessageCircle, Pencil, Plus, RotateCcw, Trash2, Wallet } from "lucide-react";
 import { clienteService } from "../services/clienteService";
-import { abonoService } from "../services/abonoService";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import FilterSelect from "../components/layout/FilterSelect";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
 import Checkbox from "../components/layout/Check";
+import Patente from "../components/layout/Patente";
+import PanelCliente from "../components/layout/PanelCliente";
+import Paginacion, { paginaDe } from "../components/layout/Paginacion";
+import {
+  FILTROS_CLIENTE,
+  ORDENES_CLIENTE,
+  clienteCoincide,
+  estadoCuenta,
+  fechaCorta,
+  haceCuanto,
+  ordenarClientes,
+  pasaFiltro,
+  plata,
+  resumenClientes,
+  whatsappUrl,
+} from "../utils/clienteHelpers";
 
-/** @typedef {import("../types").Cliente} Cliente */
-/** @typedef {import("../types").Abono} Abono */
+const MAX_CHIPS = 2;
 
-// ─── Panel lateral detalle ────────────────────────────────────────────────────
-function PanelDetalle({ clienteId, onClose, onEditar }) {
-  const navigate = useNavigate();
-  const [detalle, setDetalle] = useState(/** @type {Cliente | null} */ (null));
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    clienteService.getById(clienteId).then(data => {
-      setDetalle(data);
-      setLoading(false);
-    });
-  }, [clienteId]);
-
-  function formatFecha(fecha) {
-    if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-AR", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-    });
-  }
-
+function Cocheras({ lista }) {
+  if (lista.length === 0) return <span className="text-ink-faint">—</span>;
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/10" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-sm shadow-xl flex flex-col h-full">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Detalle cliente</h2>
-          <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
-        </div>
+    <span className="inline-flex items-center gap-1">
+      {lista.slice(0, 3).map((n) => (
+        <span key={n} className="px-1.5 py-0.5 bg-surface-muted text-[11px] font-bold text-ink tabular-nums">
+          {n}
+        </span>
+      ))}
+      {lista.length > 3 && <span className="pk-caption">+{lista.length - 3}</span>}
+    </span>
+  );
+}
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Cargando...</div>
-        ) : detalle && (
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-            <div>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{detalle.nombre}</h3>
-                  {!detalle.activo && (
-                    <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
-                      Inactivo
-                    </span>
-                  )}
-                </div>
-                {detalle.activo && (
-                  <button
-                    onClick={() => onEditar(detalle)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                )}
-              </div>
+function Patentes({ lista }) {
+  if (lista.length === 0) return <span className="text-ink-faint">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1">
+      {lista.slice(0, MAX_CHIPS).map((p) => (
+        <Patente key={p} valor={p} size="sm" />
+      ))}
+      {lista.length > MAX_CHIPS && <span className="pk-caption" title={lista.slice(MAX_CHIPS).join(", ")}>+{lista.length - MAX_CHIPS}</span>}
+    </span>
+  );
+}
 
-              <div className="mt-2 space-y-1.5">
-                {detalle.documento && (
-                  <p className="text-sm text-gray-500">DNI {detalle.documento}</p>
-                )}
-                {detalle.domicilio && (
-                  <p className="text-sm text-gray-500">{detalle.domicilio}</p>
-                )}
-                {detalle.telefono && (
-                  <a
-                    href={`https://wa.me/549${detalle.telefono}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-green-600 transition-colors"
-                  >
-                    <Phone size={13} />
-                    {detalle.telefono}
-                  </a>
-                )}
-                {detalle.email && (
-                  <a
-                    href={`mailto:${detalle.email}`}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
-                  >
-                    <Mail size={13} />
-                    {detalle.email}
-                  </a>
-                )}
-              </div>
-
-              {detalle.observacion && (
-                <p className="mt-3 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
-                  {detalle.observacion}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => navigate(`/clientes/${clienteId}/cuenta-corriente`)}
-                className="mt-4 inline-flex items-center gap-2 text-xs font-semibold bg-brand text-brand-foreground px-3 py-2"
-              >
-                <Wallet size={13} /> Cuenta corriente
-              </button>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
-                Abonos activos
-              </p>
-              {detalle.abonos?.length > 0 ? (
-                <div className="space-y-2">
-                  {detalle.abonos.map(abono => {
-                    const aid = abono.abonoId ?? abono.abonoCocheraId;
-                    const plazas = Array.isArray(abono.plazas) && abono.plazas.length > 0
-                      ? abono.plazas.filter(p => p.activo !== false)
-                      : (abono.cochera ? [{ cochera: abono.cochera }] : []);
-                    const vehiculos = Array.isArray(abono.vehiculos) && abono.vehiculos.length > 0
-                      ? abono.vehiculos
-                      : (abono.patente || abono.tipoVehiculo
-                        ? [{ patente: abono.patente, modeloVehiculo: abono.modeloVehiculo, tipoVehiculo: abono.tipoVehiculo }]
-                        : []);
-                    const cocherasLabel = plazas.map(p => p.cochera?.numero).filter(Boolean).join(", ") || "—";
-                    return (
-                    <div key={aid} className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-lg font-bold text-indigo-700">
-                          {plazas.length > 1 ? `Cocheras ${cocherasLabel}` : `Cochera ${cocherasLabel}`}
-                        </span>
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {vehiculos.filter(v => v.patente).map((v, i) => (
-                            <span key={v.abonoVehiculoId ?? `${v.patente}-${i}`} className="font-mono text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
-                              {v.patente}
-                              {v.tipoVehiculo?.nombre ? ` · ${v.tipoVehiculo.nombre}` : ""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-indigo-500">
-                        <Car size={11} />
-                        <span>
-                          {vehiculos.length === 0
-                            ? "Sin vehículos"
-                            : vehiculos.map(v => [v.tipoVehiculo?.nombre, v.modeloVehiculo].filter(Boolean).join(" ")).filter(Boolean).join(" · ") || `${vehiculos.length} vehículo(s)`}
-                        </span>
-                      </div>
-                      <p className="text-xs text-indigo-400 mt-1">Desde {formatFecha(abono.fechaInicio)}</p>
-                    </div>
-                  );})}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400">Sin abonos activos</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+function Cuenta({ cliente }) {
+  const estado = estadoCuenta(cliente);
+  return (
+    <div className="leading-tight">
+      <p className={`text-sm font-semibold tabular-nums ${estado.texto}`}>{estado.label}</p>
+      {cliente.deuda > 0 && (
+        <p className="pk-caption tabular-nums">
+          {cliente.deudaDetalle.length} {cliente.deudaDetalle.length === 1 ? "ítem" : "ítems"} · {cliente.diasAtraso} d
+        </p>
+      )}
     </div>
   );
 }
 
-// ─── Vista principal ──────────────────────────────────────────────────────────
+function Acciones({ cliente, onCuenta, onEditar, onBaja, onReactivar }) {
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
+  if (!cliente.activo) {
+    return (
+      <button type="button" title="Reactivar" onClick={onReactivar} className={icono}>
+        <RotateCcw size={15} />
+      </button>
+    );
+  }
+  const wa = whatsappUrl(cliente.telefono);
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      {wa && (
+        <a href={wa} target="_blank" rel="noreferrer" title="WhatsApp" className={icono}>
+          <MessageCircle size={15} />
+        </a>
+      )}
+      <button type="button" title="Cuenta corriente" onClick={onCuenta} className={icono}>
+        <Wallet size={15} />
+      </button>
+      <button type="button" title="Editar" onClick={onEditar} className={icono}>
+        <Pencil size={15} />
+      </button>
+      <button
+        type="button"
+        title={cliente.abonosActivos > 0 ? "Tiene abonos activos" : "Dar de baja"}
+        disabled={cliente.abonosActivos > 0}
+        onClick={onBaja}
+        className={`${icono} hover:text-danger-ink disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-ink-faint`}
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+}
+
+function Vacio({ texto }) {
+  return <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">{texto}</div>;
+}
+
 export default function Clientes() {
   const navigate = useNavigate();
-  const [clientes, setClientes] = useState(/** @type {Cliente[]} */ ([]));
-  const [abonosPorCliente, setAbonosPorCliente] = useState({});
+  const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState("todos");
+  const [orden, setOrden] = useState("nombre");
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [panelId, setPanelId] = useState(null);
+  const [pagina, setPagina] = useState(1);
 
-  useEffect(() => { cargarDatos(); }, [mostrarInactivos]);
-
-  async function cargarDatos() {
+  const cargarDatos = useCallback(async () => {
     try {
       setError(null);
-      const [clientes, abonos] = await Promise.all([
-        clienteService.getAll(mostrarInactivos),
-        abonoService.getOcupadas(),
-      ]);
-      const mapa = {};
-      abonos.forEach(a => { mapa[a.clienteId] = (mapa[a.clienteId] ?? 0) + 1; });
-
-      setClientes(clientes);
-      console.log(clientes);
-      setAbonosPorCliente(mapa);
-    } catch {
-      setError("No se pudo conectar con el servidor");
+      const data = await clienteService.listado(mostrarInactivos);
+      setClientes(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const msg = e.response?.data;
+      setError(typeof msg === "string" ? msg : "No se pudieron cargar los clientes");
     } finally {
       setLoading(false);
     }
-  }
+  }, [mostrarInactivos]);
 
-  const clientesFiltrados = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.documento?.includes(busqueda) ||
-    c.domicilio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.telefono?.includes(busqueda) ||
-    c.email?.toLowerCase().includes(busqueda.toLowerCase())
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const resumen = useMemo(() => resumenClientes(clientes), [clientes]);
+  const visibles = useMemo(
+    () => ordenarClientes(clientes.filter((c) => pasaFiltro(c, filtro) && clienteCoincide(c, busqueda)), orden),
+    [clientes, filtro, busqueda, orden]
   );
+  const panel = panelId != null ? clientes.find((c) => c.clienteId === panelId) : null;
+  const hayFiltros = filtro !== "todos" || busqueda.trim() !== "";
+  const paginaClave = `${filtro}|${orden}|${busqueda}|${mostrarInactivos}`;
 
-  const stats = useMemo(() => {
-    const activos = clientes.filter((c) => c.activo);
-    const conAbono = activos.filter((c) => (abonosPorCliente[c.clienteId] ?? 0) > 0).length;
-    return {
-      total: clientes.length,
-      activos: activos.length,
-      conAbono,
-    };
-  }, [clientes, abonosPorCliente]);
+  useEffect(() => {
+    setPagina(1);
+  }, [paginaClave]);
 
-  async function handleDarDeBaja(cliente) {
+  const visPage = paginaDe(visibles, pagina);
+
+  async function darDeBaja(cliente) {
     if (!confirm(`¿Dar de baja a ${cliente.nombre}?`)) return;
     try {
       await clienteService.darDeBaja(cliente.clienteId);
-      cargarDatos();
+      setPanelId(null);
+      await cargarDatos();
     } catch (e) {
       const msg = e.response?.data;
       setError(typeof msg === "string" ? msg : "No se pudo dar de baja al cliente");
     }
   }
 
-  async function handleReactivar(cliente) {
+  async function reactivar(cliente) {
     try {
       await clienteService.reactivar(cliente.clienteId);
-      cargarDatos();
+      await cargarDatos();
     } catch {
       setError("No se pudo reactivar el cliente");
     }
   }
 
+  const acciones = (c) => ({
+    onCuenta: () => navigate(`/clientes/${c.clienteId}/cuenta-corriente`),
+    onEditar: () => navigate(`/clientes/${c.clienteId}/editar`),
+    onBaja: () => darDeBaja(c),
+    onReactivar: () => reactivar(c),
+  });
+
   return (
-    <div className="space-y-5 animate-fade-in-up">
+    <div className="space-y-5 pb-12 animate-fade-in-up">
       <PageHeader
         title="Clientes"
-        description="Agenda de abonados y contactos del estacionamiento."
+        description="Abonados y contactos del estacionamiento, con su estado de cuenta."
         loading={loading}
         action={
           <PageHeaderAction onClick={() => navigate("/clientes/nuevo")}>
@@ -245,172 +191,161 @@ export default function Clientes() {
           </PageHeaderAction>
         }
         stats={[
-          { label: "Listados", value: stats.total },
-          { label: "Activos", value: stats.activos },
-          { label: "Con abono", value: stats.conAbono },
+          { label: "Activos", value: resumen.activos, onClick: () => setFiltro("todos") },
+          { label: "Con abono", value: resumen.abonados, tone: "success", onClick: () => setFiltro("abonados") },
+          { label: "Con deuda", value: resumen.conDeuda, tone: "danger", onClick: () => setFiltro("deuda") },
+          { label: "Deuda total", value: plata(resumen.deudaTotal), tone: "danger", onClick: () => setOrden("deuda") },
         ]}
       />
 
-      {error && (
-        <div className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Buscador + toggle inactivos */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SearchField
           value={busqueda}
           onChange={setBusqueda}
-          placeholder="Buscar por nombre, DNI, teléfono o email..."
-          className="flex-1"
+          placeholder="Nombre, DNI, teléfono, patente o cochera"
+          className="w-full sm:w-80"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer select-none">
-          <Checkbox
-            checked={mostrarInactivos}
-            onChange={e => setMostrarInactivos(e.target.checked)}
-          />
-          Mostrar dados de baja
+        <FiltroSegmentado
+          ariaLabel="Filtrar clientes"
+          value={filtro}
+          onChange={setFiltro}
+          opciones={FILTROS_CLIENTE.map((f) => ({ ...f, cantidad: resumen.cantidades[f.value] }))}
+        />
+        <FilterSelect ariaLabel="Orden" value={orden} onChange={setOrden} options={ORDENES_CLIENTE} />
+        {hayFiltros && (
+          <button
+            type="button"
+            className="text-xs font-semibold text-brand"
+            onClick={() => {
+              setFiltro("todos");
+              setBusqueda("");
+            }}
+          >
+            Limpiar filtros
+          </button>
+        )}
+        <label className="ml-auto flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <Checkbox checked={mostrarInactivos} onChange={(e) => setMostrarInactivos(e.target.checked)} />
+          Ver dados de baja
         </label>
       </div>
 
-      {/* Tabla */}
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+
       {loading ? (
-        <div className="text-sm text-gray-400">Cargando...</div>
-      ) : (
-        <div className="bg-white rounded-xl border border-transparent overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Nombre</th>
-                <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Teléfono</th>
-                <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Email</th>
-                <th className="text-left text-xs font-medium text-gray-400 px-4 py-3">Abonos</th>
-                <th className="text-right text-xs font-medium text-gray-400 px-4 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientesFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center text-gray-400 py-10 text-sm">
-                    No hay clientes
-                  </td>
-                </tr>
-              ) : (
-                clientesFiltrados.map(cliente => {
-                  const cantAbonos = abonosPorCliente[cliente.clienteId] ?? 0;
-                  const inactivo = !cliente.activo;
-                  return (
-                    <tr
-                      key={cliente.clienteId}
-                      className={`border-b border-gray-50 transition-colors cursor-pointer ${inactivo ? "opacity-50 bg-gray-50" : "hover:bg-gray-50"
-                        }`}
-                      onClick={() => setPanelId(cliente.clienteId)}
-                    >
-                      {/* Nombre */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <p className={`font-medium ${inactivo ? "text-gray-400" : "text-gray-800"}`}>
-                            {cliente.nombre}
-                          </p>
-                          {inactivo && (
-                            <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
-                              Baja
-                            </span>
-                          )}
-                          {cliente.observacion && !inactivo && (
-                            <span className="text-xs text-gray-400 italic truncate max-w-32">
-                              {cliente.observacion}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Teléfono */}
-                      <td className="px-4 py-3 text-gray-500">
-                        {cliente.telefono ?? <span className="text-gray-300">—</span>}
-                      </td>
-
-                      {/* Email */}
-                      <td className="px-4 py-3 text-gray-500">
-                        {cliente.email ?? <span className="text-gray-300">—</span>}
-                      </td>
-
-                      {/* Abonos */}
-                      <td className="px-4 py-3">
-                        {cantAbonos > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium bg-green-50 text-green-600 border border-green-100 px-2 py-0.5 rounded-full">
-                            <Car size={10} />
-                            {cantAbonos} {cantAbonos === 1 ? "abono" : "abonos"}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-300">Sin abonos</span>
-                        )}
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {inactivo ? (
-                            <button
-                              title="Reactivar"
-                              onClick={() => handleReactivar(cliente)}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                            >
-                              <RotateCcw size={15} />
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                title="Cuenta corriente"
-                                onClick={() => navigate(`/clientes/${cliente.clienteId}/cuenta-corriente`)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-ink hover:bg-brand-muted transition-colors"
-                              >
-                                <Wallet size={15} />
-                              </button>
-                              <button
-                                title="Ver detalle"
-                                onClick={() => setPanelId(cliente.clienteId)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                              >
-                                <ChevronRight size={15} />
-                              </button>
-                              <button
-                                title="Editar"
-                                onClick={() => navigate(`/clientes/${cliente.clienteId}/editar`)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                              <button
-                                title="Dar de baja"
-                                onClick={() => handleDarDeBaja(cliente)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando clientes…</span>
         </div>
+      ) : clientes.length === 0 ? (
+        <Vacio texto="Todavía no hay clientes. Cargá el primero con Nuevo cliente." />
+      ) : visibles.length === 0 ? (
+        <Vacio texto="Ningún cliente coincide con la búsqueda." />
+      ) : (
+        <>
+          <div className="hidden md:block bg-surface-card overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[22%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[16%] hidden xl:table-column" />
+                <col className="w-[14%]" />
+                <col className="w-[10%] hidden lg:table-column" />
+                <col className="w-[8%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <th className="pk-label font-bold pl-4 pr-3 py-2.5">Cliente</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Contacto</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cocheras</th>
+                  <th className="pk-label font-bold px-3 py-2.5 hidden xl:table-cell">Patentes</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cuenta</th>
+                  <th className="pk-label font-bold px-3 py-2.5 hidden lg:table-cell">Último pago</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {visPage.map((c) => (
+                  <tr
+                    key={c.clienteId}
+                    onClick={() => setPanelId(c.clienteId)}
+                    className={`border-b border-line cursor-pointer hover:bg-surface-page ${c.activo ? "" : "opacity-55"}`}
+                  >
+                    <td
+                      className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${
+                        c.deuda > 0 ? "border-l-danger" : "border-l-transparent"
+                      }`}
+                    >
+                      <p className="font-semibold text-ink truncate">{c.nombre}</p>
+                      <p className="pk-caption truncate">
+                        {[c.documento && `DNI ${c.documento}`, c.observacion].filter(Boolean).join(" · ") || "\u00a0"}
+                      </p>
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden">
+                      <p className="text-ink truncate tabular-nums">{c.telefono ?? <span className="text-ink-faint">—</span>}</p>
+                      <p className="pk-caption truncate">{c.email ?? "\u00a0"}</p>
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden">
+                      <Cocheras lista={c.cocheras} />
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden hidden xl:table-cell">
+                      <Patentes lista={c.patentes} />
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden">
+                      <Cuenta cliente={c} />
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden hidden lg:table-cell">
+                      {c.ultimoPago ? (
+                        <div className="leading-tight">
+                          <p className="text-ink tabular-nums">{fechaCorta(c.ultimoPago)}</p>
+                          <p className="pk-caption">{haceCuanto(c.ultimoPago)}</p>
+                        </div>
+                      ) : (
+                        <span className="text-ink-faint">—</span>
+                      )}
+                    </td>
+                    <td className="pl-2 pr-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Acciones cliente={c} {...acciones(c)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="md:hidden bg-surface-card divide-y divide-line">
+            {visPage.map((c) => (
+              <li key={c.clienteId} className={c.activo ? "" : "opacity-55"}>
+                <button
+                  type="button"
+                  onClick={() => setPanelId(c.clienteId)}
+                  className={`w-full text-left px-4 py-3 border-l-[3px] ${c.deuda > 0 ? "border-l-danger" : "border-l-transparent"}`}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold text-ink truncate">{c.nombre}</span>
+                    <Cuenta cliente={c} />
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <Cocheras lista={c.cocheras} />
+                    <Patentes lista={c.patentes} />
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <Paginacion pagina={pagina} total={visibles.length} onChange={setPagina} />
+        </>
       )}
 
-      {panelId && (
-        <PanelDetalle
-          clienteId={panelId}
+      {panel && (
+        <PanelCliente
+          cliente={panel}
           onClose={() => setPanelId(null)}
-          onEditar={() => {
-            const id = panelId;
-            setPanelId(null);
-            navigate(`/clientes/${id}/editar`);
-          }}
+          onEditar={() => navigate(`/clientes/${panel.clienteId}/editar`)}
+          onDarDeBaja={() => darDeBaja(panel)}
+          onReactivar={() => reactivar(panel)}
         />
       )}
     </div>

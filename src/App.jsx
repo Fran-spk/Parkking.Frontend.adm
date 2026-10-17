@@ -21,12 +21,15 @@ import GrupoFinancieroPeriodo from "./pages/GrupoFinancieroPeriodo";
 import GruposFinancieros from "./pages/configuracion/GruposFinancieros";
 import PagosPendientes from "./pages/PagosPendientes";
 import BuscarPatente from "./pages/BuscarPatente";
+import Rotativo from "./pages/Rotativo";
+import RotativoHistorico from "./pages/RotativoHistorico";
 import Recibos from "./pages/Recibos";
 import Reportes from "./pages/reportes/Reportes";
 import MensajesEnviados from "./pages/MensajesEnviados";
 import PerfilConfig from "./pages/configuracion/Perfil";
 import GeneralConfig from "./pages/configuracion/General";
 import TarifasConfig from "./pages/configuracion/Tarifas";
+import TarifasEstadia from "./pages/configuracion/TarifasEstadia";
 import ReglasAsignacionConfig from "./pages/configuracion/ReglasAsignacion";
 import UsuariosConfig from "./pages/configuracion/Usuarios";
 import GruposSeguridad from "./pages/configuracion/GruposSeguridad";
@@ -58,6 +61,8 @@ export default function App() {
           <Route path="pagos-pendientes" element={<PagosPendientes />} />
           <Route path="deudores" element={<Navigate to="/pagos-pendientes" replace />} />
           <Route path="buscar-patente" element={<BuscarPatente />} />
+          <Route path="rotativo" element={<Rotativo />} />
+          <Route path="rotativo/historico" element={<RotativoHistorico />} />
           <Route path="abonos" element={<Abonos />} />
           <Route path="abonos/nuevo" element={<NuevoAbono />} />
           <Route path="reservas" element={<Reservas />} />
@@ -87,6 +92,7 @@ export default function App() {
             <Route path="tipos-vehiculo" element={<Navigate to="/configuracion/general?tab=tipos" replace />} />
             <Route path="metodos-pago" element={<Navigate to="/configuracion/general?tab=metodos" replace />} />
             <Route path="tarifas" element={<TarifasConfig />} />
+            <Route path="tarifas-estadia" element={<TarifasEstadia />} />
             <Route path="reservas" element={<Navigate to="/configuracion/general?tab=reservas" replace />} />
             <Route path="tipos-gasto" element={<Navigate to="/configuracion/general?tab=gastos" replace />} />
             <Route path="grupos-financieros" element={<Navigate to="/grupos-financieros" replace />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, X, CheckCircle2 } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { clienteService } from "../../services/clienteService";
+import { fieldClass } from "./FilterSelect";
 
 /** @typedef {import("../../types").Cliente} Cliente */
 
@@ -18,7 +19,7 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
   const [guardando, setGuardando] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const ref = useRef(null);
-  const inputPad = size === "lg" ? "px-4 py-3.5 text-[15px]" : "px-3 py-2.5 text-sm";
+  const inputPad = size === "lg" ? "py-2.5" : "";
 
   useEffect(() => {
     function handleClick(e) {
@@ -96,42 +97,38 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
           }}
           onFocus={() => busqueda && !seleccionado && setAbierto(true)}
           placeholder="Buscar por nombre o teléfono..."
-          className={`w-full border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400 pr-10 transition-all ${inputPad} ${
-            seleccionado
-              ? "border-emerald-300 bg-emerald-50/80"
-              : "border-slate-200 bg-white"
-          }`}
+          className={`${fieldClass} pr-10 ${inputPad} ${seleccionado ? "border-success bg-success-muted" : ""}`}
         />
         {seleccionado ? (
-          <button type="button" onClick={limpiar} className="absolute right-3 top-1/2 -translate-y-1/2" title="Cambiar cliente">
-            <CheckCircle2 size={18} className="text-emerald-500 hover:text-red-400 transition-colors" />
+          <button type="button" onClick={limpiar} className="pk-icon-btn absolute right-2 top-1/2 -translate-y-1/2 p-1 text-success-ink" title="Cambiar cliente">
+            <X size={15} />
           </button>
         ) : busqueda ? (
-          <button type="button" onClick={limpiar} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-            <X size={16} />
+          <button type="button" onClick={limpiar} className="pk-icon-btn absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-faint hover:text-ink">
+            <X size={15} />
           </button>
         ) : null}
       </div>
 
       {abierto && busqueda && !seleccionado && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50 z-20 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-surface-card border border-line-strong z-20 overflow-hidden">
           {resultados.map(c => (
             <button
               key={c.clienteId}
               type="button"
               onClick={() => seleccionar(c)}
-              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
+              className="w-full text-left px-3 py-2.5 text-sm hover:bg-surface-page border-b border-line last:border-0"
             >
-              <p className="font-semibold text-slate-800">{c.nombre}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {[c.documento && `DNI ${c.documento}`, c.telefono].filter(Boolean).join(" · ")}
+              <p className="font-semibold text-ink">{c.nombre}</p>
+              <p className="pk-caption">
+                {[c.documento && `DNI ${c.documento}`, c.telefono].filter(Boolean).join(" · ") || "\u00a0"}
               </p>
             </button>
           ))}
           <button
             type="button"
             onClick={() => { setCreando(true); setAbierto(false); }}
-            className="w-full text-left px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center gap-2 font-medium"
+            className="w-full text-left px-3 py-2.5 text-sm font-semibold text-brand hover:bg-surface-page flex items-center gap-2"
           >
             <Plus size={15} /> Crear “{busqueda}”
           </button>
@@ -139,47 +136,47 @@ export default function BuscadorCliente({ onSeleccionar, size = "md" }) {
       )}
 
       {creando && !seleccionado && (
-        <div className="mt-3 p-4 bg-indigo-50/80 border border-indigo-100 rounded-2xl space-y-3">
-          <p className="text-xs font-semibold text-indigo-700">Nuevo cliente · {busqueda}</p>
+        <div className="mt-3 bg-surface-page border-l-[3px] border-l-brand px-4 py-3 space-y-2">
+          <p className="pk-label">Nuevo cliente · {busqueda}</p>
           <input
             type="text"
             value={nuevoCliente.documento || ""}
             onChange={e => setNuevoCliente(p => ({ ...p, documento: e.target.value }))}
-            placeholder="DNI / documento (opcional)"
-            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+            placeholder="DNI (opcional)"
+            className={fieldClass}
           />
           <input
             type="text"
             value={nuevoCliente.domicilio || ""}
             onChange={e => setNuevoCliente(p => ({ ...p, domicilio: e.target.value }))}
             placeholder="Domicilio (opcional)"
-            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+            className={fieldClass}
           />
           <input
             type="text"
             value={nuevoCliente.telefono || ""}
             onChange={e => setNuevoCliente(p => ({ ...p, telefono: e.target.value }))}
             placeholder="Teléfono (opcional)"
-            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+            className={fieldClass}
           />
           <input
             type="text"
             value={nuevoCliente.email || ""}
             onChange={e => setNuevoCliente(p => ({ ...p, email: e.target.value }))}
             placeholder="Email (opcional)"
-            className="w-full text-sm border border-indigo-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 bg-white"
+            className={fieldClass}
           />
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setCreando(false)} className="flex-1 text-xs font-medium text-slate-500 border border-slate-200 rounded-xl py-2.5 hover:bg-white transition-colors">
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => setCreando(false)} className="flex-1 px-3 py-2 text-xs font-semibold text-ink-muted border border-line-strong">
               Cancelar
             </button>
             <button
               type="button"
               onClick={handleCrear}
               disabled={guardando}
-              className="flex-1 text-xs font-semibold text-brand-foreground bg-brand rounded-xl py-2.5 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="flex-1 px-3 py-2 text-xs font-semibold text-brand-foreground bg-brand hover:bg-brand-strong disabled:opacity-50"
             >
-              {guardando ? "Creando..." : "Crear y seleccionar"}
+              {guardando ? "Creando…" : "Crear y seleccionar"}
             </button>
           </div>
         </div>
