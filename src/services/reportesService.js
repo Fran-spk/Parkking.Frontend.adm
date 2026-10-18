@@ -59,31 +59,33 @@ async function downloadBlob(path, params, fallbackName) {
 }
 
 export const reportesService = {
-  downloadDashboardPdf: () =>
-    downloadBlob("/reportes/dashboard.pdf", undefined, "dashboard.pdf"),
+  downloadDashboardPdf: (origen = "ambos") =>
+    downloadBlob("/reportes/dashboard.pdf", { origen }, "dashboard.pdf"),
 
-  downloadPagosExcel: (desde, hasta) =>
+  downloadPagosExcel: (desde, hasta, origen = "ambos") =>
     downloadBlob(
       "/reportes/pagos.xlsx",
-      { desde, hasta },
-      `pagos-${desde || "desde"}-${hasta || "hasta"}.xlsx`
+      { desde, hasta, origen },
+      `pagos-${origen}-${desde || "desde"}-${hasta || "hasta"}.xlsx`
     ),
 
-  enviarDashboardEmail: ({ destino, usuarioId } = {}) =>
+  enviarDashboardEmail: ({ destino, usuarioId, origen } = {}) =>
     api
       .post("/reportes/dashboard/enviar-email", {
         destino: destino || "estacionamiento",
         usuarioId: usuarioId || null,
+        origen: origen || "ambos",
       })
       .then((r) => r.data),
 
-  enviarPagosEmail: ({ destino, usuarioId, desde, hasta } = {}) =>
+  enviarPagosEmail: ({ destino, usuarioId, desde, hasta, origen } = {}) =>
     api
       .post("/reportes/pagos/enviar-email", {
         destino: destino || "estacionamiento",
         usuarioId: usuarioId || null,
         desde: desde || null,
         hasta: hasta || null,
+        origen: origen || "ambos",
       })
       .then((r) => r.data),
 };

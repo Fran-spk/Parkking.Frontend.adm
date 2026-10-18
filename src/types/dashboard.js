@@ -22,6 +22,7 @@
 /**
  * @typedef {object} AlertaDeudor
  * @property {number} abonoId
+ * @property {number} [reservaId]
  * @property {number} [abonoCocheraId]
  * @property {string} clienteNombre
  * @property {string | null} clienteTelefono
@@ -50,6 +51,31 @@
  * @property {number} totalRecaudadoMensualReal
  * @property {number} totalEstimadoProyeccion
  * @property {number} diferenciaPorcentaje
+ * @property {number} recaudadoHoy
+ * @property {number} recaudadoAbonosMes
+ * @property {number} recaudadoEstadiasMes
+ */
+
+/**
+ * @typedef {object} DashboardEstadiaAbierta
+ * @property {number} estadiaId
+ * @property {string} patente
+ * @property {string} tipoVehiculoNombre
+ * @property {string | null} zonaNombre
+ * @property {string} horaEntrada
+ * @property {number} minutosTranscurridos
+ * @property {boolean} esAbonado
+ */
+
+/**
+ * @typedef {object} DashboardReservaResumen
+ * @property {number} reservaId
+ * @property {string} nombre
+ * @property {string} fechaInicio
+ * @property {string} fechaVencimiento
+ * @property {string | null} cocheras
+ * @property {boolean} senaPendiente
+ * @property {boolean} automatica
  */
 
 /**
@@ -58,11 +84,17 @@
  * @property {number} cocherasOcupadas
  * @property {number} cocherasTotales
  * @property {number} cantidadAbonosActivos
+ * @property {number} rotativosAdentro
+ * @property {number} entradasRotativoHoy
+ * @property {number} reservasVigentes
+ * @property {number} reservasConSenaPendiente
  * @property {CocheraStatus[]} estadoCocheras
  * @property {AlertaDeudor[]} alertasDeudores
  * @property {DistribucionVehiculo[]} distribucionVehiculos
  * @property {HistoricoIngresos[]} graficoIngresos
  * @property {DetalleIngresosKpi} detalleIngresos
+ * @property {DashboardEstadiaAbierta[]} estadiasAbiertas
+ * @property {DashboardReservaResumen[]} reservasProximas
  */
 
 export {};

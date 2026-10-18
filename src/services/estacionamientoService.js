@@ -1,5 +1,6 @@
 import api from "./api";
 import { authService } from "./authService";
+import { destinoPostLogin } from "../utils/playa";
 
 /** @typedef {import("../types").Estacionamiento} Estacionamiento */
 /** @typedef {import("../types").EstacionamientoAcceso} EstacionamientoAcceso */
@@ -50,7 +51,7 @@ export const estacionamientoService = {
     localStorage.setItem("parkking_estacionamiento", JSON.stringify(est));
     window.dispatchEvent(new Event("estacionamiento_changed"));
     await authService.me();
-    navigate("/mi-estacionamiento", { replace: true });
+    navigate(destinoPostLogin(), { replace: true });
   },
 
   async seleccionarEstacionamiento(estacionamientoId) {

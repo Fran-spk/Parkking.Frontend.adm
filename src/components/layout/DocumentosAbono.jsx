@@ -6,7 +6,6 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-  Paperclip,
   Plus,
   X,
 } from "lucide-react";
@@ -185,20 +184,17 @@ export default function DocumentosAbono({ abono }) {
   }
 
   return (
-    <aside className="bg-surface-card border border-line overflow-hidden flex flex-col max-h-[min(70vh,640px)]">
+    <aside className="bg-surface-card overflow-hidden flex flex-col max-h-[min(70vh,640px)]">
       <div className="px-3.5 py-3 border-b border-line flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <Paperclip size={15} className="text-ink-faint shrink-0" />
-          <div className="min-w-0">
-            <h2 className="text-xs font-bold text-ink tracking-tight">Archivos adjuntos</h2>
-            <p className="text-[10px] text-ink-faint">{docs.length} archivo{docs.length === 1 ? "" : "s"}</p>
-          </div>
+        <div className="min-w-0">
+          <h2 className="pk-label">Archivos adjuntos</h2>
+          <p className="pk-caption mt-0.5">{docs.length} archivo{docs.length === 1 ? "" : "s"}</p>
         </div>
         <button
           type="button"
           onClick={() => (mostrarCarga ? cerrarCarga() : setMostrarCarga(true))}
           title={mostrarCarga ? "Cerrar" : "Agregar documento"}
-          className={`shrink-0 w-7 h-7 flex items-center justify-center transition-colors ${
+          className={`pk-icon-btn w-7 h-7 flex items-center justify-center ${
             mostrarCarga
               ? "bg-surface-muted text-ink-muted hover:text-ink"
               : "bg-brand text-brand-foreground hover:bg-brand-strong"
@@ -211,7 +207,7 @@ export default function DocumentosAbono({ abono }) {
       {mostrarCarga && (
         <form
           onSubmit={handleSubir}
-          className="px-3.5 py-3 border-b border-line bg-surface-muted/50 space-y-2.5 shrink-0"
+          className="px-3.5 py-3 border-b border-line bg-surface-page space-y-2.5 shrink-0"
         >
           <div>
             <label className="pk-label block mb-1">Tipo</label>
@@ -291,11 +287,9 @@ export default function DocumentosAbono({ abono }) {
 
       <div className="p-3 overflow-y-auto flex-1 min-h-0">
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-ink-faint py-4">
-            <Loader2 size={13} className="animate-spin" /> Cargando…
-          </div>
+          <p className="pk-caption py-8 text-center">Cargando…</p>
         ) : docs.length === 0 ? (
-          <p className="text-xs text-ink-faint py-4 text-center leading-relaxed">
+          <p className="pk-caption py-8 text-center leading-relaxed">
             Sin archivos todavía.
             <br />
             Seguros, DNI, contrato…
@@ -309,14 +303,14 @@ export default function DocumentosAbono({ abono }) {
                   {items.map((d) => (
                     <li
                       key={d.documentoId}
-                      className="flex items-start gap-2 px-2 py-2 bg-surface-muted/60 hover:bg-surface-muted transition-colors"
+                      className="flex items-start gap-2 px-2 py-2 bg-surface-page hover:bg-surface-muted"
                     >
                       <FileText size={14} className="text-ink-muted shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-semibold text-ink truncate leading-tight">
                           {d.nombreOriginal}
                         </p>
-                        <p className="text-[10px] text-ink-faint mt-0.5 leading-snug">
+                        <p className="pk-caption mt-0.5 leading-snug">
                           {labelTipo(d.tipo)} · {formatBytes(d.tamanoBytes)}
                           {d.fechaVencimiento ? ` · vence ${formatFecha(d.fechaVencimiento)}` : ""}
                         </p>
@@ -327,7 +321,7 @@ export default function DocumentosAbono({ abono }) {
                           title="Descargar"
                           disabled={busyId === d.documentoId}
                           onClick={() => handleDescargar(d)}
-                          className="p-1 text-ink-faint hover:text-ink"
+                          className="pk-icon-btn p-1 text-ink-faint hover:text-ink"
                         >
                           {busyId === d.documentoId ? (
                             <Loader2 size={12} className="animate-spin" />
@@ -340,7 +334,7 @@ export default function DocumentosAbono({ abono }) {
                           title="Eliminar"
                           disabled={busyId === d.documentoId}
                           onClick={() => handleEliminar(d)}
-                          className="p-1 text-ink-faint hover:text-danger"
+                          className="pk-icon-btn p-1 text-ink-faint hover:text-danger"
                         >
                           <Trash2 size={12} />
                         </button>

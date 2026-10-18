@@ -11,7 +11,6 @@ import {
   SlidersHorizontal,
   DollarSign,
   Layers,
-  GitBranch,
   List,
   Scale,
   Banknote,
@@ -26,7 +25,7 @@ import {
   UserCog,
   User,
   Mail,
-  Shield,
+  Tags,
 } from "lucide-react";
 import { ACCIONES, permisosStore } from "../../utils/permisosStore";
 
@@ -63,7 +62,6 @@ const sections = [
       { to: "/movimientos", label: "Movimientos", icon: List, anyOf: [ACCIONES.VerMovimientos] },
       { to: "/ajustes", label: "Ajustes", icon: Scale, anyOf: [ACCIONES.RegistrarAjustes] },
       { to: "/gastos", label: "Gastos", icon: Banknote, anyOf: [ACCIONES.RegistrarGastos] },
-      { to: "/grupos-financieros", label: "Grupos financieros", icon: Layers, anyOf: [ACCIONES.AdministrarGruposFinancieros] },
     ],
   },
   {
@@ -77,13 +75,12 @@ const sections = [
 
 const CONFIG_ITEMS = [
   { to: "/configuracion/perfil", label: "Mi perfil", icon: User },
-  { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento, ACCIONES.ConfigurarReservas, ACCIONES.AdministrarTiposDeGasto] },
-  { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign, anyOf: [ACCIONES.VerTarifas, ACCIONES.AdministrarTarifas] },
-  { to: "/configuracion/tarifas-estadia", label: "Tarifas de estadía", icon: DollarSign },
-  { to: "/configuracion/general?tab=rotativo", label: "Zonas de rotativo", icon: Map },
-  { to: "/configuracion/reglas-asignacion", label: "Reglas de asignación", icon: GitBranch, anyOf: [ACCIONES.AdministrarReglasAsignacion] },
-  { to: "/configuracion/grupos", label: "Grupos de seguridad", icon: Shield, anyOf: [ACCIONES.AdministrarGrupos] },
-  { to: "/configuracion/usuarios", label: "Usuarios y accesos", icon: UserCog, anyOf: [ACCIONES.VerUsuarios, ACCIONES.AsignarPermisos] },
+  { to: "/configuracion/general", label: "Estacionamiento", icon: SlidersHorizontal },
+  { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign },
+  { to: "/configuracion/zonas", label: "Zonas", icon: Map },
+  { to: "/configuracion/catalogos", label: "Catálogos", icon: Tags },
+  { to: "/configuracion/finanzas", label: "Finanzas", icon: Layers },
+  { to: "/configuracion/accesos", label: "Accesos", icon: UserCog },
 ];
 
 function linkVisible(link) {
@@ -199,13 +196,7 @@ export default function Sidebar({ open }) {
               }`}
             >
               {visibleConfig.map(({ to, label, icon: Icon }) => {
-                const path = to.split("?")[0];
-                const tab = new URLSearchParams(to.split("?")[1] || "").get("tab");
-                const activo =
-                  location.pathname === path &&
-                  (tab
-                    ? new URLSearchParams(location.search).get("tab") === tab
-                    : path !== "/configuracion/general" || !new URLSearchParams(location.search).get("tab") || new URLSearchParams(location.search).get("tab") === "general");
+                const activo = location.pathname === to;
                 return (
                 <NavLink
                   key={to}

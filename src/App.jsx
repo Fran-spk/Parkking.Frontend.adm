@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Cocheras from "./pages/Cocheras";
@@ -17,8 +17,6 @@ import Movimientos from "./pages/Movimientos";
 import NuevoAjuste from "./pages/NuevoAjuste";
 import NuevoGasto from "./pages/NuevoGasto";
 import MovimientoDetalle from "./pages/MovimientoDetalle";
-import GrupoFinancieroPeriodo from "./pages/GrupoFinancieroPeriodo";
-import GruposFinancieros from "./pages/configuracion/GruposFinancieros";
 import PagosPendientes from "./pages/PagosPendientes";
 import BuscarPatente from "./pages/BuscarPatente";
 import Rotativo from "./pages/Rotativo";
@@ -29,16 +27,22 @@ import MensajesEnviados from "./pages/MensajesEnviados";
 import PerfilConfig from "./pages/configuracion/Perfil";
 import GeneralConfig from "./pages/configuracion/General";
 import TarifasConfig from "./pages/configuracion/Tarifas";
-import TarifasEstadia from "./pages/configuracion/TarifasEstadia";
-import ReglasAsignacionConfig from "./pages/configuracion/ReglasAsignacion";
-import UsuariosConfig from "./pages/configuracion/Usuarios";
-import GruposSeguridad from "./pages/configuracion/GruposSeguridad";
+import ZonasConfig from "./pages/configuracion/ZonasConfig";
+import Catalogos from "./pages/configuracion/Catalogos";
+import FinanzasConfig from "./pages/configuracion/FinanzasConfig";
+import Accesos from "./pages/configuracion/Accesos";
 import PagosAbono from "./pages/PagosAbono";
 import CargoAbono from "./pages/CargoAbono";
 import ReintegroAbono from "./pages/ReintegroAbono";
 import Login from "./pages/Login";
 import SeleccionEstacionamientos from "./pages/SeleccionEstacionamientos";
 import AuthGuard from "./components/layout/AuthGuard";
+import PlayaLayout from "./components/layout/PlayaLayout";
+
+function RedirectGrupoACcte() {
+  const { id } = useParams();
+  return <Navigate to={`/cuenta-corriente?grupo=${id}`} replace />;
+}
 
 export default function App() {
   return (
@@ -47,6 +51,12 @@ export default function App() {
         <Route path="/login" element={<Login />} />
 
         <Route path="/seleccion-estacionamientos" element={<AuthGuard><SeleccionEstacionamientos /></AuthGuard>} />
+
+        <Route path="/playa" element={<AuthGuard><PlayaLayout /></AuthGuard>}>
+          <Route index element={<Rotativo />} />
+          <Route path="buscar" element={<BuscarPatente />} />
+          <Route path="cobrar" element={<PagosPendientes />} />
+        </Route>
 
         <Route path="/" element={<AuthGuard><Layout /></AuthGuard>}>
           <Route index element={<Navigate to="/mi-estacionamiento" replace />} />
@@ -75,8 +85,8 @@ export default function App() {
           <Route path="ajustes" element={<NuevoAjuste />} />
           <Route path="gastos" element={<NuevoGasto />} />
           <Route path="ajustes-gastos" element={<Navigate to="/ajustes" replace />} />
-          <Route path="grupos-financieros" element={<GruposFinancieros />} />
-          <Route path="grupos-financieros/:id" element={<GrupoFinancieroPeriodo />} />
+          <Route path="grupos-financieros" element={<Navigate to="/configuracion/finanzas" replace />} />
+          <Route path="grupos-financieros/:id" element={<RedirectGrupoACcte />} />
           <Route path="movimientos/:id" element={<MovimientoDetalle />} />
           <Route path="caja" element={<Navigate to="/cuenta-corriente" replace />} />
           <Route path="recibos" element={<Recibos />} />
@@ -88,17 +98,21 @@ export default function App() {
             <Route index element={<Navigate to="perfil" replace />} />
             <Route path="perfil" element={<PerfilConfig />} />
             <Route path="general" element={<GeneralConfig />} />
-            <Route path="categorias" element={<Navigate to="/configuracion/general?tab=categorias" replace />} />
-            <Route path="tipos-vehiculo" element={<Navigate to="/configuracion/general?tab=tipos" replace />} />
-            <Route path="metodos-pago" element={<Navigate to="/configuracion/general?tab=metodos" replace />} />
             <Route path="tarifas" element={<TarifasConfig />} />
-            <Route path="tarifas-estadia" element={<TarifasEstadia />} />
+            <Route path="zonas" element={<ZonasConfig />} />
+            <Route path="catalogos" element={<Catalogos />} />
+            <Route path="finanzas" element={<FinanzasConfig />} />
+            <Route path="accesos" element={<Accesos />} />
+            <Route path="categorias" element={<Navigate to="/configuracion/catalogos?tab=categorias" replace />} />
+            <Route path="tipos-vehiculo" element={<Navigate to="/configuracion/catalogos?tab=tipos" replace />} />
+            <Route path="metodos-pago" element={<Navigate to="/configuracion/catalogos?tab=metodos" replace />} />
+            <Route path="tarifas-estadia" element={<Navigate to="/configuracion/tarifas?tab=estadias" replace />} />
             <Route path="reservas" element={<Navigate to="/configuracion/general?tab=reservas" replace />} />
-            <Route path="tipos-gasto" element={<Navigate to="/configuracion/general?tab=gastos" replace />} />
-            <Route path="grupos-financieros" element={<Navigate to="/grupos-financieros" replace />} />
-            <Route path="reglas-asignacion" element={<ReglasAsignacionConfig />} />
-            <Route path="grupos" element={<GruposSeguridad />} />
-            <Route path="usuarios" element={<UsuariosConfig />} />
+            <Route path="tipos-gasto" element={<Navigate to="/configuracion/finanzas?tab=gastos" replace />} />
+            <Route path="grupos-financieros" element={<Navigate to="/configuracion/finanzas" replace />} />
+            <Route path="reglas-asignacion" element={<Navigate to="/configuracion/finanzas?tab=reglas" replace />} />
+            <Route path="grupos" element={<Navigate to="/configuracion/accesos" replace />} />
+            <Route path="usuarios" element={<Navigate to="/configuracion/accesos?tab=usuarios" replace />} />
           </Route>
           <Route path="pagosAbono/:id" element={<PagosAbono />} />
           <Route path="pagosAbono/:id/cargo" element={<CargoAbono />} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Check, RotateCcw, GitBranch } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, RotateCcw } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import { reglaAsignacionService, CriterioRegla } from "../../services/reglaAsignacionService";
 import { grupoFinancieroService } from "../../services/grupoFinancieroService";
@@ -29,7 +29,7 @@ function labelCliente(cliente) {
   return cliente.nombre;
 }
 
-export default function ReglasAsignacion() {
+export default function ReglasAsignacion({ embedded = false }) {
   const [reglas, setReglas] = useState(/** @type {ReglaAsignacion[]} */ ([]));
   const [grupos, setGrupos] = useState(/** @type {GrupoFinanciero[]} */ ([]));
   const [tipos, setTipos] = useState(/** @type {TipoGasto[]} */ ([]));
@@ -182,21 +182,23 @@ export default function ReglasAsignacion() {
   const criterioEsCliente = Number(form.criterio) === CriterioRegla.Cliente;
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <PageHeader
-        title="Reglas de asignación"
-        description="Una regla manda un cliente o un tipo de gasto a un grupo. Varias reglas pueden matchear el mismo movimiento."
-        stats={[
-          { label: "Listadas", value: reglas.length },
-          { label: "Activas", value: reglas.filter((r) => r.activa).length },
-        ]}
-      />
+    <div className={embedded ? "space-y-4" : "space-y-6 animate-fade-in-up"}>
+      {!embedded && (
+        <PageHeader
+          title="Reglas de asignación"
+          description="Una regla manda un cliente o un tipo de gasto a un grupo. Varias reglas pueden matchear el mismo movimiento."
+          stats={[
+            { label: "Listadas", value: reglas.length },
+            { label: "Activas", value: reglas.filter((r) => r.activa).length },
+          ]}
+        />
+      )}
 
       <div className="bg-surface-card p-5 space-y-4">
         {error && <div className="px-4 py-2.5 bg-danger-muted text-danger text-xs font-semibold">{error}</div>}
 
         <div className="grid sm:grid-cols-2 gap-3">
-          <label className="text-xs text-ink-muted">
+          <label className="pk-caption font-semibold">
             Grupo
             <FilterSelect
               className="mt-1 w-full"
@@ -209,7 +211,7 @@ export default function ReglasAsignacion() {
               ]}
             />
           </label>
-          <label className="text-xs text-ink-muted">
+          <label className="pk-caption font-semibold">
             Criterio
             <FilterSelect
               className="mt-1 w-full"
@@ -230,7 +232,7 @@ export default function ReglasAsignacion() {
             />
           </label>
           {criterioEsCliente ? (
-            <label className="text-xs text-ink-muted sm:col-span-2">
+            <label className="pk-caption font-semibold sm:col-span-2">
               Cliente
               <FilterSelect
                 className="mt-1 w-full"
@@ -244,7 +246,7 @@ export default function ReglasAsignacion() {
               />
             </label>
           ) : (
-            <label className="text-xs text-ink-muted sm:col-span-2">
+            <label className="pk-caption font-semibold sm:col-span-2">
               Tipo de gasto
               <FilterSelect
                 className="mt-1 w-full"
@@ -265,7 +267,7 @@ export default function ReglasAsignacion() {
             type="button"
             onClick={editandoId ? handleModificar : handleAgregar}
             disabled={guardando}
-            className="inline-flex items-center gap-1.5 bg-brand text-brand-foreground text-xs font-bold px-4 py-2.5 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-sm font-semibold px-4 py-2.5 disabled:opacity-50"
           >
             {editandoId ? <Check size={15} /> : <Plus size={15} />}
             {editandoId ? "Guardar cambios" : "Agregar regla"}
@@ -285,71 +287,98 @@ export default function ReglasAsignacion() {
         </div>
       </div>
 
-      <div className="bg-surface-card p-5 space-y-3">
-        <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
-          <span className="pk-label flex items-center gap-2">
-            <GitBranch size={13} /> Listado
-          </span>
-          <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer">
-            <Checkbox
-              checked={mostrarInactivas}
-              onChange={(e) => {
-                setLoading(true);
-                setMostrarInactivas(e.target.checked);
-              }}
-            />
-            Mostrar dadas de baja
-          </label>
-        </div>
-
-        {loading ? (
-          <p className="text-xs text-ink-faint py-4">Cargando...</p>
-        ) : reglas.length === 0 ? (
-          <p className="text-xs text-ink-faint py-4">No hay reglas</p>
-        ) : (
-          <div className="space-y-5">
-            {reglasPorGrupo.map((grupo) => (
-              <section key={grupo.id}>
-                <h3 className="text-sm font-bold text-ink pb-2 border-b border-line-subtle">
-                  {grupo.nombre}
-                  <span className="ml-2 text-[11px] font-semibold text-ink-faint">{grupo.reglas.length}</span>
-                </h3>
-                <ul className="divide-y divide-line">
-                  {grupo.reglas.map((regla) => {
-                    const criterio =
-                      Number(regla.criterio) === CriterioRegla.Cliente
-                        ? clientesPorId.get(regla.clienteId) || `Cliente ${regla.clienteId}`
-                        : tiposPorId.get(regla.tipoGastoId) || `Tipo ${regla.tipoGastoId}`;
-                    return (
-                      <li key={regla.reglaAsignacionId} className={`py-3 flex items-center gap-3 ${regla.activa ? "" : "opacity-60"}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-ink">{criterio}</p>
-                          <p className="text-xs text-ink-muted truncate">{regla.criterioDescripcion}</p>
-                        </div>
-                        {!regla.activa && <span className="text-[10px] font-bold text-ink-muted">Baja</span>}
-                        {regla.activa ? (
-                          <div className="flex gap-1">
-                            <button type="button" title="Editar" onClick={() => empezarEdicion(regla)} className="p-1.5 text-ink-faint hover:text-warning">
-                              <Pencil size={15} />
-                            </button>
-                            <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(regla)} className="p-1.5 text-ink-faint hover:text-danger">
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button type="button" title="Reactivar" onClick={() => handleReactivar(regla)} className="p-1.5 text-ink-faint hover:text-success">
-                            <RotateCcw size={15} />
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="ml-auto flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <Checkbox
+            checked={mostrarInactivas}
+            onChange={(e) => {
+              setLoading(true);
+              setMostrarInactivas(e.target.checked);
+            }}
+          />
+          Ver dadas de baja
+        </label>
       </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando reglas…</span>
+        </div>
+      ) : reglas.length === 0 ? (
+        <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">No hay reglas</div>
+      ) : (
+        <div className="space-y-6">
+          {reglasPorGrupo.map((grupo) => (
+            <section key={grupo.id} className="space-y-2">
+              <h3 className="pk-label">
+                {grupo.nombre}
+                <span className="ml-2 font-semibold text-ink-faint">{grupo.reglas.length}</span>
+              </h3>
+              <div className="bg-surface-card overflow-x-auto">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col className="w-[38%]" />
+                    <col className="w-[34%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[12%]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-line-strong text-left">
+                      <th className="pk-label font-bold pl-4 pr-3 py-2.5">Criterio</th>
+                      <th className="pk-label font-bold px-3 py-2.5">Detalle</th>
+                      <th className="pk-label font-bold px-3 py-2.5">Estado</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grupo.reglas.map((regla) => {
+                      const criterio =
+                        Number(regla.criterio) === CriterioRegla.Cliente
+                          ? clientesPorId.get(regla.clienteId) || `Cliente ${regla.clienteId}`
+                          : tiposPorId.get(regla.tipoGastoId) || `Tipo ${regla.tipoGastoId}`;
+                      const inactiva = !regla.activa;
+                      return (
+                        <tr key={regla.reglaAsignacionId} className={`border-b border-line ${inactiva ? "opacity-55" : "hover:bg-surface-page"}`}>
+                          <td className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${inactiva ? "border-l-transparent" : "border-l-brand"}`}>
+                            <p className="font-semibold text-ink truncate">{criterio}</p>
+                          </td>
+                          <td className="px-3 py-2.5 overflow-hidden">
+                            <p className="pk-caption truncate">{regla.criterioDescripcion}</p>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <p className={`text-sm font-semibold ${inactiva ? "text-ink-faint" : "text-success-ink"}`}>
+                              {inactiva ? "De baja" : "Activa"}
+                            </p>
+                          </td>
+                          <td className="pl-2 pr-3 py-2.5">
+                            {regla.activa ? (
+                              <div className="flex items-center justify-end gap-0.5">
+                                <button type="button" title="Editar" onClick={() => empezarEdicion(regla)} className="pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted">
+                                  <Pencil size={15} />
+                                </button>
+                                <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(regla)} className="pk-icon-btn p-1.5 text-ink-faint hover:text-danger-ink hover:bg-surface-muted">
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end">
+                                <button type="button" title="Reactivar" onClick={() => handleReactivar(regla)} className="pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted">
+                                  <RotateCcw size={15} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

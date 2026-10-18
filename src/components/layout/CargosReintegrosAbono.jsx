@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, Eye, Loader2, Plus, Receipt } from "lucide-react";
 import { operacionFinancieraService } from "../../services/operacionFinancieraService";
 import { abonoIdOf } from "../../utils/abonoHelpers";
+import { plata } from "../../utils/clienteHelpers";
 
 /** @typedef {import("../../types").Cargo} Cargo */
 /** @typedef {import("../../types").Reintegro} Reintegro */
@@ -10,7 +11,7 @@ import { abonoIdOf } from "../../utils/abonoHelpers";
 /** @typedef {import("../../types").Pago} Pago */
 
 function formatPrecio(precio) {
-  return Number(precio || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+  return plata(precio);
 }
 
 function formatFecha(fecha) {
@@ -34,6 +35,19 @@ function cobrosDelCargo(cargo, pagos) {
     }
   }
   return lista;
+}
+
+function estiloFila(f) {
+  if (f.tipo === "Reintegro") {
+    return { borde: "border-l-brand", texto: "text-ink-muted", label: "Reintegro" };
+  }
+  if (f.estado === "Anulado") {
+    return { borde: "border-l-transparent", texto: "text-ink-faint", label: "Anulado" };
+  }
+  if (f.estado === "Pagado") {
+    return { borde: "border-l-success", texto: "text-success-ink", label: "Pagado" };
+  }
+  return { borde: "border-l-danger", texto: "text-danger-ink", label: "Pendiente" };
 }
 
 export default function CargosReintegrosAbono({
@@ -84,12 +98,6 @@ export default function CargosReintegrosAbono({
         key: `c-${c.cargoId}`,
         tipo: "Cargo",
         estado: anulado ? "Anulado" : pagado ? "Pagado" : "Pendiente",
-        estadoCls: anulado
-          ? "bg-gray-100 text-gray-500 border-gray-200"
-          : pagado
-            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-            : "bg-red-50 text-red-600 border-red-100",
-        filaCls: pagado || anulado ? "" : "bg-red-50/50",
         detalle: c.concepto,
         importe: c.importe,
         fecha: c.fechaHora,
@@ -105,7 +113,6 @@ export default function CargosReintegrosAbono({
       importe: -Math.abs(Number(r.importe) || 0),
       fecha: r.fechaHora,
       cobros: [],
-      filaCls: "",
     })),
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
@@ -118,64 +125,65 @@ export default function CargosReintegrosAbono({
     });
   }
 
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
+
   return (
     <section>
-      <div className="px-4 sm:px-5 py-3 border-b border-line flex justify-end gap-2">
+      <div className="px-4 py-3 border-b border-line flex justify-end gap-2">
         <button
           type="button"
           onClick={() => navigate(`/pagosAbono/${abonoId}/cargo`)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-surface-muted text-ink px-3 py-2 hover:bg-brand-muted"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-muted border border-line-strong"
         >
           <Plus size={13} /> Cargo
         </button>
         <button
           type="button"
           onClick={() => navigate(`/pagosAbono/${abonoId}/reintegro`)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-surface-muted text-ink px-3 py-2 hover:bg-brand-muted"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-muted border border-line-strong"
         >
           <Plus size={13} /> Reintegro
         </button>
       </div>
-      {error && <p className="px-5 py-3 text-xs text-danger">{error}</p>}
+      {error && <p className="px-4 py-3 text-sm bg-danger-muted text-danger-ink">{error}</p>}
 
       {loading ? (
-        <p className="px-5 py-4 text-xs text-ink-faint">Cargando...</p>
+        <p className="px-4 py-8 text-center pk-caption">Cargando…</p>
       ) : filas.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-ink-faint text-center">Todavía no hay cargos ni reintegros</p>
+        <p className="px-4 py-16 text-center pk-caption">Todavía no hay cargos ni reintegros</p>
       ) : (
-        <ul className="divide-y divide-line">
+        <ul>
           {filas.map((f) => {
             const abierto = abiertos.has(f.key);
             const expandible = f.cobros.length > 0;
+            const estilo = estiloFila(f);
             return (
-              <li key={f.key}>
-                <div className={`px-4 sm:px-5 py-3 flex items-center gap-3 ${f.filaCls || ""}`}>
+              <li key={f.key} className="border-b border-line last:border-0">
+                <div className={`flex items-center gap-3 px-4 py-3 border-l-[3px] ${estilo.borde}`}>
                   <button
                     type="button"
                     disabled={!expandible}
                     onClick={() => toggle(f.key)}
-                    className={`p-0.5 ${expandible ? "text-ink-faint hover:text-ink" : "text-transparent"}`}
+                    className={`pk-icon-btn p-0.5 ${expandible ? "text-ink-faint hover:text-ink" : "text-transparent"}`}
                     aria-label="Ver pagos"
                   >
                     {abierto ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-ink flex items-center gap-2 flex-wrap">
-                      {f.tipo}
-                      {f.estado && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${f.estadoCls}`}>
-                          {f.estado}
-                        </span>
-                      )}
-                      <span className="font-medium text-ink-faint">{formatFecha(f.fecha)}</span>
-                    </p>
-                    <p className="text-sm text-ink-muted truncate">{f.detalle}</p>
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <p className={`text-sm font-semibold ${f.estado === "Anulado" ? "text-ink-faint line-through" : "text-ink"}`}>
+                        {f.tipo}
+                      </p>
+                      {f.estado && <span className={`pk-caption font-semibold ${estilo.texto}`}>{estilo.label}</span>}
+                    </div>
+                    <p className="pk-caption truncate mt-0.5">{f.detalle}</p>
+                    <p className="pk-caption tabular-nums">{formatFecha(f.fecha)}</p>
                   </div>
                   {f.anular && onAnularCargo && (
                     <button
                       type="button"
                       onClick={() => onAnularCargo(f.cargo)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-line-strong text-ink-muted hover:bg-surface-muted shrink-0"
+                      className="px-2.5 py-1.5 text-xs font-semibold text-ink-muted border border-line-strong shrink-0"
                     >
                       Anular
                     </button>
@@ -184,31 +192,29 @@ export default function CargosReintegrosAbono({
                     <button
                       type="button"
                       onClick={() => onPagarCargo(f.cargo)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 shrink-0"
+                      className="px-2.5 py-1.5 text-xs font-semibold bg-brand text-brand-foreground hover:bg-brand-strong shrink-0"
                     >
                       Pagar
                     </button>
                   )}
                   <p
-                    className={`text-sm font-bold tabular-nums shrink-0 ${
-                      f.importe < 0 ? "text-danger" : "text-ink"
+                    className={`text-sm font-semibold tabular-nums shrink-0 ${
+                      Number(f.importe) < 0 ? "text-warning-ink" : "text-ink"
                     }`}
                   >
                     {formatPrecio(f.importe)}
                   </p>
                 </div>
                 {abierto && expandible && (
-                  <div className="px-5 pb-4 pl-12 space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-                      Pago de este cargo
-                    </p>
+                  <div className="px-4 pb-4 pl-12 space-y-2 bg-surface-page">
+                    <p className="pk-label">Pago de este cargo</p>
                     {f.cobros.map(({ detalle, pago }) => {
                       const busy = reciboBusyId === pago.pagoId;
                       const total = Number(pago.monto || 0) + Number(pago.recargo || 0);
                       return (
                         <div
                           key={detalle.detallePagoId}
-                          className="border border-line px-3 py-2.5 space-y-1.5 cursor-pointer hover:bg-surface-muted"
+                          className="py-2.5 border-t border-line first:border-t-0 cursor-pointer hover:bg-surface-muted"
                           onClick={() => onVerDetalle?.(pago)}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -216,18 +222,13 @@ export default function CargosReintegrosAbono({
                               <p className="text-xs font-semibold text-ink">
                                 A este cargo: {formatPrecio(detalle.monto)}
                               </p>
-                              <p className="text-[11px] text-ink-muted mt-0.5">
+                              <p className="pk-caption">
                                 {formatFecha(pago.fechaHoraCarga)}
                                 {pago.metodoDePagoNombre ? ` · ${pago.metodoDePagoNombre}` : ""}
                               </p>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                title="Ver detalle"
-                                onClick={() => onVerDetalle?.(pago)}
-                                className="p-2 text-ink-faint hover:text-brand"
-                              >
+                            <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button type="button" title="Ver detalle" onClick={() => onVerDetalle?.(pago)} className={icono}>
                                 <Eye size={14} />
                               </button>
                               <button
@@ -235,14 +236,14 @@ export default function CargosReintegrosAbono({
                                 disabled={busy}
                                 title="Ver recibo"
                                 onClick={() => onVerRecibo?.(pago)}
-                                className="p-2 text-ink-faint hover:text-brand disabled:opacity-40"
+                                className={icono}
                               >
                                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
                               </button>
                             </div>
                           </div>
-                          <p className="text-[11px] text-ink-muted">
-                            <span className="font-semibold text-ink">Pago #{pago.pagoId}</span>
+                          <p className="pk-caption mt-1">
+                            Pago #{pago.pagoId}
                             {pago.reciboNumero ? ` · Recibo ${pago.reciboNumero}` : ""}
                             {" · "}
                             Total {formatPrecio(total || detalle.monto)}

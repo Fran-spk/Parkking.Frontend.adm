@@ -29,9 +29,9 @@ function initials(name) {
 }
 
 const CONFIG_ITEMS = [
-  { to: "/configuracion/general", label: "Datos del estacionamiento", icon: SlidersHorizontal },
+  { to: "/configuracion/general", label: "Estacionamiento", icon: SlidersHorizontal },
   { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign },
-  { to: "/configuracion/usuarios", label: "Usuarios y accesos", icon: UserCog },
+  { to: "/configuracion/accesos", label: "Accesos", icon: UserCog },
 ];
 
 /**

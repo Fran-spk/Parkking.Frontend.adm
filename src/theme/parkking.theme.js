@@ -246,6 +246,8 @@ export function applyColorMarca(value) {
   root.style.setProperty("--pk-brand-muted", mezclar(color, "#ffffff", 0.86));
   root.style.setProperty("--pk-brand-wash", mezclar(color, "#ffffff", 0.78));
   root.style.setProperty("--pk-brand-fg", colorMarcaForeground(color));
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", color);
 }
 
 /** Apply tokens as CSS variables on :root (call once at app boot). */

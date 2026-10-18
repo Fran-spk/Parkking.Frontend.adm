@@ -1,30 +1,33 @@
-import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Save, CheckCircle, Building2, MapPin, SlidersHorizontal, Car, Banknote, Building, Map, RotateCcw, CalendarClock, Tags, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
+import { Save, CheckCircle, RotateCcw } from "lucide-react";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { applyColorMarca, colorMarcaForeground, COLOR_MARCA_DEFAULT } from "../../theme/parkking.theme.js";
-import { ACCIONES, permisosStore } from "../../utils/permisosStore";
-
-/** @typedef {import("../../types").Estacionamiento} Estacionamiento */
-import CategoriasCochera from "./CategoriasCochera";
-import Zonas from "./Zonas";
-import TiposVehiculo from "./TiposVehiculo";
-import MetodosDePago from "./MetodosDePago";
-import ReservasConfig from "./ReservasConfig";
-import TiposGasto from "./TiposGasto";
-import ZonasRotativo from "./ZonasRotativo";
+import ConfigSeccion from "../../components/layout/ConfigSeccion";
 import Checkbox from "../../components/layout/Check";
+import FilterSelect, { fieldClass } from "../../components/layout/FilterSelect";
+import { PageHeaderAction } from "../../components/layout/PageHeader";
+import ReservasConfig from "./ReservasConfig";
 
-const TABS = [
-  { id: "general", label: "General", icon: SlidersHorizontal, anyOf: [ACCIONES.EditarEstacionamiento] },
-  { id: "categorias", label: "Categorías", icon: Building, anyOf: [ACCIONES.EditarEstacionamiento] },
-  { id: "zonas", label: "Zonas", icon: Map, anyOf: [ACCIONES.EditarEstacionamiento] },
-  { id: "tipos", label: "Tipos de vehículo", icon: Car, anyOf: [ACCIONES.EditarEstacionamiento] },
-  { id: "metodos", label: "Métodos de pago", icon: Banknote, anyOf: [ACCIONES.EditarEstacionamiento] },
-  { id: "reservas", label: "Reservas", icon: CalendarClock, anyOf: [ACCIONES.ConfigurarReservas] },
-  { id: "gastos", label: "Tipos de gasto", icon: Tags, anyOf: [ACCIONES.AdministrarTiposDeGasto] },
-  { id: "rotativo", label: "Zonas de rotativo", icon: Clock, anyOf: [ACCIONES.EditarEstacionamiento] },
-];
+const LEGACY = {
+  general: "/configuracion/general",
+  categorias: "/configuracion/catalogos?tab=categorias",
+  tipos: "/configuracion/catalogos?tab=tipos",
+  metodos: "/configuracion/catalogos?tab=metodos",
+  gastos: "/configuracion/finanzas?tab=gastos",
+  rotativo: "/configuracion/zonas?tab=rotativo",
+  zonas: "/configuracion/zonas",
+};
+
+function Bloque({ title, hint, children }) {
+  return (
+    <div className="bg-surface-card p-5 space-y-4">
+      <h3 className="pk-label pb-2 border-b border-line-subtle">{title}</h3>
+      {hint ? <p className="pk-caption -mt-2">{hint}</p> : null}
+      {children}
+    </div>
+  );
+}
 
 function GeneralForm() {
   const [form, setForm] = useState({
@@ -78,9 +81,7 @@ function GeneralForm() {
         trabajarConZonas: !!data.trabajarConZonas,
         contratoSeguroObligatorio: data.contratoSeguroObligatorio !== false,
         contratoPlazoMeses:
-          data.contratoPlazoMeses && Number(data.contratoPlazoMeses) > 0
-            ? data.contratoPlazoMeses
-            : 12,
+          data.contratoPlazoMeses && Number(data.contratoPlazoMeses) > 0 ? data.contratoPlazoMeses : 12,
         generarContratoAlCrearAbono: data.generarContratoAlCrearAbono !== false,
         emailAvisos: data.emailAvisos ?? "",
         avisoDeudaActivo: data.diaInicioAvisoDeuda != null,
@@ -128,10 +129,7 @@ function GeneralForm() {
       setError("El plazo del contrato debe estar entre 1 y 120 meses");
       return;
     }
-    if (
-      form.avisoDeudaActivo &&
-      (form.diaInicioAvisoDeuda < 1 || form.diaInicioAvisoDeuda > 31)
-    ) {
+    if (form.avisoDeudaActivo && (form.diaInicioAvisoDeuda < 1 || form.diaInicioAvisoDeuda > 31)) {
       setError("El día de inicio del aviso de deuda debe estar entre 1 y 31");
       return;
     }
@@ -171,66 +169,43 @@ function GeneralForm() {
     }
   }
 
-  if (loading) return <div className="pk-desc p-2">Cargando...</div>;
+  if (loading) return <p className="pk-desc p-2">Cargando...</p>;
 
   return (
     <form onSubmit={handleGuardar} className="space-y-5 max-w-2xl">
-      {error && (
-        <div className="px-3 py-2 bg-danger-muted text-danger pk-desc font-semibold rounded-xl border border-line">
-          {error}
-        </div>
-      )}
+      {error && <div className="px-3 py-2 bg-danger-muted text-danger pk-desc font-semibold">{error}</div>}
       {exito && (
-        <div className="px-3 py-2 bg-success-muted text-success-ink pk-desc font-semibold rounded-xl border border-line">
+        <div className="px-3 py-2 bg-success-muted text-success-ink pk-desc font-semibold">
           <CheckCircle size={14} className="inline mr-1" />
-          Configuración guardada exitosamente
+          Configuración guardada
         </div>
       )}
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Identidad</h3>
+      <Bloque title="Identidad">
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Nombre</span>
+          <input
+            type="text"
+            required
+            value={form.nombre}
+            onChange={(e) => set("nombre", e.target.value)}
+            placeholder="Nombre del estacionamiento"
+            className={fieldClass}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Dirección</span>
+          <input
+            type="text"
+            value={form.direccion}
+            onChange={(e) => set("direccion", e.target.value)}
+            placeholder="Dirección del estacionamiento"
+            className={fieldClass}
+          />
+        </label>
+      </Bloque>
 
-        <div className="space-y-3">
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Nombre</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-faint">
-                <Building2 size={13} />
-              </div>
-              <input
-                type="text"
-                required
-                value={form.nombre}
-                onChange={(e) => set("nombre", e.target.value)}
-                placeholder="Nombre del estacionamiento"
-                className="w-full pl-8 pr-3 pk-body font-semibold border border-line rounded-xl py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Dirección</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-faint">
-                <MapPin size={13} />
-              </div>
-              <input
-                type="text"
-                value={form.direccion}
-                onChange={(e) => set("direccion", e.target.value)}
-                placeholder="Dirección del estacionamiento"
-                className="w-full pl-8 pr-3 pk-body font-semibold border border-line rounded-xl py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card transition-all"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Apariencia</h3>
-        <p className="pk-caption -mt-2">
-          Color de los botones y del elemento activo del menú. Cada estacionamiento guarda el suyo.
-        </p>
+      <Bloque title="Apariencia" hint="Color de los botones y del ítem activo del menú. Cada estacionamiento guarda el suyo.">
         <div className="flex items-center gap-3">
           <input
             type="color"
@@ -239,14 +214,16 @@ function GeneralForm() {
             onChange={(e) => set("colorMarca", e.target.value)}
             className="h-11 w-14 cursor-pointer border border-line bg-surface-card p-1"
           />
-          <input
-            type="text"
-            value={form.colorMarca}
-            maxLength={7}
-            spellCheck={false}
-            onChange={(e) => set("colorMarca", e.target.value)}
-            className="w-28 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand uppercase"
-          />
+          <div className="w-28">
+            <input
+              type="text"
+              value={form.colorMarca}
+              maxLength={7}
+              spellCheck={false}
+              onChange={(e) => set("colorMarca", e.target.value)}
+              className={`${fieldClass} uppercase`}
+            />
+          </div>
           <span
             className="inline-flex items-center px-3 py-2.5 text-xs font-semibold"
             style={{ background: form.colorMarca, color: colorMarcaForeground(form.colorMarca) }}
@@ -263,76 +240,66 @@ function GeneralForm() {
             Restablecer
           </button>
         </div>
-      </div>
+      </Bloque>
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Locador (contrato)</h3>
-        <p className="pk-caption -mt-2">
-          Datos del titular en el PDF. Si el domicilio queda vacío, se usa la dirección del
-          estacionamiento.
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Nombre / razón social</label>
-            <input
-              type="text"
-              value={form.locadorNombre}
-              onChange={(e) => set("locadorNombre", e.target.value)}
-              placeholder="Ej: Silvina Persig"
-              className="w-full pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
-            />
-          </div>
-          <div>
-            <label className="pk-caption font-semibold block mb-1">DNI / CUIT</label>
-            <input
-              type="text"
-              value={form.locadorDocumento}
-              onChange={(e) => set("locadorDocumento", e.target.value)}
-              placeholder="Documento del locador"
-              className="w-full max-w-xs pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
-            />
-          </div>
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Domicilio del locador</label>
-            <input
-              type="text"
-              value={form.locadorDomicilio}
-              onChange={(e) => set("locadorDomicilio", e.target.value)}
-              placeholder="Opcional — si vacío usa la dirección del estacionamiento"
-              className="w-full pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
-            />
-          </div>
-        </div>
-      </div>
+      <Bloque title="Locador (contrato)" hint="Datos del titular en el PDF. Si el domicilio queda vacío, se usa la dirección del estacionamiento.">
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Nombre / razón social</span>
+          <input
+            type="text"
+            value={form.locadorNombre}
+            onChange={(e) => set("locadorNombre", e.target.value)}
+            placeholder="Ej: Silvina Persig"
+            className={fieldClass}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">DNI / CUIT</span>
+          <input
+            type="text"
+            value={form.locadorDocumento}
+            onChange={(e) => set("locadorDocumento", e.target.value)}
+            placeholder="Documento del locador"
+            className={fieldClass}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Domicilio del locador</span>
+          <input
+            type="text"
+            value={form.locadorDomicilio}
+            onChange={(e) => set("locadorDomicilio", e.target.value)}
+            placeholder="Opcional — si vacío usa la dirección del estacionamiento"
+            className={fieldClass}
+          />
+        </label>
+      </Bloque>
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Reglas de cobro</h3>
-
-        <div className="space-y-3">
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Día de vencimiento del abono</label>
-            <div className="flex items-center gap-3">
+      <Bloque title="Reglas de cobro">
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Día de vencimiento del abono</span>
+          <div className="flex items-center gap-3">
+            <div className="w-20">
               <input
                 type="number"
                 min={1}
                 max={31}
                 value={form.diaVencimientoAbono}
                 onChange={(e) => set("diaVencimientoAbono", e.target.value)}
-                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
+                className={fieldClass}
               />
-              <span className="pk-caption">de cada mes</span>
             </div>
+            <span className="pk-caption">de cada mes</span>
           </div>
+        </label>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none mb-2 pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.aplicaRecargo}
-                onChange={(e) => set("aplicaRecargo", e.target.checked)}
-              />
-              <span>Aplicar recargo por mora</span>
-            </label>
-            <div className="flex items-center gap-3 ml-6">
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox checked={form.aplicaRecargo} onChange={(e) => set("aplicaRecargo", e.target.checked)} />
+            Aplicar recargo por mora
+          </label>
+          <div className="flex items-center gap-3 ml-6 mt-2">
+            <div className="w-20">
               <input
                 type="number"
                 min={1}
@@ -340,66 +307,51 @@ function GeneralForm() {
                 value={form.porcentajeRecargo}
                 onChange={(e) => set("porcentajeRecargo", e.target.value)}
                 disabled={!form.aplicaRecargo}
-                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand disabled:opacity-40"
+                className={fieldClass}
               />
-              <span className="pk-caption">% sobre el monto del abono</span>
             </div>
+            <span className="pk-caption">% sobre el monto del abono</span>
           </div>
+        </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.imprimirReciboAlCobrar}
-                onChange={(e) => set("imprimirReciboAlCobrar", e.target.checked)}
-              />
-              <span>Imprimir recibo al pagar</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Si está activo, al registrar el pago se abre la vista previa del recibo.
-            </p>
-          </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox checked={form.imprimirReciboAlCobrar} onChange={(e) => set("imprimirReciboAlCobrar", e.target.checked)} />
+            Imprimir recibo al pagar
+          </label>
+          <p className="pk-caption mt-1 ml-6">Si está activo, al registrar el pago se abre la vista previa del recibo.</p>
+        </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.trabajarConZonas}
-                onChange={(e) => set("trabajarConZonas", e.target.checked)}
-              />
-              <span>Trabajar con zonas</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Si está activo, cada cochera tiene que pertenecer a una zona. Para activarlo, todas
-              las cocheras activas ya tienen que tener zona.
-            </p>
-          </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox checked={form.trabajarConZonas} onChange={(e) => set("trabajarConZonas", e.target.checked)} />
+            Trabajar con zonas de cocheras
+          </label>
+          <p className="pk-caption mt-1 ml-6">
+            Cada cochera tiene que pertenecer a una zona. Para activarlo, todas las cocheras activas ya tienen que tener zona.
+          </p>
+        </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.enviarReciboPorEmail}
-                onChange={(e) => set("enviarReciboPorEmail", e.target.checked)}
-              />
-              <span>Enviar recibo por email al pagar</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Si está activo, al registrar un pago se manda el recibo al email del abono o del
-              cliente. Si no hay destinatario, el pago igual se confirma.
-            </p>
-          </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox checked={form.enviarReciboPorEmail} onChange={(e) => set("enviarReciboPorEmail", e.target.checked)} />
+            Enviar recibo por email al pagar
+          </label>
+          <p className="pk-caption mt-1 ml-6">
+            Se manda al email del abono o del cliente. Si no hay destinatario, el pago igual se confirma.
+          </p>
+        </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.avisoDeudaActivo}
-                onChange={(e) => set("avisoDeudaActivo", e.target.checked)}
-              />
-              <span>Avisar por mail quién debe</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Desde el día elegido hasta fin de mes, a los usuarios con la acción Recibir aviso de
-              deuda. Una vez en el mes, o todos los días.
-            </p>
-            <div className="flex items-center gap-3 ml-6 mt-2">
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox checked={form.avisoDeudaActivo} onChange={(e) => set("avisoDeudaActivo", e.target.checked)} />
+            Avisar por mail quién debe
+          </label>
+          <p className="pk-caption mt-1 ml-6">
+            Desde el día elegido hasta fin de mes, a los usuarios con la acción Recibir aviso de deuda.
+          </p>
+          <div className="flex items-center gap-3 ml-6 mt-2">
+            <div className="w-20">
               <input
                 type="number"
                 min={1}
@@ -407,187 +359,133 @@ function GeneralForm() {
                 value={form.diaInicioAvisoDeuda}
                 onChange={(e) => set("diaInicioAvisoDeuda", e.target.value)}
                 disabled={!form.avisoDeudaActivo}
-                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand disabled:opacity-40"
+                className={fieldClass}
               />
-              <select
-                value={form.frecuenciaAvisoDeuda}
-                onChange={(e) => set("frecuenciaAvisoDeuda", Number(e.target.value))}
-                disabled={!form.avisoDeudaActivo}
-                className="pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand disabled:opacity-40"
-              >
-                <option value={0}>Una vez en el mes</option>
-                <option value={1}>Todos los días</option>
-              </select>
             </div>
-          </div>
-
-          <div>
-            <label className="pk-caption font-semibold block mb-1.5">Email de avisos</label>
-            <input
-              type="email"
-              value={form.emailAvisos}
-              onChange={(e) => set("emailAvisos", e.target.value)}
-              placeholder="avisos@tu-estacionamiento.com"
-              className="w-full max-w-md pk-body border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand"
+            <FilterSelect
+              ariaLabel="Frecuencia de aviso"
+              value={form.frecuenciaAvisoDeuda}
+              onChange={(v) => set("frecuenciaAvisoDeuda", Number(v))}
+              disabled={!form.avisoDeudaActivo}
+              options={[
+                { value: 0, label: "Una vez en el mes" },
+                { value: 1, label: "Todos los días" },
+              ]}
             />
-            <p className="pk-caption mt-1.5">
-              Casilla del estacionamiento para mails a clientes (remitente / responder a). El SMTP
-              global de Parkking se configura en el servidor.
-            </p>
           </div>
         </div>
-      </div>
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Contrato de abono (PDF)</h3>
-        <p className="pk-caption -mt-2">
-          Configura el texto del contrato y si se descarga automáticamente al dar de alta un abono.
-        </p>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Email de avisos</span>
+          <input
+            type="email"
+            value={form.emailAvisos}
+            onChange={(e) => set("emailAvisos", e.target.value)}
+            placeholder="avisos@tu-estacionamiento.com"
+            className={fieldClass}
+          />
+          <p className="pk-caption">Casilla del estacionamiento para mails a clientes. El SMTP global se configura en el servidor.</p>
+        </label>
+      </Bloque>
 
-        <div className="space-y-3">
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.generarContratoAlCrearAbono}
-                onChange={(e) => set("generarContratoAlCrearAbono", e.target.checked)}
-              />
-              <span>Generar contrato automáticamente al crear un abono</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Si está activo, al finalizar el alta se descarga el PDF. Siempre se puede volver a
-              descargar desde el abono.
-            </p>
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
-              <Checkbox
-                checked={form.contratoSeguroObligatorio}
-                onChange={(e) => set("contratoSeguroObligatorio", e.target.checked)}
-              />
-              <span>Seguro del vehículo obligatorio</span>
-            </label>
-            <p className="pk-caption mt-1 ml-6">
-              Si está activo, el PDF incluye la cláusula de seguro vigente.
-            </p>
-          </div>
-
-          <div>
-            <label className="pk-caption font-semibold block mb-1">Plazo del contrato</label>
-            <div className="flex items-center gap-3">
+      <Bloque title="Contrato de abono (PDF)" hint="Texto del contrato y si se descarga al dar de alta un abono.">
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox
+              checked={form.generarContratoAlCrearAbono}
+              onChange={(e) => set("generarContratoAlCrearAbono", e.target.checked)}
+            />
+            Generar contrato automáticamente al crear un abono
+          </label>
+          <p className="pk-caption mt-1 ml-6">Al finalizar el alta se descarga el PDF. Siempre se puede volver a descargar desde el abono.</p>
+        </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pk-caption font-semibold text-ink">
+            <Checkbox
+              checked={form.contratoSeguroObligatorio}
+              onChange={(e) => set("contratoSeguroObligatorio", e.target.checked)}
+            />
+            Seguro del vehículo obligatorio
+          </label>
+          <p className="pk-caption mt-1 ml-6">Si está activo, el PDF incluye la cláusula de seguro vigente.</p>
+        </div>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Plazo del contrato</span>
+          <div className="flex items-center gap-3">
+            <div className="w-20">
               <input
                 type="number"
                 min={1}
                 max={120}
                 value={form.contratoPlazoMeses}
                 onChange={(e) => set("contratoPlazoMeses", e.target.value)}
-                className="w-20 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
+                className={fieldClass}
               />
-              <span className="pk-caption">meses (igual para todas las plazas)</span>
             </div>
+            <span className="pk-caption">meses (igual para todas las plazas)</span>
           </div>
-        </div>
-      </div>
+        </label>
+      </Bloque>
 
-      <div className="bg-surface-card p-5 rounded-2xl border border-transparent shadow-none space-y-4">
-        <h3 className="pk-label pb-2 border-b border-line-subtle">Rotativo</h3>
-        <p className="pk-caption -mt-2">
-          La operatoria es de las estadías. No cambia las zonas de las cocheras. La tolerancia es una sola para la playa: minutos de gracia al cumplir una fracción. En cero está apagada.
-        </p>
-        <div>
-          <label className="pk-caption font-semibold block mb-1">Operatoria</label>
-          <select
+      <Bloque
+        title="Rotativo"
+        hint="La operatoria es de las estadías, no de las zonas de cocheras. La tolerancia es una sola para la playa: minutos de gracia al cumplir una fracción. En cero está apagada."
+      >
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Operatoria</span>
+          <FilterSelect
+            className="w-full"
+            ariaLabel="Operatoria rotativo"
             value={form.operatoriaRotativo}
-            onChange={(e) => set("operatoriaRotativo", Number(e.target.value))}
-            className="w-full pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
-          >
-            <option value={0}>Libre, sin zona</option>
-            <option value={1}>Por zona de rotativo</option>
-          </select>
-        </div>
-        <div>
-          <label className="pk-caption font-semibold block mb-1">Tolerancia</label>
+            onChange={(v) => set("operatoriaRotativo", Number(v))}
+            options={[
+              { value: 0, label: "Libre, sin zona" },
+              { value: 1, label: "Por zona de rotativo" },
+            ]}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="pk-caption font-semibold">Tolerancia</span>
           <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={0}
-              value={form.toleranciaRotativoMinutos}
-              onChange={(e) => set("toleranciaRotativoMinutos", e.target.value)}
-              className="w-24 pk-body font-semibold border border-line rounded-xl px-3 py-2.5 bg-surface-muted/50 focus:outline-none focus:border-brand focus:bg-surface-card"
-            />
+            <div className="w-24">
+              <input
+                type="number"
+                min={0}
+                value={form.toleranciaRotativoMinutos}
+                onChange={(e) => set("toleranciaRotativoMinutos", e.target.value)}
+                className={fieldClass}
+              />
+            </div>
             <span className="pk-caption">minutos</span>
           </div>
-        </div>
-      </div>
+        </label>
+      </Bloque>
 
       <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={guardando}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-strong text-brand-foreground rounded-xl pk-label shadow-sm transition-all disabled:opacity-50"
-        >
+        <PageHeaderAction type="submit" disabled={guardando}>
           <Save size={14} />
           {guardando ? "Guardando..." : "Guardar cambios"}
-        </button>
+        </PageHeaderAction>
       </div>
     </form>
   );
 }
 
 export default function General() {
-  const [params, setParams] = useSearchParams();
-  const permisosVersion = useSyncExternalStore(permisosStore.subscribe, permisosStore.getSnapshot);
-  const visibleTabs = useMemo(
-    () => TABS.filter((t) => !t.anyOf?.length || permisosStore.tieneAlgun(...t.anyOf)),
-    [permisosVersion]
-  );
-  const tab = useMemo(() => {
-    const t = params.get("tab") || visibleTabs[0]?.id || "general";
-    return visibleTabs.some((x) => x.id === t) ? t : visibleTabs[0]?.id || "general";
-  }, [params, visibleTabs]);
-
-  function setTab(id) {
-    setParams(id === "general" ? {} : { tab: id }, { replace: true });
-  }
+  const [params] = useSearchParams();
+  const dest = LEGACY[params.get("tab")];
+  if (dest) return <Navigate to={dest} replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in-up">
-      <div>
-        <h1 className="pk-title">Datos del estacionamiento</h1>
-        <p className="pk-desc mt-1">
-          Identidad, reglas de cobro y catálogos del estacionamiento.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 p-1 bg-surface-muted rounded-xl border border-line-subtle w-fit max-w-full">
-        {visibleTabs.map(({ id, label, icon: Icon }) => {
-          const active = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg pk-caption font-bold transition-all ${
-                active
-                  ? "bg-surface-card text-brand shadow-sm border border-line-subtle"
-                  : "text-ink-muted hover:text-ink border border-transparent"
-              }`}
-            >
-              <Icon size={13} />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === "general" && <GeneralForm />}
-      {tab === "categorias" && <CategoriasCochera embedded />}
-      {tab === "zonas" && <Zonas embedded />}
-      {tab === "tipos" && <TiposVehiculo embedded />}
-      {tab === "metodos" && <MetodosDePago embedded />}
-      {tab === "reservas" && <ReservasConfig embedded />}
-      {tab === "gastos" && <TiposGasto embedded />}
-      {tab === "rotativo" && <ZonasRotativo embedded />}
-    </div>
+    <ConfigSeccion
+      title="Estacionamiento"
+      description="Identidad, reglas de cobro, contrato y operatoria. Los catálogos y las zonas tienen su propia página."
+      tabs={[
+        { value: "identidad", label: "Identidad y reglas" },
+        { value: "reservas", label: "Reservas" },
+      ]}
+    >
+      {(tab) => (tab === "reservas" ? <ReservasConfig embedded /> : <GeneralForm />)}
+    </ConfigSeccion>
   );
 }

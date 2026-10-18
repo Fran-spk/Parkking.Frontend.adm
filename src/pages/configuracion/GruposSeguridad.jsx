@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Pencil, Trash2, Shield, X, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Check } from "lucide-react";
 import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
 import { grupoService, ESTADO_GRUPO } from "../../services/grupoService";
 import Checkbox from "../../components/layout/Check";
@@ -13,7 +13,7 @@ function errMsg(e, fallback) {
   return e?.message || fallback;
 }
 
-export default function GruposSeguridad() {
+export default function GruposSeguridad({ embedded = false }) {
   const [grupos, setGrupos] = useState([]);
   const [modulos, setModulos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,81 +125,96 @@ export default function GruposSeguridad() {
   );
 
   return (
-    <div className="space-y-5 animate-fade-in-up">
-      <PageHeader
-        title="Grupos de seguridad"
-        description="Conjuntos de acciones. Un usuario en el grupo tiene todas; no se pueden restar por usuario."
-        stats={[
-          { label: "Grupos", value: grupos.length },
-          { label: "Acciones catálogo", value: totalAcciones },
-        ]}
-        action={
+    <div className={embedded ? "space-y-4" : "space-y-5 animate-fade-in-up"}>
+      {!embedded && (
+        <PageHeader
+          title="Grupos de seguridad"
+          description="Conjuntos de acciones. Un usuario en el grupo tiene todas; no se pueden restar por usuario."
+          stats={[
+            { label: "Grupos", value: grupos.length },
+            { label: "Acciones catálogo", value: totalAcciones },
+          ]}
+          action={
+            <PageHeaderAction onClick={abrirNuevo}>
+              <Plus size={16} /> Nuevo grupo
+            </PageHeaderAction>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end">
           <PageHeaderAction onClick={abrirNuevo}>
             <Plus size={16} /> Nuevo grupo
           </PageHeaderAction>
-        }
-      />
+        </div>
+      )}
 
       {error && (
         <div className="px-4 py-2.5 bg-danger-muted text-danger text-xs font-semibold">{error}</div>
       )}
 
-      <div className="bg-surface-card p-5 space-y-3">
-        <span className="pk-label flex items-center gap-2">
-          <Shield size={13} /> Listado
-        </span>
-
-        {loading ? (
-          <p className="text-sm text-ink-muted py-6 text-center">Cargando…</p>
-        ) : grupos.length === 0 ? (
-          <p className="text-sm text-ink-muted py-6 text-center">No hay grupos todavía.</p>
-        ) : (
-          <ul className="divide-y divide-line-subtle">
-            {grupos.map((g) => (
-              <li key={g.grupoId} className="py-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-ink">{g.nombre}</span>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 ${
-                        g.estado === ESTADO_GRUPO.Habilitado
-                          ? "bg-success-muted text-success"
-                          : "bg-surface-muted text-ink-faint"
-                      }`}
-                    >
-                      {g.estado === ESTADO_GRUPO.Habilitado ? "Habilitado" : "Deshabilitado"}
-                    </span>
-                  </div>
-                  {g.descripcion && (
-                    <p className="text-xs text-ink-muted mt-0.5">{g.descripcion}</p>
-                  )}
-                  <p className="text-[11px] text-ink-faint mt-1">
-                    {(g.acciones ?? []).length} acciones
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => abrirEditar(g)}
-                    className="p-2 text-ink-muted hover:text-brand hover:bg-brand-muted"
-                    title="Editar"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => eliminar(g)}
-                    className="p-2 text-ink-muted hover:text-danger hover:bg-danger-muted"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando grupos…</span>
+        </div>
+      ) : grupos.length === 0 ? (
+        <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">No hay grupos todavía.</div>
+      ) : (
+        <div className="bg-surface-card overflow-x-auto">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[36%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-line-strong text-left">
+                <th className="pk-label font-bold pl-4 pr-3 py-2.5">Grupo</th>
+                <th className="pk-label font-bold px-3 py-2.5">Descripción</th>
+                <th className="pk-label font-bold px-3 py-2.5">Acciones</th>
+                <th className="pk-label font-bold px-3 py-2.5">Estado</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {grupos.map((g) => {
+                const off = g.estado !== ESTADO_GRUPO.Habilitado;
+                return (
+                  <tr key={g.grupoId} className={`border-b border-line ${off ? "opacity-55" : "hover:bg-surface-page"}`}>
+                    <td className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${off ? "border-l-transparent" : "border-l-brand"}`}>
+                      <p className="font-semibold text-ink truncate">{g.nombre}</p>
+                    </td>
+                    <td className="px-3 py-2.5 overflow-hidden">
+                      <p className="pk-caption truncate">{g.descripcion || "—"}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <p className="pk-caption tabular-nums">{(g.acciones ?? []).length}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <p className={`text-sm font-semibold ${off ? "text-ink-faint" : "text-success-ink"}`}>
+                        {off ? "Deshabilitado" : "Habilitado"}
+                      </p>
+                    </td>
+                    <td className="pl-2 pr-3 py-2.5">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button type="button" onClick={() => abrirEditar(g)} className="pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted" title="Editar">
+                          <Pencil size={15} />
+                        </button>
+                        <button type="button" onClick={() => eliminar(g)} className="pk-icon-btn p-1.5 text-ink-faint hover:text-danger-ink hover:bg-surface-muted" title="Eliminar">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {editando &&
         createPortal(
@@ -290,22 +305,13 @@ export default function GruposSeguridad() {
               </div>
 
               <div className="px-5 py-3 border-t border-line-subtle flex justify-end gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={cerrarEditor}
-                  className="px-3 py-2 text-xs font-semibold text-ink-muted hover:bg-surface-muted"
-                >
+                <button type="button" onClick={cerrarEditor} className="px-3 py-2 text-sm font-semibold text-ink-muted">
                   Cancelar
                 </button>
-                <button
-                  type="button"
-                  disabled={guardando}
-                  onClick={guardar}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-brand text-white hover:opacity-90 disabled:opacity-50"
-                >
+                <PageHeaderAction type="button" disabled={guardando} onClick={guardar}>
                   <Check size={14} />
                   {guardando ? "Guardando…" : "Guardar"}
-                </button>
+                </PageHeaderAction>
               </div>
             </div>
           </div>,

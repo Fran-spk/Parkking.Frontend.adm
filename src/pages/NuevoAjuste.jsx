@@ -1,38 +1,31 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Scale, Layers, Check, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import SelectorGrupos from "../components/layout/SelectorGrupos";
-import { clienteService } from "../services/clienteService";
+import BuscadorCliente from "../components/layout/BuscadorCliente";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
 import { operacionFinancieraService } from "../services/operacionFinancieraService";
-import FilterSelect, { fieldClass } from "../components/layout/FilterSelect";
+import { fieldClass } from "../components/layout/FilterSelect";
+import { plata } from "../utils/clienteHelpers";
 
 /** @typedef {import("../types").Cliente} Cliente */
 
 const SECTIONS = [
-  { id: "cliente", label: "Cliente", icon: User },
-  { id: "importe", label: "Importe", icon: Scale },
-  { id: "grupos", label: "Grupos", icon: Layers },
+  { id: "cliente", label: "Cliente" },
+  { id: "importe", label: "Importe" },
+  { id: "grupos", label: "Grupos" },
 ];
 
-const inputCls = fieldClass;
-
-function SectionHeader({ index, title, done }) {
+function Seccion({ id, titulo, nota, children }) {
   return (
-    <div className="flex items-start gap-4 mb-6">
-      <div
-        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black ${
-          done ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-brand text-brand-foreground shadow-lg shadow-slate-900/15"
-        }`}
-      >
-        {done ? <Check size={18} strokeWidth={3} /> : index}
-      </div>
-      <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
-    </div>
+    <section id={id} className="scroll-mt-36 bg-surface-card">
+      <header className="px-5 py-3 border-b border-line">
+        <h2 className="text-sm font-bold text-ink">{titulo}</h2>
+        {nota ? <p className="pk-caption mt-0.5">{nota}</p> : null}
+      </header>
+      <div className="px-5 py-4">{children}</div>
+    </section>
   );
-}
-
-function pesos(n) {
-  return Number(n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 }
 
 function errorDe(e, fallback) {
@@ -42,8 +35,7 @@ function errorDe(e, fallback) {
 
 export default function NuevoAjuste() {
   const navigate = useNavigate();
-  const [clientes, setClientes] = useState(/** @type {Cliente[]} */ ([]));
-  const [clienteId, setClienteId] = useState("");
+  const [cliente, setCliente] = useState(/** @type {Cliente | null} */ (null));
   const [sentido, setSentido] = useState("favor");
   const [importe, setImporte] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -53,44 +45,24 @@ export default function NuevoAjuste() {
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
 
-  useEffect(() => {
-    clienteService.getAll(false).then((data) => setClientes(Array.isArray(data) ? data : [])).catch(() => setClientes([]));
-  }, []);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target?.id) setActiveSection(visible.target.id.replace("sec-", ""));
-      },
-      { rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.4, 0.7] }
-    );
-    SECTIONS.forEach((s) => {
-      const el = document.getElementById(`sec-${s.id}`);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  const cliente = clientes.find((c) => String(c.clienteId) === String(clienteId));
   const monto = Number(importe);
   const aFavor = sentido === "favor";
   const checklist = {
-    cliente: Boolean(clienteId),
+    cliente: Boolean(cliente?.clienteId),
     importe: monto > 0 && motivo.trim().length > 0,
-    grupos: true,
+    grupos: grupos.length > 0,
   };
   const puedeGuardar = checklist.cliente && checklist.importe && !guardando;
-  const activeIdx = Math.max(0, SECTIONS.findIndex((s) => s.id === activeSection));
   const signoCuenta = aFavor ? -monto : monto;
 
   function scrollTo(id) {
+    setActiveSection(id);
     document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function handleGuardar() {
     if (!puedeGuardar) {
-      setError(!clienteId ? "Elegí un cliente" : "Completá importe y motivo");
+      setError(!cliente?.clienteId ? "Elegí un cliente" : "Completá importe y motivo");
       return;
     }
     try {
@@ -98,7 +70,7 @@ export default function NuevoAjuste() {
       setError(null);
       setAviso(null);
       await operacionFinancieraService.crearAjuste({
-        clienteId,
+        clienteId: cliente.clienteId,
         importe: monto,
         aFavorDelCliente: aFavor,
         motivo: motivo.trim(),
@@ -116,146 +88,121 @@ export default function NuevoAjuste() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-2rem)] -mx-1">
-      <div className="sticky top-16 z-30 -mx-4 px-4 lg:-mx-8 lg:px-8 py-3 mb-8 bg-gray-50/95 backdrop-blur-md border-b border-slate-200/70">
-        <div className="max-w-6xl mx-auto space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <button type="button" onClick={() => navigate("/cuenta-corriente")} className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-white">
-                <ArrowLeft size={18} />
-              </button>
-              <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">Nuevo ajuste</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Paso {activeIdx + 1} de {SECTIONS.length}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleGuardar}
-              disabled={!puedeGuardar}
-              className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-slate-900/20"
-            >
-              {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-              {guardando ? "Guardando..." : "Registrar ajuste"}
-            </button>
+    <div className="space-y-5 pb-12 animate-fade-in-up">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate("/cuenta-corriente")}
+            className="pk-icon-btn p-1.5 text-ink-muted hover:text-ink hover:bg-surface-muted"
+            aria-label="Volver"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="pk-title">Nuevo ajuste</h1>
+            <p className="pk-desc mt-1">Corrige el saldo del cliente y del estacionamiento.</p>
           </div>
-          <nav className="flex items-stretch gap-2 overflow-x-auto">
-            {SECTIONS.map((s, i) => {
-              const Icon = s.icon;
-              const active = activeSection === s.id;
-              const done = checklist[s.id] && s.id !== "grupos";
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => scrollTo(s.id)}
-                  className={`flex-1 min-w-[7.5rem] flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border text-left ${
-                    active ? "bg-white border-slate-200 shadow-sm" : done ? "bg-emerald-50/80 border-emerald-100" : "bg-white/60 border-transparent"
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-emerald-500 text-white" : active ? "bg-brand text-brand-foreground" : "bg-slate-100 text-slate-400"}`}>
-                    {done ? <Check size={14} /> : <Icon size={14} />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Paso {i + 1}</p>
-                    <p className="text-sm font-semibold truncate text-slate-900">{s.label}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
         </div>
+        <button
+          type="button"
+          onClick={handleGuardar}
+          disabled={!puedeGuardar}
+          className="inline-flex items-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold px-4 py-2.5"
+        >
+          {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          {guardando ? "Guardando…" : "Registrar ajuste"}
+        </button>
       </div>
 
-      {error && (
-        <div className="max-w-6xl mx-auto mb-5 flex items-start gap-2.5 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
-      {aviso && (
-        <div className="max-w-6xl mx-auto mb-5 text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
-          {aviso}
-        </div>
-      )}
+      <FiltroSegmentado
+        ariaLabel="Secciones"
+        value={activeSection}
+        onChange={scrollTo}
+        opciones={SECTIONS.map((s) => ({
+          value: s.id,
+          label: checklist[s.id] ? `${s.label} · listo` : s.label,
+        }))}
+      />
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-8 pb-16">
-        <div className="space-y-6">
-          <section id="sec-cliente" className="scroll-mt-48 bg-white rounded-3xl p-6 sm:p-8 lg:p-10">
-            <SectionHeader index={1} title="Cliente" done={checklist.cliente} />
-            <div className="max-w-xl">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Titular</label>
-              <FilterSelect
-                className="w-full"
-                ariaLabel="Cliente"
-                value={clienteId}
-                onChange={setClienteId}
-                options={[
-                  { value: "", label: "Elegir cliente" },
-                  ...clientes.map((c) => ({ value: c.clienteId, label: c.nombre })),
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+      {aviso && <p className="px-4 py-3 bg-success-muted text-success-ink text-sm">{aviso}</p>}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_18rem] gap-5">
+        <div className="space-y-5 min-w-0">
+          <Seccion id="sec-cliente" titulo="Cliente" nota="Titular de la cuenta que se ajusta.">
+            <div className="max-w-xl space-y-3">
+              <BuscadorCliente size="lg" onSeleccionar={setCliente} />
+              {cliente && (
+                <div className="border-l-[3px] border-l-brand bg-surface-page px-3 py-2.5">
+                  <p className="font-semibold text-ink truncate">{cliente.nombre}</p>
+                  <p className="pk-caption truncate">
+                    {[cliente.documento && `DNI ${cliente.documento}`, cliente.telefono, cliente.email]
+                      .filter(Boolean)
+                      .join(" · ") || "Sin contacto"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </Seccion>
+
+          <Seccion id="sec-importe" titulo="Importe" nota="A favor resta en tu cuenta. Debe más, suma.">
+            <div className="max-w-xl space-y-4">
+              <FiltroSegmentado
+                ariaLabel="Sentido del ajuste"
+                value={sentido}
+                onChange={setSentido}
+                opciones={[
+                  { value: "favor", label: "A su favor" },
+                  { value: "debe", label: "Debe más" },
                 ]}
               />
-            </div>
-          </section>
-
-          <section id="sec-importe" className="scroll-mt-48 bg-white rounded-3xl p-6 sm:p-8 lg:p-10">
-            <SectionHeader index={2} title="Importe" done={checklist.importe} />
-            <div className="max-w-xl space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setSentido("favor")} className={`text-left rounded-2xl border px-4 py-4 ${aFavor ? "border-brand bg-brand text-brand-foreground" : "border-slate-200 text-slate-600"}`}>
-                  <p className="font-bold">A su favor</p>
-                  <p className={`text-xs mt-1 ${aFavor ? "text-slate-300" : "text-slate-400"}`}>Resta en tu cuenta</p>
-                </button>
-                <button type="button" onClick={() => setSentido("debe")} className={`text-left rounded-2xl border px-4 py-4 ${!aFavor ? "border-brand bg-brand text-brand-foreground" : "border-slate-200 text-slate-600"}`}>
-                  <p className="font-bold">Debe más</p>
-                  <p className={`text-xs mt-1 ${!aFavor ? "text-slate-300" : "text-slate-400"}`}>Suma en tu cuenta</p>
-                </button>
-              </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Importe</label>
+                <label className="pk-label block mb-1">Importe</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
-                  <input type="number" min="0" step="1" value={importe} onChange={(e) => setImporte(e.target.value)} className={`${inputCls} pl-8`} />
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 pk-caption">$</span>
+                  <input type="number" min="0" step="1" value={importe} onChange={(e) => setImporte(e.target.value)} className={`${fieldClass} pl-8`} />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-2">Motivo</label>
-                <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Por qué se ajusta" className={inputCls} />
+                <label className="pk-label block mb-1">Motivo</label>
+                <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Por qué se ajusta" className={fieldClass} />
               </div>
             </div>
-          </section>
+          </Seccion>
 
-          <section id="sec-grupos" className="scroll-mt-48 bg-white rounded-3xl p-6 sm:p-8 lg:p-10">
-            <SectionHeader index={3} title="Grupos" done={grupos.length > 0} />
-            <p className="text-sm text-slate-500 mb-4 max-w-xl">Se suman a las reglas del cliente. Si no marcás ninguno, igual entran los de la regla.</p>
+          <Seccion id="sec-grupos" titulo="Grupos" nota="Se suman a las reglas del cliente. Si no marcás ninguno, igual entran los de la regla.">
             <SelectorGrupos value={grupos} onChange={setGrupos} />
-          </section>
+          </Seccion>
         </div>
 
         <aside className="hidden xl:block">
-          <div className="sticky top-44 rounded-3xl bg-white overflow-hidden">
-            <div className="px-5 py-4 bg-brand text-brand-foreground">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Resumen</p>
-              <p className="text-base font-bold mt-1">Ajuste</p>
+          <div className="sticky top-20 bg-surface-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-line">
+              <p className="pk-label">Resumen</p>
+              <p className="text-sm font-bold text-ink mt-0.5">Ajuste</p>
             </div>
-            <div className="p-5 space-y-4 text-sm">
+            <div className="p-4 space-y-3 text-sm">
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Cliente</p>
-                <p className="font-semibold text-slate-900">{cliente?.nombre || "Sin seleccionar"}</p>
+                <p className="pk-label">Cliente</p>
+                <p className="font-semibold text-ink mt-0.5">{cliente?.nombre || "Sin seleccionar"}</p>
               </div>
-              <div className="h-px bg-slate-100" />
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Sentido</p>
-                <p className="font-semibold text-slate-900">{aFavor ? "A favor del cliente" : "El cliente debe más"}</p>
+                <p className="pk-label">Sentido</p>
+                <p className="font-semibold text-ink mt-0.5">{aFavor ? "A favor del cliente" : "El cliente debe más"}</p>
               </div>
-              <div className="h-px bg-slate-100" />
               <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">En tu cuenta</p>
-                <p className={`text-2xl font-black tracking-tight ${signoCuenta < 0 ? "text-rose-600" : "text-slate-900"}`}>
-                  {monto > 0 ? pesos(signoCuenta) : "—"}
+                <p className="pk-label">En tu cuenta</p>
+                <p className={`text-lg font-bold tabular-nums mt-0.5 ${signoCuenta < 0 ? "text-danger-ink" : "text-ink"}`}>
+                  {monto > 0 ? plata(signoCuenta) : "—"}
                 </p>
               </div>
-              <button type="button" onClick={handleGuardar} disabled={!puedeGuardar} className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-3 rounded-xl shadow-lg shadow-indigo-600/25">
+              <button
+                type="button"
+                onClick={handleGuardar}
+                disabled={!puedeGuardar}
+                className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-40 text-brand-foreground text-sm font-semibold py-2.5"
+              >
                 {guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 Confirmar ajuste
               </button>

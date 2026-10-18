@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Building, MapPin, ArrowRight, AlertCircle } from "lucide-react";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { authService } from "../services/authService";
+import { destinoPostLogin } from "../utils/playa";
 
 /** @typedef {import("../types").EstacionamientoAcceso} EstacionamientoAcceso */
 
@@ -46,7 +47,7 @@ export default function SeleccionEstacionamientos() {
       // Guardar el estacionamiento seleccionado para que el resto de la app sepa en cuál está trabajando
       localStorage.setItem("parkking_estacionamiento", JSON.stringify(estacionamiento));
       await authService.me();
-      navigate("/mi-estacionamiento");
+      navigate(destinoPostLogin());
     } catch (err) {
       console.error(err);
       setError(err.message || "No se pudo seleccionar el estacionamiento.");

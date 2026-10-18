@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users, Shield, Check } from "lucide-react";
-import PageHeader from "../../components/layout/PageHeader";
+import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
 import { usuarioService } from "../../services/usuarioService";
 import { grupoService, ESTADO_GRUPO } from "../../services/grupoService";
 import { permisosService } from "../../services/permisosService";
@@ -13,7 +13,7 @@ function errMsg(e, fallback) {
   return e?.message || fallback;
 }
 
-export default function UsuariosConfig() {
+export default function UsuariosConfig({ embedded = false }) {
   const [usuarios, setUsuarios] = useState([]);
   const [gruposCatalogo, setGruposCatalogo] = useState([]);
   const [modulos, setModulos] = useState([]);
@@ -120,7 +120,8 @@ export default function UsuariosConfig() {
   const gruposHabilitados = gruposCatalogo.filter((g) => g.estado === ESTADO_GRUPO.Habilitado);
 
   return (
-    <div className="space-y-5 animate-fade-in-up">
+    <div className={embedded ? "space-y-4" : "space-y-5 animate-fade-in-up"}>
+      {!embedded && (
       <PageHeader
         title="Usuarios y accesos"
         description="Asigná grupos de seguridad y acciones extras. Estar en un grupo da todas sus acciones."
@@ -129,6 +130,7 @@ export default function UsuariosConfig() {
           { label: "Grupos", value: gruposHabilitados.length },
         ]}
       />
+      )}
 
       {error && (
         <div className="px-4 py-2.5 bg-danger-muted text-danger text-xs font-semibold">{error}</div>
@@ -140,7 +142,10 @@ export default function UsuariosConfig() {
             <Users size={13} /> Del estacionamiento
           </span>
           {loading ? (
-            <p className="text-sm text-ink-muted py-4 text-center">Cargando…</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+              <span className="pk-caption">Cargando…</span>
+            </div>
           ) : (
             <ul className="divide-y divide-line-subtle max-h-[32rem] overflow-y-auto">
               {usuarios.map((u) => {
@@ -175,7 +180,7 @@ export default function UsuariosConfig() {
             <>
               <div>
                 <h3 className="text-base font-bold text-ink">{seleccionado.nombre}</h3>
-                <p className="text-xs text-ink-muted">
+                <p className="pk-caption">
                   {seleccionado.usuarioName} · {seleccionado.mail}
                 </p>
               </div>
@@ -211,8 +216,8 @@ export default function UsuariosConfig() {
 
               <section className="space-y-2">
                 <span className="pk-label">Acciones extras</span>
-                <p className="text-[11px] text-ink-faint">
-                  Solo las que no estánubre ningún grupo asignado. Las del grupo no se pueden quitar acá.
+                <p className="pk-caption">
+                  Solo las que no cubre ningún grupo asignado. Las del grupo no se pueden quitar acá.
                 </p>
                 <div className="space-y-2 max-h-64 overflow-y-auto border border-line-subtle p-2">
                   {modulos.map((mod) => (
@@ -259,15 +264,10 @@ export default function UsuariosConfig() {
               )}
 
               <div className="flex justify-end pt-2 border-t border-line-subtle">
-                <button
-                  type="button"
-                  disabled={guardando}
-                  onClick={guardar}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-brand text-white hover:opacity-90 disabled:opacity-50"
-                >
+                <PageHeaderAction type="button" disabled={guardando} onClick={guardar}>
                   <Check size={14} />
                   {guardando ? "Guardando…" : "Guardar permisos"}
-                </button>
+                </PageHeaderAction>
               </div>
             </>
           )}

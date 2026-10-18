@@ -8,6 +8,12 @@ import { applyParkkingTheme } from './theme/parkking.theme.js'
 applyParkkingTheme()
 
 document.querySelector('html').setAttribute('lang', 'es')
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

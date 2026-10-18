@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Check, X, RotateCcw, Layers, Eye } from "lucide-react";
-import PageHeader from "../../components/layout/PageHeader";
-import { grupoFinancieroService } from "../../services/grupoFinancieroService";
+import { Plus, Pencil, Trash2, Check, X, RotateCcw, Eye } from "lucide-react";
+import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
+import SearchField from "../../components/layout/SearchField";
 import Checkbox from "../../components/layout/Check";
+import Paginacion, { paginaDe } from "../../components/layout/Paginacion";
 import { fieldClass } from "../../components/layout/FilterSelect";
+import { grupoFinancieroService } from "../../services/grupoFinancieroService";
 
 /** @typedef {import("../../types").GrupoFinanciero} GrupoFinanciero */
 
@@ -13,10 +15,16 @@ function errorDe(e, fallback) {
   return typeof msg === "string" ? msg : fallback;
 }
 
-export default function GruposFinancieros() {
+function Vacio({ texto }) {
+  return <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">{texto}</div>;
+}
+
+export default function GruposFinancieros({ embedded = false }) {
   const navigate = useNavigate();
   const [grupos, setGrupos] = useState(/** @type {GrupoFinanciero[]} */ ([]));
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [pagina, setPagina] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [nombre, setNombre] = useState("");
@@ -25,6 +33,7 @@ export default function GruposFinancieros() {
   const [editNombre, setEditNombre] = useState("");
   const [editDescripcion, setEditDescripcion] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [mostrarAlta, setMostrarAlta] = useState(false);
 
   useEffect(() => {
     cargar();
@@ -50,6 +59,7 @@ export default function GruposFinancieros() {
       await grupoFinancieroService.agregar(nombre.trim(), descripcion.trim());
       setNombre("");
       setDescripcion("");
+      setMostrarAlta(false);
       await cargar();
     } catch (e) {
       setError(errorDe(e, "No se pudo agregar"));
@@ -94,140 +104,211 @@ export default function GruposFinancieros() {
     }
   }
 
+  const visibles = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return grupos;
+    return grupos.filter(
+      (g) => g.nombre.toLowerCase().includes(q) || String(g.descripcion || "").toLowerCase().includes(q)
+    );
+  }, [grupos, busqueda]);
+
+  const paginaClave = `${busqueda}|${mostrarInactivos}`;
+  useEffect(() => {
+    setPagina(1);
+  }, [paginaClave]);
+
+  const visPage = paginaDe(visibles, pagina);
+  const activos = grupos.filter((g) => g.activo).length;
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
+
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <PageHeader
-        title="Grupos financieros"
-        description="Organizan movimientos para consultarlos. No son una cuenta corriente. La baja es lógica."
-        stats={[
-          { label: "Listados", value: grupos.length },
-          { label: "Activos", value: grupos.filter((g) => g.activo).length },
-        ]}
-      />
-
-      <div className="bg-surface-card p-5 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-line-subtle">
-          <span className="pk-label flex items-center gap-2">
-            <Layers size={13} /> Listado
-          </span>
-          <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer">
-            <Checkbox
-              checked={mostrarInactivos}
-              onChange={(e) => {
-                setLoading(true);
-                setMostrarInactivos(e.target.checked);
-              }}
-            />
-            Mostrar dados de baja
-          </label>
+    <div className={embedded ? "space-y-4" : "space-y-5 pb-12 animate-fade-in-up"}>
+      {!embedded && (
+        <PageHeader
+          title="Grupos financieros"
+          description="Alta y baja de grupos. Para verlos, filtrá en Cuenta corriente. No son una cuenta: agrupan movimientos."
+          loading={loading}
+          action={
+            <PageHeaderAction onClick={() => setMostrarAlta((v) => !v)}>
+              <Plus size={16} />
+              Nuevo grupo
+            </PageHeaderAction>
+          }
+          stats={[
+            { label: "Listados", value: grupos.length },
+            { label: "Activos", value: activos, tone: "success" },
+          ]}
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <PageHeaderAction onClick={() => setMostrarAlta((v) => !v)}>
+            <Plus size={16} />
+            Nuevo grupo
+          </PageHeaderAction>
         </div>
+      )}
 
-        {error && <div className="px-4 py-2.5 bg-danger-muted text-danger text-xs font-semibold">{error}</div>}
-
-        {loading ? (
-          <p className="text-xs text-ink-faint py-4">Cargando...</p>
-        ) : grupos.length === 0 ? (
-          <p className="text-xs text-ink-faint py-4">No hay grupos</p>
-        ) : (
-          <div className="space-y-2">
-            {grupos.map((grupo) => {
-              const inactivo = !grupo.activo;
-              return (
-                <div
-                  key={grupo.grupoFinancieroId}
-                  className={`border px-4 py-3 ${inactivo ? "opacity-60 bg-surface-muted/50 border-line-subtle" : "border-line-subtle"}`}
-                >
-                  {editandoId === grupo.grupoFinancieroId ? (
-                    <div className="space-y-2">
-                      <input
-                        autoFocus
-                        value={editNombre}
-                        onChange={(e) => setEditNombre(e.target.value)}
-                        className={fieldClass}
-                      />
-                      <input
-                        value={editDescripcion}
-                        onChange={(e) => setEditDescripcion(e.target.value)}
-                        placeholder="Descripción"
-                        className={fieldClass}
-                      />
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => handleModificar(grupo.grupoFinancieroId)} className="p-2 text-success">
-                          <Check size={16} />
-                        </button>
-                        <button type="button" onClick={() => setEditandoId(null)} className="p-2 text-ink-faint">
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold ${inactivo ? "text-ink-faint" : "text-ink"}`}>{grupo.nombre}</p>
-                        {grupo.descripcion && <p className="text-xs text-ink-muted mt-0.5">{grupo.descripcion}</p>}
-                      </div>
-                      {inactivo ? (
-                        <button type="button" title="Reactivar" onClick={() => handleReactivar(grupo)} className="p-1.5 text-ink-faint hover:text-success">
-                          <RotateCcw size={15} />
-                        </button>
-                      ) : (
-                        <div className="flex gap-1 shrink-0">
-                          <button
-                            type="button"
-                            title="Ver período"
-                            onClick={() => navigate(`/grupos-financieros/${grupo.grupoFinancieroId}`)}
-                            className="p-1.5 text-ink-faint hover:text-ink"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Editar"
-                            onClick={() => {
-                              setEditandoId(grupo.grupoFinancieroId);
-                              setEditNombre(grupo.nombre);
-                              setEditDescripcion(grupo.descripcion || "");
-                            }}
-                            className="p-1.5 text-ink-faint hover:text-warning"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(grupo)} className="p-1.5 text-ink-faint hover:text-danger">
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2 pt-3 border-t border-line-subtle">
-          <input
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Nombre del grupo"
-            className={fieldClass}
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchField
+          value={busqueda}
+          onChange={setBusqueda}
+          placeholder="Nombre o descripción"
+          className="w-full sm:w-80"
+        />
+        <label className="ml-auto flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none">
+          <Checkbox
+            checked={mostrarInactivos}
+            onChange={(e) => {
+              setLoading(true);
+              setMostrarInactivos(e.target.checked);
+            }}
           />
-          <input
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Descripción"
-            className={fieldClass}
-          />
+          Ver dados de baja
+        </label>
+      </div>
+
+      {mostrarAlta && (
+        <div className="bg-surface-card px-4 py-4 grid sm:grid-cols-[1fr_1fr_auto] gap-2">
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del grupo" className={fieldClass} />
+          <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción" className={fieldClass} />
           <button
             type="button"
             onClick={handleAgregar}
             disabled={guardando || !nombre.trim()}
-            className="inline-flex items-center justify-center gap-1.5 bg-brand text-brand-foreground text-xs font-bold px-4 py-2.5 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 bg-brand text-brand-foreground text-xs font-semibold px-4 py-2.5 disabled:opacity-50"
           >
             <Plus size={15} /> Agregar
           </button>
         </div>
-      </div>
+      )}
+
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando grupos…</span>
+        </div>
+      ) : grupos.length === 0 ? (
+        <Vacio texto="Todavía no hay grupos. Cargá el primero con Nuevo grupo." />
+      ) : visibles.length === 0 ? (
+        <Vacio texto="Ningún grupo coincide con la búsqueda." />
+      ) : (
+        <>
+          <div className="hidden md:block bg-surface-card overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[28%]" />
+                <col className="w-[44%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <th className="pk-label font-bold pl-4 pr-3 py-2.5">Grupo</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Descripción</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Estado</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {visPage.map((grupo) => {
+                  const inactivo = !grupo.activo;
+                  const editando = editandoId === grupo.grupoFinancieroId;
+                  return (
+                    <tr key={grupo.grupoFinancieroId} className={`border-b border-line ${inactivo ? "opacity-55" : "hover:bg-surface-page"}`}>
+                      <td className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${inactivo ? "border-l-transparent" : "border-l-brand"}`}>
+                        {editando ? (
+                          <input autoFocus value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className={fieldClass} />
+                        ) : (
+                          <p className="font-semibold text-ink truncate">{grupo.nombre}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        {editando ? (
+                          <input value={editDescripcion} onChange={(e) => setEditDescripcion(e.target.value)} placeholder="Descripción" className={fieldClass} />
+                        ) : (
+                          <p className="pk-caption truncate">{grupo.descripcion || "—"}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className={`text-sm font-semibold ${inactivo ? "text-ink-faint" : "text-success-ink"}`}>
+                          {inactivo ? "De baja" : "Activo"}
+                        </p>
+                      </td>
+                      <td className="pl-2 pr-3 py-2.5">
+                        {editando ? (
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button type="button" title="Guardar" onClick={() => handleModificar(grupo.grupoFinancieroId)} className={icono}>
+                              <Check size={15} />
+                            </button>
+                            <button type="button" title="Cancelar" onClick={() => setEditandoId(null)} className={icono}>
+                              <X size={15} />
+                            </button>
+                          </div>
+                        ) : inactivo ? (
+                          <div className="flex items-center justify-end">
+                            <button type="button" title="Reactivar" onClick={() => handleReactivar(grupo)} className={icono}>
+                              <RotateCcw size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-0.5">
+                            <button type="button" title="Ver en cuenta corriente" onClick={() => navigate(`/cuenta-corriente?grupo=${grupo.grupoFinancieroId}`)} className={icono}>
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Editar"
+                              onClick={() => {
+                                setEditandoId(grupo.grupoFinancieroId);
+                                setEditNombre(grupo.nombre);
+                                setEditDescripcion(grupo.descripcion || "");
+                              }}
+                              className={icono}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button type="button" title="Dar de baja" onClick={() => handleDarDeBaja(grupo)} className={`${icono} hover:text-danger-ink`}>
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="md:hidden bg-surface-card divide-y divide-line">
+            {visPage.map((grupo) => {
+              const inactivo = !grupo.activo;
+              return (
+                <li key={grupo.grupoFinancieroId} className={inactivo ? "opacity-55" : ""}>
+                  <button
+                    type="button"
+                    onClick={() => !inactivo && navigate(`/cuenta-corriente?grupo=${grupo.grupoFinancieroId}`)}
+                    className={`w-full text-left px-4 py-3 border-l-[3px] ${inactivo ? "border-l-transparent" : "border-l-brand"}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-semibold text-ink truncate">{grupo.nombre}</span>
+                      <span className={`pk-caption font-semibold ${inactivo ? "text-ink-faint" : "text-success-ink"}`}>
+                        {inactivo ? "De baja" : "Activo"}
+                      </span>
+                    </div>
+                    {grupo.descripcion && <p className="pk-caption mt-0.5 truncate">{grupo.descripcion}</p>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Paginacion pagina={pagina} total={visibles.length} onChange={setPagina} />
+        </>
+      )}
     </div>
   );
 }

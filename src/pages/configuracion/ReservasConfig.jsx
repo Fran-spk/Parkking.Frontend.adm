@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import PageHeader from "../../components/layout/PageHeader";
+import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
 import Checkbox from "../../components/layout/Check";
+import { fieldClass } from "../../components/layout/FilterSelect";
 import { reservaService } from "../../services/reservaService";
 
 function errorDe(e, fallback) {
@@ -62,26 +63,28 @@ export default function ReservasConfig({ embedded = false }) {
         <p className="text-sm text-ink-faint">Cargando...</p>
       ) : (
         <form onSubmit={guardar} className="bg-surface-card p-5 space-y-4 max-w-xl">
-          <label className="flex items-center gap-2 text-sm text-ink">
+          <label className="flex items-center gap-2 pk-caption font-semibold text-ink cursor-pointer select-none">
             <Checkbox
               checked={Boolean(config.exigirSena)}
               onChange={(e) => set("exigirSena", e.target.checked)}
             />
             Exigir seña
           </label>
-          <label className="block text-sm text-ink">
-            <span className="block text-xs text-ink-faint mb-1">Monto de seña acordado</span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={config.montoSenaAcordado ?? ""}
-              onChange={(e) => set("montoSenaAcordado", e.target.value)}
-              disabled={!config.exigirSena}
-              className="border border-line-strong bg-surface-card px-3 py-2 w-40 disabled:opacity-50"
-            />
+          <label className="block space-y-1">
+            <span className="pk-caption font-semibold">Monto de seña acordado</span>
+            <div className="w-40">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={config.montoSenaAcordado ?? ""}
+                onChange={(e) => set("montoSenaAcordado", e.target.value)}
+                disabled={!config.exigirSena}
+                className={fieldClass}
+              />
+            </div>
           </label>
-          <label className="flex items-center gap-2 text-sm text-ink">
+          <label className="flex items-center gap-2 pk-caption font-semibold text-ink cursor-pointer select-none">
             <Checkbox
               checked={Boolean(config.permitirReservasAutomaticas)}
               onChange={(e) => set("permitirReservasAutomaticas", e.target.checked)}
@@ -89,14 +92,10 @@ export default function ReservasConfig({ embedded = false }) {
             Permitir reservas automáticas
           </label>
           <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={guardando}
-              className="px-3 py-2 text-sm font-semibold bg-brand text-brand-foreground"
-            >
+            <PageHeaderAction type="submit" disabled={guardando}>
               {guardando ? "Guardando..." : "Guardar"}
-            </button>
-            {exito && <span className="text-xs font-semibold text-ink-muted">Guardado</span>}
+            </PageHeaderAction>
+            {exito && <span className="pk-caption font-semibold">Guardado</span>}
           </div>
         </form>
       )}

@@ -1,35 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
-import { Printer, Ban, AlertCircle, Receipt, Loader2, Mail, History } from "lucide-react";
+import { Printer, Ban, Mail, Loader2 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { reciboService } from "../services/reciboService";
 import { estacionamientoService } from "../services/estacionamientoService";
 import { imprimirReciboPdf } from "../utils/imprimirRecibo";
-import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
+import PageHeader from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
+import Patente from "../components/layout/Patente";
+import Paginacion, { paginaDe } from "../components/layout/Paginacion";
 import { fieldClass } from "../components/layout/FilterSelect";
+import { fechaCorta, plata } from "../utils/clienteHelpers";
 
 /** @typedef {import("../types").Recibo} Recibo */
-/** @typedef {import("../types").Estacionamiento} Estacionamiento */
-function formatFecha(fecha) {
-  if (!fecha) return "—";
-  return new Date(fecha).toLocaleString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
-function formatPrecio(precio) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  }).format(Number(precio) || 0);
-}
+const FILTROS = [
+  { value: "todos", label: "Todos" },
+  { value: "Abono", label: "Abonos" },
+  { value: "Estadia", label: "Estadías" },
+  { value: "Sena", label: "Señas" },
+];
 
 function toYmd(date) {
   if (!date) return null;
@@ -39,26 +31,62 @@ function toYmd(date) {
   return `${y}-${m}-${d}`;
 }
 
+function origenDe(r) {
+  if (r.origen) return r.origen;
+  if (String(r.periodosLabel || "").toLowerCase() === "estadía") return "Estadia";
+  if (r.abonoId) return "Abono";
+  return "Sena";
+}
+
+function labelOrigen(origen) {
+  if (origen === "Estadia") return "Estadía";
+  if (origen === "Sena") return "Seña";
+  return "Abono";
+}
+
+function Chips({ label, patente }) {
+  const lista = String(label || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (lista.length === 0) return <span className="text-ink-faint">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      {lista.slice(0, 2).map((v) =>
+        patente ? (
+          <Patente key={v} valor={v} size="sm" />
+        ) : (
+          <span key={v} className="px-1.5 py-0.5 bg-surface-muted text-[11px] font-bold text-ink tabular-nums">
+            {v}
+          </span>
+        )
+      )}
+      {lista.length > 2 && <span className="pk-caption">+{lista.length - 2}</span>}
+    </span>
+  );
+}
+
+function Vacio({ texto }) {
+  return <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">{texto}</div>;
+}
+
 export default function Recibos() {
   const [recibos, setRecibos] = useState(/** @type {Recibo[]} */ ([]));
   const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState("todos");
   const [desde, setDesde] = useState(null);
   const [hasta, setHasta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [okMsg, setOkMsg] = useState(null);
+  const [pagina, setPagina] = useState(1);
   const [metaEst, setMetaEst] = useState({ nombre: "Parkking", direccion: "" });
 
   useEffect(() => {
     estacionamientoService
       .get()
-      .then((d) =>
-        setMetaEst({
-          nombre: d?.nombre || "Parkking",
-          direccion: d?.direccion || "",
-        })
-      )
+      .then((d) => setMetaEst({ nombre: d?.nombre || "Parkking", direccion: d?.direccion || "" }))
       .catch(() => {});
   }, []);
 
@@ -73,7 +101,6 @@ export default function Recibos() {
       const data = await reciboService.listar({
         desde: toYmd(desde) || undefined,
         hasta: toYmd(hasta) || undefined,
-        q: busqueda.trim() || undefined,
       });
       setRecibos(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -82,11 +109,6 @@ export default function Recibos() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function handleBuscar(e) {
-    e?.preventDefault();
-    await cargar();
   }
 
   async function handleImprimir(recibo) {
@@ -106,10 +128,7 @@ export default function Recibos() {
   }
 
   async function handleAnular(recibo) {
-    const motivo = window.prompt(
-      `Anular recibo ${recibo.numeroFormateado || recibo.numero}?\nMotivo (opcional):`,
-      ""
-    );
+    const motivo = window.prompt(`Anular recibo ${recibo.numeroFormateado || recibo.numero}?\nMotivo (opcional):`, "");
     if (motivo === null) return;
     try {
       setBusyId(recibo.reciboId);
@@ -125,94 +144,95 @@ export default function Recibos() {
   }
 
   async function handleEnviarEmail(recibo) {
-    const sugerido = "";
     const email = window.prompt(
       `Enviar recibo ${recibo.numeroFormateado || recibo.numero} por email.\n\nDejá vacío para usar el email del abono/cliente, o escribí uno:`,
-      sugerido
+      ""
     );
     if (email === null) return;
     try {
       setBusyId(recibo.reciboId);
       setError(null);
       setOkMsg(null);
-      const res = await reciboService.enviarEmail(
-        recibo.reciboId,
-        email.trim() || undefined
-      );
+      const res = await reciboService.enviarEmail(recibo.reciboId, email.trim() || undefined);
       if (res?.simulado) {
-        setOkMsg(
-          `Simulado → ${res.destinatario} (SMTP deshabilitado en el servidor). Cuando actives Email:Enabled se enviará de verdad.`
-        );
+        setOkMsg(`Simulado → ${res.destinatario} (SMTP deshabilitado en el servidor).`);
       } else {
         setOkMsg(`Recibo enviado a ${res?.destinatario || "el destinatario"}.`);
       }
     } catch (e) {
       const data = e.response?.data;
-      const msg =
-        (typeof data === "string" && data) ||
-        data?.error ||
-        data?.title ||
-        data?.message ||
-        "No se pudo enviar el email";
-      setError(msg);
+      setError(
+        (typeof data === "string" && data) || data?.error || data?.title || data?.message || "No se pudo enviar el email"
+      );
     } finally {
       setBusyId(null);
     }
   }
 
-  const filtrados = recibos.filter((r) => {
+  const cantidades = useMemo(() => {
+    const c = { todos: recibos.length, Abono: 0, Estadia: 0, Sena: 0 };
+    for (const r of recibos) c[origenDe(r)] = (c[origenDe(r)] || 0) + 1;
+    return c;
+  }, [recibos]);
+
+  const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      (r.numeroFormateado || "").toLowerCase().includes(q) ||
-      String(r.numero || "").includes(q) ||
-      (r.clienteNombre || "").toLowerCase().includes(q) ||
-      (r.cocherasLabel || "").toLowerCase().includes(q) ||
-      (r.patentesLabel || "").toLowerCase().includes(q) ||
-      (r.periodosLabel || "").toLowerCase().includes(q)
-    );
-  });
+    return recibos.filter((r) => {
+      if (filtro !== "todos" && origenDe(r) !== filtro) return false;
+      if (!q) return true;
+      return (
+        (r.numeroFormateado || "").toLowerCase().includes(q) ||
+        String(r.numero || "").includes(q) ||
+        (r.clienteNombre || "").toLowerCase().includes(q) ||
+        (r.cocherasLabel || "").toLowerCase().includes(q) ||
+        (r.patentesLabel || "").toLowerCase().includes(q) ||
+        (r.periodosLabel || "").toLowerCase().includes(q)
+      );
+    });
+  }, [recibos, filtro, busqueda]);
+
+  const paginaClave = `${filtro}|${busqueda}|${desde}|${hasta}`;
+  useEffect(() => {
+    setPagina(1);
+  }, [paginaClave]);
+
+  const visPage = paginaDe(visibles, pagina);
+  const hayFiltros = filtro !== "todos" || busqueda.trim() !== "" || desde || hasta;
 
   const stats = useMemo(() => {
-    const vigentes = filtrados.filter((r) => !r.anulado).length;
-    const anulados = filtrados.filter((r) => r.anulado).length;
-    const total = filtrados
-      .filter((r) => !r.anulado)
-      .reduce((acc, r) => acc + Number(r.total ?? 0), 0);
-    return { vigentes, anulados, total };
-  }, [filtrados]);
+    const vigentes = visibles.filter((r) => !r.anulado).length;
+    const total = visibles.filter((r) => !r.anulado).reduce((acc, r) => acc + Number(r.total ?? 0), 0);
+    return { vigentes, total };
+  }, [visibles]);
+
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted disabled:opacity-40";
 
   return (
-    <div className="space-y-5 animate-fade-in-up">
+    <div className="space-y-5 pb-12 animate-fade-in-up">
       <PageHeader
         title="Recibos"
-        description="Comprobantes de pago. Reimprimí o anulá sin borrar el pago."
+        description="Comprobantes de abonos, estadías y señas. Reimprimí o anulá sin borrar el pago."
         loading={loading}
         stats={[
-          { label: "Vigentes", value: stats.vigentes },
-          { label: "Anulados", value: stats.anulados, tone: "warning" },
-          { label: "Importe", value: formatPrecio(stats.total) },
+          { label: "Vigentes", value: stats.vigentes, onClick: () => setFiltro("todos") },
+          { label: "Abonos", value: cantidades.Abono, onClick: () => setFiltro("Abono") },
+          { label: "Estadías", value: cantidades.Estadia, onClick: () => setFiltro("Estadia") },
+          { label: "Importe", value: plata(stats.total) },
         ]}
       />
 
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-danger-muted text-danger-ink text-sm">
-          <AlertCircle size={15} className="shrink-0" /> {error}
-        </div>
-      )}
-      {okMsg && (
-        <div className="px-4 py-3 bg-success-muted text-success-ink text-sm">{okMsg}</div>
-      )}
-
-      <form
-        onSubmit={handleBuscar}
-        className="flex flex-col lg:flex-row gap-3 bg-surface-card p-4"
-      >
+      <div className="flex flex-wrap items-center gap-3">
         <SearchField
           value={busqueda}
           onChange={setBusqueda}
-          placeholder="N°, cliente, cochera, patente..."
-          className="flex-1"
+          placeholder="N°, cliente, cochera o patente"
+          className="w-full sm:w-80"
+        />
+        <FiltroSegmentado
+          ariaLabel="Origen del recibo"
+          value={filtro}
+          onChange={setFiltro}
+          opciones={FILTROS.map((f) => ({ value: f.value, label: f.label, cantidad: cantidades[f.value] }))}
         />
         <DatePicker
           selected={desde}
@@ -221,7 +241,7 @@ export default function Recibos() {
           locale={es}
           placeholderText="Desde"
           isClearable
-          className={`${fieldClass} lg:w-36`}
+          className={`${fieldClass} w-36`}
         />
         <DatePicker
           selected={hasta}
@@ -230,107 +250,103 @@ export default function Recibos() {
           locale={es}
           placeholderText="Hasta"
           isClearable
-          className={`${fieldClass} lg:w-36`}
+          className={`${fieldClass} w-36`}
         />
-        <PageHeaderAction type="submit">Buscar</PageHeaderAction>
-      </form>
+        {hayFiltros && (
+          <button
+            type="button"
+            className="text-xs font-semibold text-brand"
+            onClick={() => {
+              setFiltro("todos");
+              setBusqueda("");
+              setDesde(null);
+              setHasta(null);
+            }}
+          >
+            Limpiar filtros
+          </button>
+        )}
+      </div>
 
-      <div className="bg-surface-card overflow-hidden">
-        {loading ? (
-          <div className="flex items-center gap-2 text-sm text-ink-faint p-8">
-            <Loader2 size={16} className="animate-spin" /> Cargando recibos...
-          </div>
-        ) : filtrados.length === 0 ? (
-          <div className="py-16 text-center">
-            <Receipt className="w-10 h-10 text-ink-faint mx-auto mb-3" />
-            <p className="text-sm font-semibold text-ink">Sin recibos</p>
-            <p className="text-xs text-ink-faint mt-1">Se generan al registrar un pago.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+      {okMsg && <p className="px-4 py-3 bg-success-muted text-success-ink text-sm">{okMsg}</p>}
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+          <span className="pk-caption">Cargando recibos…</span>
+        </div>
+      ) : recibos.length === 0 ? (
+        <Vacio texto="Todavía no hay recibos. Se generan al registrar un pago." />
+      ) : visibles.length === 0 ? (
+        <Vacio texto="Ningún recibo coincide con este filtro." />
+      ) : (
+        <>
+          <div className="hidden md:block bg-surface-card overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[14%]" />
+                <col className="w-[20%]" />
+                <col className="w-[14%]" />
+                <col className="w-[16%]" />
+                <col className="w-[16%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+              </colgroup>
               <thead>
-                <tr className="text-left border-b border-line">
-                  <th className="px-4 py-3 pk-label">N°</th>
-                  <th className="px-4 py-3 pk-label">Fecha</th>
-                  <th className="px-4 py-3 pk-label">Cliente</th>
-                  <th className="px-4 py-3 pk-label">Cochera / Patente</th>
-                  <th className="px-4 py-3 font-bold">Período</th>
-                  <th className="px-4 py-3 font-bold text-right">Total</th>
-                  <th className="px-4 py-3 font-bold">Estado</th>
-                  <th className="px-4 py-3 font-bold text-right">Acciones</th>
+                <tr className="border-b border-line-strong text-left">
+                  <th className="pk-label font-bold pl-4 pr-3 py-2.5">N°</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Cliente</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Origen</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Patente</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Período</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Total</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((r) => {
+                {visPage.map((r) => {
+                  const origen = origenDe(r);
                   const busy = busyId === r.reciboId;
                   return (
-                    <tr
-                      key={r.reciboId}
-                      className={`border-b border-gray-50 last:border-0 ${
-                        r.anulado ? "bg-gray-50/80 opacity-75" : "hover:bg-slate-50/60"
-                      }`}
-                    >
-                      <td className="px-4 py-3 font-mono font-bold text-gray-800">
-                        {r.numeroFormateado || r.numero}
+                    <tr key={r.reciboId} className={`border-b border-line ${r.anulado ? "opacity-55" : "hover:bg-surface-page"}`}>
+                      <td className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${r.anulado ? "border-l-transparent" : origen === "Estadia" ? "border-l-brand" : "border-l-transparent"}`}>
+                        <p className="font-semibold text-ink tabular-nums">{r.numeroFormateado || r.numero}</p>
+                        <p className="pk-caption">{fechaCorta(r.fechaEmision)}</p>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                        {formatFecha(r.fechaEmision)}
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="font-semibold text-ink truncate">{r.clienteNombre}</p>
+                        <p className="pk-caption truncate">{r.cocherasLabel || r.metodoPagoLabel || "\u00a0"}</p>
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{r.clienteNombre}</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        <div>{r.cocherasLabel || "—"}</div>
-                        {r.patentesLabel && (
-                          <div className="text-xs font-mono text-gray-400">{r.patentesLabel}</div>
-                        )}
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="font-semibold text-ink">{labelOrigen(origen)}</p>
+                        <p className={`pk-caption font-semibold ${r.anulado ? "text-danger-ink" : "text-success-ink"}`}>
+                          {r.anulado ? "Anulado" : "Vigente"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate" title={r.periodosLabel}>
-                        {r.periodosLabel || "—"}
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <Chips label={r.patentesLabel} patente />
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        {formatPrecio(r.total)}
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="font-semibold text-ink capitalize truncate" title={r.periodosLabel}>
+                          {r.periodosLabel || "—"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3">
-                        {r.anulado ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                            Anulado
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                            Vigente
-                          </span>
-                        )}
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="font-semibold text-ink tabular-nums">{plata(r.total)}</p>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            title="Imprimir / PDF"
-                            onClick={() => handleImprimir(r)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-40"
-                          >
+                      <td className="pl-2 pr-3 py-2.5">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <button type="button" disabled={busy} title="Imprimir" onClick={() => handleImprimir(r)} className={icono}>
                             {busy ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                           </button>
                           {!r.anulado && (
-                            <button
-                              type="button"
-                              disabled={busy}
-                              title="Enviar por email"
-                              onClick={() => handleEnviarEmail(r)}
-                              className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
-                            >
+                            <button type="button" disabled={busy} title="Enviar por email" onClick={() => handleEnviarEmail(r)} className={icono}>
                               <Mail size={14} />
                             </button>
                           )}
                           {!r.anulado && (
-                            <button
-                              type="button"
-                              disabled={busy}
-                              title="Anular"
-                              onClick={() => handleAnular(r)}
-                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
-                            >
+                            <button type="button" disabled={busy} title="Anular" onClick={() => handleAnular(r)} className={`${icono} hover:text-danger-ink`}>
                               <Ban size={14} />
                             </button>
                           )}
@@ -342,8 +358,46 @@ export default function Recibos() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          <ul className="md:hidden bg-surface-card divide-y divide-line">
+            {visPage.map((r) => {
+              const origen = origenDe(r);
+              return (
+                <li key={r.reciboId} className={`px-4 py-3 border-l-[3px] ${r.anulado ? "border-l-transparent opacity-55" : origen === "Estadia" ? "border-l-brand" : "border-l-transparent"}`}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold text-ink">{r.numeroFormateado || r.numero}</span>
+                    <span className="text-sm font-semibold tabular-nums">{plata(r.total)}</span>
+                  </div>
+                  <p className="pk-caption mt-0.5">
+                    {labelOrigen(origen)} · {r.clienteNombre} · {fechaCorta(r.fechaEmision)}
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <Chips label={r.patentesLabel} patente />
+                    {r.anulado ? <span className="pk-caption text-danger-ink font-semibold">Anulado</span> : null}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button type="button" onClick={() => handleImprimir(r)} className="pk-caption font-semibold">
+                      Imprimir
+                    </button>
+                    {!r.anulado && (
+                      <button type="button" onClick={() => handleEnviarEmail(r)} className="pk-caption font-semibold">
+                        Email
+                      </button>
+                    )}
+                    {!r.anulado && (
+                      <button type="button" onClick={() => handleAnular(r)} className="pk-caption font-semibold text-danger-ink">
+                        Anular
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Paginacion pagina={pagina} total={visibles.length} onChange={setPagina} />
+        </>
+      )}
     </div>
   );
 }

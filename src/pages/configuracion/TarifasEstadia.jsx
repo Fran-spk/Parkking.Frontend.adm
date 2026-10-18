@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, RotateCcw } from "lucide-react";
 import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
 import FilterSelect, { fieldClass } from "../../components/layout/FilterSelect";
 import Checkbox from "../../components/layout/Check";
+import Paginacion, { paginaDe } from "../../components/layout/Paginacion";
 import { tarifaEstadiaService } from "../../services/tarifaEstadiaService";
 import { tipoVehiculoService } from "../../services/tipoVehiculoService";
+
+const ICONO = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
 
 function plata(n) {
   return Number(n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS" });
@@ -55,7 +58,7 @@ function desdeTarifa(t) {
   };
 }
 
-export default function TarifasEstadia() {
+export default function TarifasEstadia({ embedded = false }) {
   const [tarifas, setTarifas] = useState([]);
   const [tipos, setTipos] = useState([]);
   const [inactivas, setInactivas] = useState(false);
@@ -63,6 +66,7 @@ export default function TarifasEstadia() {
   const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [pagina, setPagina] = useState(1);
 
   async function cargar() {
     try {
@@ -76,6 +80,7 @@ export default function TarifasEstadia() {
 
   useEffect(() => {
     cargar();
+    setPagina(1);
   }, [inactivas]);
 
   useEffect(() => {
@@ -166,59 +171,114 @@ export default function TarifasEstadia() {
     }
   }
 
+  const visPage = useMemo(() => paginaDe(tarifas, pagina), [tarifas, pagina]);
+  const alta = (
+    <PageHeaderAction onClick={abrirNueva}>
+      <Plus size={16} /> Nueva
+    </PageHeaderAction>
+  );
+
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Tarifas de estadía"
-        description="Lista normal por tipo de vehículo. La franja se guarda y todavía no se usa al ingresar."
-        action={<PageHeaderAction onClick={abrirNueva}><Plus size={14} /> Nueva</PageHeaderAction>}
-      />
+    <div className={embedded ? "space-y-4" : "space-y-5"}>
+      {!embedded && (
+        <PageHeader
+          title="Tarifas de estadía"
+          description="Lista fraccionaria por tipo de vehículo. La franja se guarda y todavía no se usa al ingresar."
+          action={alta}
+        />
+      )}
+      {embedded && <div className="flex justify-end">{alta}</div>}
       {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
-      <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+      <label className="ml-auto flex items-center gap-2 pk-caption font-semibold cursor-pointer select-none w-fit">
         <Checkbox checked={inactivas} onChange={(e) => setInactivas(e.target.checked)} />
-        Mostrar dadas de baja
+        Ver dadas de baja
       </label>
-      <div className="bg-surface-card divide-y divide-line">
-        {tarifas.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-ink-faint text-center">No hay tarifas</p>
-        ) : (
-          tarifas.map((t) => (
-            <div key={t.tarifaEstadiaId} className="px-4 py-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-ink">
-                  {t.nombre}
-                  {!t.activa ? <span className="ml-2 text-[10px] uppercase text-ink-faint">Baja</span> : null}
-                  {t.esFranja ? <span className="ml-2 text-[10px] uppercase text-ink-faint">Franja</span> : null}
-                </p>
-                <p className="text-xs text-ink-faint">
-                  {t.tipoVehiculoNombre}
-                  {` · ${t.fracciones?.length || 0} fracciones`}
-                  {Number(t.cierre) === 1 ? ` · tope ${plata(t.tope)}` : ""}
-                  {Number(t.cierre) === 2 ? ` · día ${plata(t.precioDia)}` : ""}
-                </p>
-              </div>
-              <div className="flex gap-1">
-                <button type="button" className="p-1.5 text-ink-muted" aria-label="Editar" onClick={() => { setEditando(t.tarifaEstadiaId); setForm(desdeTarifa(t)); }}>
-                  <Pencil size={15} />
-                </button>
-                {t.activa ? (
-                  <button type="button" className="p-1.5 text-ink-muted" aria-label="Dar de baja" onClick={() => baja(t)}>
-                    <Trash2 size={15} />
-                  </button>
-                ) : (
-                  <button type="button" className="p-1.5 text-ink-muted" aria-label="Reactivar" onClick={() => reactivar(t)}>
-                    <RotateCcw size={15} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {tarifas.length === 0 ? (
+        <div className="bg-surface-card px-4 py-16 text-center text-sm font-medium text-ink-muted">No hay tarifas</div>
+      ) : (
+        <>
+          <div className="bg-surface-card overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[28%]" />
+                <col className="w-[18%]" />
+                <col className="w-[32%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <th className="pk-label font-bold pl-4 pr-3 py-2.5">Tarifa</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Tipo</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Detalle</th>
+                  <th className="pk-label font-bold px-3 py-2.5">Estado</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {visPage.map((t) => {
+                  const inactiva = !t.activa;
+                  const detalle = [
+                    `${t.fracciones?.length || 0} fracciones`,
+                    t.esFranja ? "Franja" : null,
+                    Number(t.cierre) === 1 ? `tope ${plata(t.tope)}` : null,
+                    Number(t.cierre) === 2 ? `día ${plata(t.precioDia)}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <tr key={t.tarifaEstadiaId} className={`border-b border-line ${inactiva ? "opacity-55" : "hover:bg-surface-page"}`}>
+                      <td className={`pl-4 pr-3 py-2.5 overflow-hidden border-l-[3px] ${inactiva ? "border-l-transparent" : "border-l-brand"}`}>
+                        <p className="font-semibold text-ink truncate">{t.nombre}</p>
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="pk-caption truncate">{t.tipoVehiculoNombre}</p>
+                      </td>
+                      <td className="px-3 py-2.5 overflow-hidden">
+                        <p className="pk-caption truncate">{detalle}</p>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <p className={`text-sm font-semibold ${inactiva ? "text-ink-faint" : "text-success-ink"}`}>
+                          {inactiva ? "De baja" : "Activa"}
+                        </p>
+                      </td>
+                      <td className="pl-2 pr-3 py-2.5">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <button
+                            type="button"
+                            title="Editar"
+                            className={ICONO}
+                            onClick={() => {
+                              setEditando(t.tarifaEstadiaId);
+                              setForm(desdeTarifa(t));
+                            }}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          {t.activa ? (
+                            <button type="button" title="Dar de baja" className={`${ICONO} hover:text-danger-ink`} onClick={() => baja(t)}>
+                              <Trash2 size={15} />
+                            </button>
+                          ) : (
+                            <button type="button" title="Reactivar" className={ICONO} onClick={() => reactivar(t)}>
+                              <RotateCcw size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Paginacion pagina={pagina} total={tarifas.length} onChange={setPagina} />
+        </>
+      )}
 
       {form && (
         <form onSubmit={guardar} className="bg-surface-card p-5 space-y-3 max-w-xl">
-          <h2 className="text-sm font-bold text-ink">{editando ? "Modificar tarifa" : "Nueva tarifa"}</h2>
+          <h2 className="pk-label pb-2 border-b border-line-subtle">{editando ? "Modificar tarifa" : "Nueva tarifa"}</h2>
           <input required placeholder="Nombre" value={form.nombre} onChange={(e) => setCampo("nombre", e.target.value)} className={fieldClass} />
           <FilterSelect
             className="w-full"
@@ -227,15 +287,15 @@ export default function TarifasEstadia() {
             onChange={(v) => setCampo("tipoVehiculoId", v)}
             options={tipos.map((t) => ({ value: t.tipoVehiculoId, label: t.nombre }))}
           />
-          <label className="block text-xs font-semibold text-ink">
-            Período inicial (minutos, 0 lo apaga)
-            <input type="number" min="0" value={form.periodoInicialMinutos} onChange={(e) => setCampo("periodoInicialMinutos", e.target.value)} className={`${fieldClass} mt-1`} />
+          <label className="block space-y-1">
+            <span className="pk-caption font-semibold">Período inicial (minutos, 0 lo apaga)</span>
+            <input type="number" min="0" value={form.periodoInicialMinutos} onChange={(e) => setCampo("periodoInicialMinutos", e.target.value)} className={fieldClass} />
           </label>
           <FilterSelect className="w-full" ariaLabel="Cierre del día" value={form.cierre} onChange={(v) => setCampo("cierre", v)} options={CIERRE} />
           {Number(form.cierre) !== 0 && (
             <input required type="number" min="0" step="0.01" placeholder="Importe" value={form.importeCierre} onChange={(e) => setCampo("importeCierre", e.target.value)} className={fieldClass} />
           )}
-          <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+          <label className="flex items-center gap-2 pk-caption font-semibold text-ink cursor-pointer select-none">
             <Checkbox checked={form.esFranja} disabled={!!editando} onChange={(e) => setCampo("esFranja", e.target.checked)} />
             Franja horaria
           </label>
@@ -246,7 +306,7 @@ export default function TarifasEstadia() {
             </div>
           )}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-ink">Fracciones</p>
+            <p className="pk-caption font-semibold">Fracciones</p>
             {form.fracciones.map((f, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
                 <input type="number" min="1" required placeholder="Minutos" value={f.minutos} onChange={(e) => setFraccion(i, "minutos", e.target.value)} className={fieldClass} />
@@ -272,7 +332,7 @@ export default function TarifasEstadia() {
               Agregar fracción
             </button>
           </div>
-          <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+          <label className="flex items-center gap-2 pk-caption font-semibold text-ink cursor-pointer select-none">
             <Checkbox checked={form.activa} onChange={(e) => setCampo("activa", e.target.checked)} />
             Activa
           </label>

@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  Car,
-  Calendar,
-  User,
   Check,
   AlertCircle,
   Loader2,
@@ -17,7 +14,7 @@ import {
   Banknote,
   FileText,
   Eye,
-  ParkingSquare,
+  MessageCircle,
 } from "lucide-react";
 import { abonoService } from "../services/abonoService";
 import { pagoService } from "../services/pagoService";
@@ -32,10 +29,12 @@ import DocumentosAbono from "../components/layout/DocumentosAbono";
 import CargosReintegrosAbono from "../components/layout/CargosReintegrosAbono";
 import PageHeader, { PageHeaderAction } from "../components/layout/PageHeader";
 import SearchField from "../components/layout/SearchField";
-import FilterSelect from "../components/layout/FilterSelect";
+import FiltroSegmentado from "../components/layout/FiltroSegmentado";
 import Checkbox from "../components/layout/Check";
+import Patente from "../components/layout/Patente";
 import { labelCocheras, plazasDe, vehiculosDe, modalidadLabel, nombreTipoVehiculo, MODALIDAD } from "../utils/abonoHelpers";
 import { PERIODICIDAD_OPTIONS } from "../utils/periodicidadHelpers";
+import { plata, whatsappUrl } from "../utils/clienteHelpers";
 
 /** @typedef {import("../types").Abono} Abono */
 /** @typedef {import("../types").Cuota} Cuota */
@@ -68,11 +67,7 @@ function formatFechaHora(fecha) {
 }
 
 function formatPrecio(precio) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  }).format(precio || 0);
+  return plata(precio);
 }
 
 function periodicidadLabel(value) {
@@ -111,49 +106,20 @@ function clasificarCuota(c) {
 }
 
 function estiloCuota(c) {
-  if (c.estado === 3) {
-    return {
-      row: "bg-gray-50/40",
-      dot: "bg-gray-300",
-      title: "text-gray-400 line-through",
-      badge: "bg-gray-100 text-gray-500 border-gray-200",
-      label: "Anulada",
-    };
+  const clase = clasificarCuota(c);
+  if (clase === "anulada") {
+    return { borde: "border-l-transparent", title: "text-ink-faint line-through", texto: "text-ink-faint", label: "Anulada" };
   }
-  if (c.esFuturo) {
-    return {
-      row: "bg-gray-50/60",
-      dot: "bg-gray-300",
-      title: "text-gray-500",
-      badge: "bg-gray-100 text-gray-500 border-gray-200",
-      label: "Futuro",
-    };
+  if (clase === "futuro") {
+    return { borde: "border-l-transparent", title: "text-ink-muted", texto: "text-ink-faint", label: "Futuro" };
   }
-  if (c.estado === 2 || (Number(c.saldo) <= 0 && Number(c.montoPagado) > 0)) {
-    return {
-      row: "",
-      dot: "bg-emerald-400",
-      title: "text-gray-800",
-      badge: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      label: "Pagada",
-    };
+  if (clase === "pagada") {
+    return { borde: "border-l-success", title: "text-ink", texto: "text-success-ink", label: "Pagada" };
   }
-  if (c.estado === 1 || Number(c.montoPagado) > 0) {
-    return {
-      row: "bg-amber-50/40",
-      dot: "bg-amber-400",
-      title: "text-amber-900",
-      badge: "bg-amber-50 text-amber-700 border-amber-100",
-      label: "Parcial",
-    };
+  if (clase === "parcial") {
+    return { borde: "border-l-warning", title: "text-ink", texto: "text-warning-ink", label: "Parcial" };
   }
-  return {
-    row: "bg-red-50/50",
-    dot: "bg-red-400",
-    title: "text-red-800",
-    badge: "bg-red-50 text-red-600 border-red-100",
-    label: ESTADO[c.estado] || "Pendiente",
-  };
+  return { borde: "border-l-danger", title: "text-ink", texto: "text-danger-ink", label: ESTADO[c.estado] || "Pendiente" };
 }
 
 function CuotaTimelineItem({
@@ -190,19 +156,13 @@ function CuotaTimelineItem({
   const tieneLiquidacion = detallesLiq.length > 0;
   const expandible = tieneCobros || tieneLiquidacion || cuota.estado === 1 || cuota.estado === 2;
 
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
+
   return (
-    <div
-      className={`border-b border-gray-50 last:border-0 ${
-        modoMulti && seleccionada ? "bg-indigo-50/50" : estilo.row
-      }`}
-    >
-      <div className="flex items-center gap-3 px-5 py-3.5">
+    <div className={`border-b border-line last:border-0 ${modoMulti && seleccionada ? "bg-surface-page" : ""}`}>
+      <div className={`flex items-center gap-3 px-4 py-3 border-l-[3px] ${estilo.borde}`}>
         {modoMulti && cobrable ? (
-          <Checkbox
-            checked={seleccionada}
-            onChange={onToggleSeleccion}
-            title="Incluir en pago múltiple"
-          />
+          <Checkbox checked={seleccionada} onChange={onToggleSeleccion} title="Incluir en pago múltiple" />
         ) : modoMulti ? (
           <span className="w-3.5 shrink-0" />
         ) : null}
@@ -211,200 +171,151 @@ function CuotaTimelineItem({
           type="button"
           disabled={!expandible}
           onClick={onToggle}
-          className={`p-0.5 rounded ${expandible ? "text-gray-400 hover:text-gray-600" : "text-transparent"}`}
+          className={`pk-icon-btn p-0.5 ${expandible ? "text-ink-faint hover:text-ink" : "text-transparent"}`}
           aria-label="Expandir"
         >
           {expandido ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
 
-        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${estilo.dot}`} />
-
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <p className={`text-sm font-semibold capitalize ${estilo.title}`}>{cuota.periodoLabel}</p>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${estilo.badge}`}>
-              {estilo.label}
-            </span>
-            {cuota.vencida && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full border font-medium bg-rose-50 text-rose-700 border-rose-100">
-                Vencida
-              </span>
-            )}
+            <span className={`pk-caption font-semibold ${estilo.texto}`}>{estilo.label}</span>
+            {cuota.vencida && <span className="pk-caption font-semibold text-danger-ink">Vencida</span>}
           </div>
 
           {(cuota.estado === 1 || Number(cuota.montoPagado) > 0) && cuota.estado !== 2 && (
-            <div className="mt-2 max-w-xs">
-              <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+            <div className="mt-1.5 max-w-xs">
+              <div className="flex justify-between pk-caption tabular-nums mb-1">
                 <span>
                   {formatPrecio(cuota.montoPagado)} / {formatPrecio(cuota.monto)}
                 </span>
                 <span>{pct}%</span>
               </div>
-              <div className="h-1.5 rounded-full bg-amber-100 overflow-hidden">
-                <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
+              <div className="h-1 bg-surface-muted">
+                <div className="h-full bg-warning" style={{ width: `${pct}%` }} />
               </div>
             </div>
           )}
 
-          {cuota.estado === 2 && (
-            <p className="text-xs text-gray-400 mt-0.5">{formatPrecio(cuota.monto)}</p>
-          )}
+          {cuota.estado === 2 && <p className="pk-caption tabular-nums mt-0.5">{formatPrecio(cuota.monto)}</p>}
 
           {(cobrable || adelantable) && cuota.estado === 0 && (
-            <p className="text-xs text-gray-400 mt-0.5">
-              {adelantable ? "Período que todavía no empezó · " : ""}
+            <p className="pk-caption tabular-nums mt-0.5">
+              {adelantable ? "Todavía no empezó · " : ""}
               Saldo {formatPrecio(cuota.saldo)}
               {cuota.fechaVencimiento ? ` · vence ${formatFecha(cuota.fechaVencimiento)}` : ""}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {!modoMulti && anulable && (
             <button
               type="button"
               onClick={() => onAnular?.(cuota)}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-line-strong text-ink-muted hover:bg-surface-muted"
+              className="px-2.5 py-1.5 text-xs font-semibold text-ink-muted border border-line-strong"
             >
               Anular
             </button>
           )}
           {!modoMulti && (cobrable || adelantable) ? (
             <button
+              type="button"
               onClick={() => onCobrar(cuota)}
-              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+              className={
                 adelantable
-                  ? "border-brand/30 bg-brand-muted text-brand hover:bg-brand-soft"
-                  : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-              }`}
+                  ? "px-2.5 py-1.5 text-xs font-semibold text-ink-muted border border-line-strong"
+                  : "px-2.5 py-1.5 text-xs font-semibold bg-brand text-brand-foreground hover:bg-brand-strong"
+              }
             >
               {adelantable ? "Adelantar" : "Pagar"}
             </button>
           ) : cuota.estado === 2 ? (
-            <div className="flex items-center justify-center w-6 h-6 bg-emerald-100 rounded-full">
-              <Check size={12} className="text-emerald-600" />
-            </div>
+            <Check size={14} className="text-success-ink" />
           ) : null}
         </div>
       </div>
 
       {expandido && (tieneLiquidacion || tieneCobros) && (
-        <div className="px-5 pb-4 pl-14 space-y-3">
+        <div className="px-4 pb-4 pl-12 space-y-3 bg-surface-page">
           {tieneLiquidacion && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                Cómo se armó el monto
-              </p>
-              <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 space-y-1.5">
+            <div>
+              <p className="pk-label mb-1.5">Cómo se armó el monto</p>
+              <div className="space-y-1.5">
                 {detallesLiq.map((d) => (
-                  <div
-                    key={d.detalleCuotaId}
-                    className="flex items-start justify-between gap-3 text-xs"
-                  >
+                  <div key={d.detalleCuotaId} className="flex items-start justify-between gap-3 text-xs">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800">
-                        {d.descripcion || d.tipoLabel || "Línea"}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
+                      <p className="font-medium text-ink">{d.descripcion || d.tipoLabel || "Línea"}</p>
+                      <p className="pk-caption">
                         {d.tipoLabel}
                         {d.tarifaMensualId ? ` · tarifa #${d.tarifaMensualId}` : ""}
                         {d.patente ? ` · ${d.patente}` : ""}
                       </p>
                     </div>
-                    <p
-                      className={`font-semibold shrink-0 ${
-                        Number(d.importe) < 0 ? "text-amber-700" : "text-gray-800"
-                      }`}
-                    >
+                    <p className={`font-semibold tabular-nums shrink-0 ${Number(d.importe) < 0 ? "text-warning-ink" : "text-ink"}`}>
                       {formatPrecio(d.importe)}
                     </p>
                   </div>
                 ))}
-                <div className="flex justify-between pt-1.5 border-t border-slate-200 text-xs font-bold text-gray-900">
+                <div className="flex justify-between pt-1.5 border-t border-line text-xs font-bold text-ink">
                   <span>Total cuota</span>
-                  <span>{formatPrecio(cuota.monto)}</span>
+                  <span className="tabular-nums">{formatPrecio(cuota.monto)}</span>
                 </div>
               </div>
             </div>
           )}
 
           {tieneCobros && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                Aplicado a este período
-              </p>
+            <div>
+              <p className="pk-label mb-1.5">Aplicado a este período</p>
               {cuota.cobros.map((cobro) => {
                 const busy = reciboBusyId === cobro.pagoId;
                 const pago = pagosById?.get?.(cobro.pagoId);
                 const detalles = pago?.detalles || [];
                 const multi = detalles.length > 1;
-                const totalPago =
-                  Number(pago?.monto ?? 0) + Number(pago?.recargo ?? cobro.recargoPago ?? 0);
+                const totalPago = Number(pago?.monto ?? 0) + Number(pago?.recargo ?? cobro.recargoPago ?? 0);
                 return (
                   <div
                     key={cobro.detallePagoId}
-                    className="rounded-lg bg-white border border-transparent px-3 py-2.5 space-y-1.5 cursor-pointer hover:bg-slate-50/80"
+                    className="py-2.5 border-t border-line first:border-t-0 cursor-pointer hover:bg-surface-muted"
                     onClick={() => onVerDetalle?.(pago || { pagoId: cobro.pagoId })}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-800">
-                          A esta cuota: {formatPrecio(cobro.monto)}
-                        </p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">
+                        <p className="text-xs font-semibold text-ink">A esta cuota: {formatPrecio(cobro.monto)}</p>
+                        <p className="pk-caption">
                           {formatFechaHora(cobro.fechaHora)}
                           {cobro.adelantado ? " · Adelanto" : ""}
                           {pago?.metodoDePagoNombre ? ` · ${pago.metodoDePagoNombre}` : ""}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          title="Ver detalle"
-                          onClick={() => onVerDetalle?.(pago || { pagoId: cobro.pagoId })}
-                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                        >
+                      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" title="Ver detalle" onClick={() => onVerDetalle?.(pago || { pagoId: cobro.pagoId })} className={icono}>
                           <Eye size={14} />
                         </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          title="Ver recibo del pago"
-                          onClick={() => onVerRecibo?.(pago || cobro)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand-muted disabled:opacity-40 transition-colors"
-                        >
+                        <button type="button" disabled={busy} title="Ver recibo" onClick={() => onVerRecibo?.(pago || cobro)} className={icono}>
                           {busy ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
                         </button>
                       </div>
                     </div>
-                    <div className="rounded-md bg-gray-50 border border-transparent px-2.5 py-1.5">
-                      <p className="text-[11px] text-gray-600">
-                        <span className="font-semibold text-gray-800">Pago #{cobro.pagoId}</span>
-                        {cobro.reciboNumero || pago?.reciboNumero
-                          ? ` · Recibo ${cobro.reciboNumero || pago.reciboNumero}`
-                          : ""}
-                        {" · "}
-                        Total transacción {formatPrecio(totalPago || cobro.monto)}
+                    <p className="pk-caption mt-1">
+                      Pago #{cobro.pagoId}
+                      {cobro.reciboNumero || pago?.reciboNumero ? ` · Recibo ${cobro.reciboNumero || pago.reciboNumero}` : ""}
+                      {" · "}
+                      Total {formatPrecio(totalPago || cobro.monto)}
+                    </p>
+                    {multi ? (
+                      <p className="pk-caption capitalize">
+                        {detalles.length} períodos: {detalles.map((d) => d.periodoLabel).filter(Boolean).join(" · ")}
                       </p>
-                      {multi ? (
-                        <p className="text-[10px] text-gray-400 mt-0.5 capitalize">
-                          Engloba {detalles.length} períodos:{" "}
-                          {detalles.map((d) => d.periodoLabel).filter(Boolean).join(" · ")}
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          Una sola cuota en esta transacción
-                        </p>
-                      )}
-                      {Number(pago?.recargo ?? cobro.recargoPago) > 0 && (
-                        <p className="text-[10px] text-amber-600 mt-0.5">
-                          Recargo del pago: {formatPrecio(pago?.recargo ?? cobro.recargoPago)}
-                        </p>
-                      )}
-                    </div>
-                    {cobro.observacion && (
-                      <p className="text-[11px] text-gray-400">{cobro.observacion}</p>
+                    ) : (
+                      <p className="pk-caption">Una sola cuota en esta transacción</p>
                     )}
+                    {Number(pago?.recargo ?? cobro.recargoPago) > 0 && (
+                      <p className="pk-caption text-warning-ink">Recargo: {formatPrecio(pago?.recargo ?? cobro.recargoPago)}</p>
+                    )}
+                    {cobro.observacion && <p className="pk-caption">{cobro.observacion}</p>}
                   </div>
                 );
               })}
@@ -418,89 +329,54 @@ function CuotaTimelineItem({
 
 /** Lista de pagos = transacciones (no filas por período). */
 function PagosTransaccionList({ pagos, onVerRecibo, onVerDetalle, reciboBusyId }) {
+  const icono = "pk-icon-btn p-1.5 text-ink-faint hover:text-ink hover:bg-surface-muted";
   if (pagos.length === 0) {
-    return <div className="py-10 text-center text-sm text-gray-400">Sin pagos registrados</div>;
+    return <p className="py-16 text-center pk-caption">Sin pagos registrados</p>;
   }
 
   return (
-    <div className="divide-y divide-gray-50">
+    <div className="divide-y divide-line">
       {pagos.map((pago) => {
         const busy = reciboBusyId === pago.pagoId;
         const detalles = pago.detalles || [];
         const total = Number(pago.monto || 0) + Number(pago.recargo || 0);
         return (
-          <div
-            key={pago.pagoId}
-            className="px-5 py-3.5 hover:bg-slate-50/50 cursor-pointer"
-            onClick={() => onVerDetalle?.(pago)}
-          >
+          <div key={pago.pagoId} className="px-4 py-3 hover:bg-surface-page cursor-pointer" onClick={() => onVerDetalle?.(pago)}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-gray-900">Pago #{pago.pagoId}</p>
-                  {pago.reciboNumero && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      Recibo {pago.reciboNumero}
-                    </span>
-                  )}
-                  {detalles.some((d) => d.adelantado) && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-brand-muted text-brand">
-                      Adelanto
-                    </span>
-                  )}
-                  {detalles.length > 1 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-                      {detalles.length} ítems
-                    </span>
-                  )}
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-ink">Pago #{pago.pagoId}</p>
+                  {pago.reciboNumero && <span className="pk-caption font-semibold">Recibo {pago.reciboNumero}</span>}
+                  {detalles.some((d) => d.adelantado) && <span className="pk-caption font-semibold text-warning-ink">Adelanto</span>}
+                  {detalles.length > 1 && <span className="pk-caption">{detalles.length} ítems</span>}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="pk-caption">
                   {formatFechaHora(pago.fechaHoraCarga)}
                   {pago.metodoDePagoNombre ? ` · ${pago.metodoDePagoNombre}` : ""}
                 </p>
-                {pago.observacion && (
-                  <p className="text-[11px] text-gray-400 mt-0.5">{pago.observacion}</p>
-                )}
+                {pago.observacion && <p className="pk-caption mt-0.5">{pago.observacion}</p>}
               </div>
-              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <div className="text-right mr-1">
-                  <p className="text-sm font-semibold text-gray-900">{formatPrecio(total)}</p>
+                  <p className="text-sm font-semibold text-ink tabular-nums">{formatPrecio(total)}</p>
                   {Number(pago.recargo) > 0 && (
-                    <p className="text-[10px] text-amber-600">
-                      incl. {formatPrecio(pago.recargo)} recargo
-                    </p>
+                    <p className="pk-caption text-warning-ink">incl. {formatPrecio(pago.recargo)} recargo</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  title="Ver detalle"
-                  onClick={() => onVerDetalle?.(pago)}
-                  className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                >
+                <button type="button" title="Ver detalle" onClick={() => onVerDetalle?.(pago)} className={icono}>
                   <Eye size={14} />
                 </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  title="Ver recibo"
-                  onClick={() => onVerRecibo?.(pago)}
-                  className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand-muted disabled:opacity-40 transition-colors"
-                >
+                <button type="button" disabled={busy} title="Ver recibo" onClick={() => onVerRecibo?.(pago)} className={icono}>
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
                 </button>
               </div>
             </div>
             {detalles.length > 0 && (
-              <div className="mt-2 ml-0.5 space-y-0.5 border-l-2 border-gray-100 pl-3">
+              <div className="mt-2 space-y-0.5 border-l-[3px] border-l-brand pl-3">
                 {detalles.map((d) => (
-                  <div
-                    key={d.detallePagoId}
-                    className="flex items-center justify-between gap-3 text-xs text-gray-500"
-                  >
+                  <div key={d.detallePagoId} className="flex items-center justify-between gap-3 text-xs text-ink-muted">
                     <span className="capitalize">{d.periodoLabel || "Período"}</span>
-                    <span className="font-medium text-gray-700 tabular-nums">
-                      {formatPrecio(d.monto)}
-                    </span>
+                    <span className="font-medium text-ink tabular-nums">{formatPrecio(d.monto)}</span>
                   </div>
                 ))}
               </div>
@@ -685,6 +561,15 @@ export default function PagosAbono() {
     });
   }, [cuotas, filtroCuota, q]);
 
+  const cantidadesCuota = useMemo(() => {
+    const c = { todos: cuotas.length, pendiente: 0, parcial: 0, pagada: 0, anulada: 0, futuro: 0, conCobros: 0 };
+    for (const x of cuotas) {
+      c[clasificarCuota(x)] += 1;
+      if ((x.cobros || []).length) c.conCobros += 1;
+    }
+    return c;
+  }, [cuotas]);
+
   const pagosById = useMemo(() => {
     const map = new Map();
     for (const p of pagos) map.set(p.pagoId, p);
@@ -760,19 +645,16 @@ export default function PagosAbono() {
     }
   }
 
-  if (loading) {
+  if (loading && !abono) {
     return (
-      <div className="flex items-center gap-2 text-ink-faint text-sm p-8">
-        <Loader2 size={16} className="animate-spin" /> Cargando...
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <div className="w-9 h-9 border-2 border-brand-soft border-t-brand animate-spin" />
+        <span className="pk-caption">Cargando abono…</span>
       </div>
     );
   }
-  if (error) {
-    return (
-      <div className="flex items-center gap-2 text-danger text-sm p-8">
-        <AlertCircle size={16} /> {typeof error === "string" ? error : "Error al cargar"}
-      </div>
-    );
+  if (error && !abono) {
+    return <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{typeof error === "string" ? error : "Error al cargar"}</p>;
   }
 
   const esActivo = abono.activo === true || abono.activo === "true";
@@ -784,15 +666,22 @@ export default function PagosAbono() {
       ? `Cocheras ${labelCocheras(abono)}`
       : `Cochera ${labelCocheras(abono)}`;
 
+  const wa = whatsappUrl(abono.cliente?.telefono);
+  const clienteId = abono.cliente?.clienteId ?? abono.clienteId;
+
   return (
-    <div className="space-y-5 animate-fade-in-up">
+    <div className="space-y-5 pb-12 animate-fade-in-up">
       <button
         type="button"
         onClick={() => navigate("/abonos")}
-        className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
       >
-        <ArrowLeft size={16} /> Volver a abonos
+        <ArrowLeft size={14} /> Abonos
       </button>
+
+      {error && (
+        <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{typeof error === "string" ? error : "Error"}</p>
+      )}
 
       {!esActivo && (
         <div className="flex items-center gap-2 px-4 py-3 bg-surface-muted text-ink text-sm font-medium">
@@ -853,7 +742,7 @@ export default function PagosAbono() {
                 type="button"
                 onClick={() => setModalEditar(true)}
                 title="Editar abono"
-                className="p-2.5 text-ink-faint hover:text-ink hover:bg-surface-muted transition-colors"
+                className="pk-icon-btn p-2.5 text-ink-faint hover:text-ink hover:bg-surface-muted"
               >
                 <Pencil size={15} />
               </button>
@@ -862,7 +751,7 @@ export default function PagosAbono() {
               type="button"
               onClick={handleDescargarContrato}
               disabled={contratoBusy}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink bg-surface-muted hover:bg-brand-muted transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-ink-muted border border-line-strong disabled:opacity-60"
             >
               {contratoBusy ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -900,150 +789,127 @@ export default function PagosAbono() {
             </div>
         }
         stats={[
-          { label: "Cobrado", value: formatPrecio(totalRecaudado) },
+          { label: "Cobrado", value: formatPrecio(totalRecaudado), onClick: () => setVista("pagos") },
           {
             label: "Deuda",
             value: formatPrecio(deudaMonto),
             tone: deudaMonto > 0 ? "danger" : "default",
+            onClick: () => {
+              setVista("cuotas");
+              setFiltroCuota("pendiente");
+            },
           },
-          { label: "Pagos", value: pagos.length },
+          { label: "Pagos", value: pagos.length, onClick: () => setVista("pagos") },
         ]}
       />
 
       <div className="bg-surface-card px-4 py-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="flex items-start gap-2">
-          <User size={14} className="text-ink-faint mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="pk-label">Cliente</p>
-            <p className="text-sm font-semibold text-ink truncate">
+        <div className="min-w-0">
+          <p className="pk-label">Cliente</p>
+          {clienteId ? (
+            <Link to={`/clientes/${clienteId}/cuenta-corriente`} className="text-sm font-semibold text-ink hover:text-brand truncate block">
               {abono.cliente?.nombre || "—"}
-            </p>
-            {abono.cliente?.telefono && (
-              <p className="text-xs text-ink-faint">{abono.cliente.telefono}</p>
+            </Link>
+          ) : (
+            <p className="text-sm font-semibold text-ink truncate">{abono.cliente?.nombre || "—"}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1">
+            {abono.cliente?.telefono && <p className="pk-caption tabular-nums">{abono.cliente.telefono}</p>}
+            {wa && (
+              <a href={wa} target="_blank" rel="noreferrer" className="pk-icon-btn p-1 text-ink-faint hover:text-ink" title="WhatsApp">
+                <MessageCircle size={13} />
+              </a>
             )}
           </div>
         </div>
-          <div className="flex items-start gap-2">
-          <Car size={14} className="text-ink-faint mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="pk-label">Vehículos</p>
-            {vehiculos.length === 0 ? (
-              <p className="text-sm text-ink-faint">Sin vehículos</p>
-            ) : (
-              <div className="space-y-1 mt-0.5">
-                {vehiculos.map((v, i) => (
-                  <div
-                    key={v.abonoVehiculoId ?? `${v.patente}-${i}`}
-                    className="flex items-center gap-1 flex-wrap"
-                  >
-                    <span className="font-mono text-[11px] font-bold bg-surface-muted px-1.5 py-0.5">
-                      {v.patente || "S/PAT"}
-                    </span>
-                    {nombreTipoVehiculo(v) && (
-                      <span className="text-[11px] font-semibold text-ink-muted">
-                        {nombreTipoVehiculo(v)}
-                      </span>
-                    )}
-                    <span className="text-[9px] font-bold text-ink-muted">
-                      {modalidadLabel(v.modalidad)}
-                    </span>
-                  </div>
-                ))}
+        <div className="min-w-0">
+          <p className="pk-label">Vehículos</p>
+          {vehiculos.length === 0 ? (
+            <p className="text-sm text-ink-faint">Sin vehículos</p>
+          ) : (
+            <div className="space-y-1 mt-0.5">
+              {vehiculos.map((v, i) => (
+                <div key={v.abonoVehiculoId ?? `${v.patente}-${i}`} className="flex items-center gap-1.5 flex-wrap">
+                  {v.patente ? <Patente valor={v.patente} size="sm" /> : <span className="pk-caption">S/PAT</span>}
+                  {nombreTipoVehiculo(v) && <span className="pk-caption">{nombreTipoVehiculo(v)}</span>}
+                  <span className={`pk-caption font-semibold ${Number(v.modalidad) === MODALIDAD.FLEXIBLE ? "text-warning-ink" : ""}`}>
+                    {modalidadLabel(v.modalidad)}
+                  </span>
+                </div>
+              ))}
             </div>
-            )}
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-          <Calendar size={14} className="text-ink-faint mt-0.5 shrink-0" />
-            <div>
-            <p className="pk-label">Ingreso / cobro</p>
-            <p className="text-sm font-semibold text-ink">{formatFecha(abono.fechaInicio)}</p>
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              Cobro {formatFecha(abono.fechaInicioCobro || abono.fechaInicio)}
-            </p>
-          </div>
+          )}
         </div>
-            <div>
+        <div>
+          <p className="pk-label">Ingreso / cobro</p>
+          <p className="text-sm font-semibold text-ink tabular-nums">{formatFecha(abono.fechaInicio)}</p>
+          <p className="pk-caption mt-0.5">Cobro {formatFecha(abono.fechaInicioCobro || abono.fechaInicio)}</p>
+        </div>
+        <div>
           <p className="pk-label">Periodicidad</p>
-          <p className="text-sm font-semibold text-ink">
-            {periodicidadLabel(abono.periodicidadCobro)}
-              </p>
-            </div>
-          <div>
+          <p className="text-sm font-semibold text-ink">{periodicidadLabel(abono.periodicidadCobro)}</p>
+        </div>
+        <div>
           <p className="pk-label">Precio período</p>
-          <p className="text-sm font-semibold text-ink">
+          <p className="text-sm font-semibold text-ink tabular-nums">
             {abono.precioAcordado
               ? formatPrecio(abono.precioAcordado)
               : desgloseTarifas
                 ? formatPrecio(desgloseTarifas.total)
                 : "Tarifa de lista"}
           </p>
-          {abono.cobrador && (
-            <p className="text-[11px] text-ink-faint mt-0.5">Cobrador: {abono.cobrador}</p>
-          )}
+          {abono.cobrador && <p className="pk-caption mt-0.5">Cobra {abono.cobrador}</p>}
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        <div className="flex-1 min-w-0 w-full">
-          <div className="flex items-end gap-1 px-2">
-            {VISTAS.map((v) => {
-              const activa = vista === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVista(v.id)}
-                  className={`px-4 py-2 text-xs font-semibold border border-b-0 -mb-px ${
-                    activa
-                      ? "bg-surface-card text-ink border-line"
-                      : "bg-surface-muted text-ink-muted border-transparent hover:text-ink"
-                  }`}
-                >
-                  {v.label}
-                        </button>
-              );
-            })}
+        <div className="flex-1 min-w-0 w-full space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <FiltroSegmentado
+              ariaLabel="Vista"
+              value={vista}
+              onChange={setVista}
+              opciones={VISTAS.map((v) => ({
+                value: v.id,
+                label: v.label,
+                cantidad: v.id === "cuotas" ? cuotas.length : v.id === "pagos" ? pagos.length : undefined,
+              }))}
+            />
+            {esActivo && cuotasCobrables.length > 1 && vista === "cuotas" && (
+              <button
+                type="button"
+                onClick={toggleModoMultiPago}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-line-strong ${
+                  modoMultiPago ? "bg-ink text-surface-card" : "text-ink-muted"
+                }`}
+              >
+                <Banknote size={13} />
+                {modoMultiPago ? "Cancelar múltiple" : "Pagar múltiples"}
+              </button>
+            )}
+            {esActivo && modoMultiPago && cuotasSeleccionadas.length > 0 && (
+              <button
+                type="button"
+                onClick={generarPagoMultiple}
+                className="inline-flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-semibold px-3 py-1.5"
+              >
+                <Wallet size={13} />
+                Generar pago ({cuotasSeleccionadas.length}) · {formatPrecio(totalSeleccion)}
+              </button>
+            )}
           </div>
-          <div className="bg-surface-card border border-line overflow-hidden">
-          <div className="px-4 sm:px-5 py-4 border-b border-line space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-ink-faint">
-                {vista === "cuotas"
-                  ? modoMultiPago
-                    ? `${cuotasFiltradas.length} de ${cuotas.length} períodos · seleccioná cuotas y generá el pago`
-                    : `${cuotasFiltradas.length} de ${cuotas.length} períodos`
-                  : vista === "pagos"
-                    ? `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"}`
-                    : "Obligaciones y devoluciones de este abono"}
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {esActivo && cuotasCobrables.length > 1 && vista === "cuotas" && (
-                  <button
-                    type="button"
-                    onClick={toggleModoMultiPago}
-                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 transition-colors ${
-                      modoMultiPago
-                        ? "bg-brand-muted text-ink"
-                        : "bg-surface-muted text-ink-muted hover:text-ink"
-                    }`}
-                  >
-                    <Banknote size={13} />
-                    {modoMultiPago ? "Cancelar múltiple" : "Pagar múltiples"}
-                  </button>
-                )}
-                {esActivo && modoMultiPago && cuotasSeleccionadas.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={generarPagoMultiple}
-                    className="flex items-center gap-1.5 bg-brand hover:bg-brand-strong text-brand-foreground text-xs font-medium px-3 py-2 transition-colors"
-                  >
-                    <Wallet size={13} />
-                    Generar pago ({cuotasSeleccionadas.length}) · {formatPrecio(totalSeleccion)}
-                  </button>
-                )}
-            </div>
-            </div>
+
+          <div className="bg-surface-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-line space-y-3">
+            <p className="pk-caption">
+              {vista === "cuotas"
+                ? modoMultiPago
+                  ? `${cuotasFiltradas.length} de ${cuotas.length} períodos · seleccioná cuotas y generá el pago`
+                  : `${cuotasFiltradas.length} de ${cuotas.length} períodos`
+                : vista === "pagos"
+                  ? `${pagosFiltrados.length} pago${pagosFiltrados.length === 1 ? "" : "s"}`
+                  : "Obligaciones y devoluciones de este abono"}
+            </p>
 
             {vista !== "extras" && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -1058,11 +924,11 @@ export default function PagosAbono() {
                 className="flex-1 min-w-[180px] max-w-xs"
               />
               {vista === "cuotas" && (
-                <FilterSelect
+                <FiltroSegmentado
                   ariaLabel="Filtrar cuotas"
                   value={filtroCuota}
                   onChange={setFiltroCuota}
-                  options={FILTROS_CUOTA.map((f) => ({ value: f.id, label: f.label }))}
+                  opciones={FILTROS_CUOTA.map((f) => ({ value: f.id, label: f.label, cantidad: cantidadesCuota[f.id] }))}
                 />
               )}
             </div>
@@ -1071,11 +937,9 @@ export default function PagosAbono() {
 
           {vista === "cuotas" ? (
             cuotas.length === 0 ? (
-              <div className="py-10 text-center text-sm text-ink-faint">Sin períodos</div>
+              <p className="py-16 text-center pk-caption">Sin períodos</p>
             ) : cuotasFiltradas.length === 0 ? (
-              <div className="py-10 text-center text-sm text-ink-faint">
-                Sin períodos para este filtro
-              </div>
+              <p className="py-16 text-center pk-caption">Sin períodos para este filtro</p>
             ) : (
               <div>
                 {cuotasFiltradas.map((c) => {
@@ -1130,15 +994,12 @@ export default function PagosAbono() {
         <div className="w-full lg:w-72 shrink-0 lg:sticky lg:top-20 space-y-3">
           <DocumentosAbono abono={abono} />
 
-          <aside className="bg-surface-card border border-line overflow-hidden">
-            <div className="px-3.5 py-3 border-b border-line flex items-center gap-2">
-              <ParkingSquare size={15} className="text-ink-faint shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-xs font-bold text-ink tracking-tight">Cocheras</h2>
-                <p className="text-[10px] text-ink-faint">
-                  {plazas.length} vinculada{plazas.length === 1 ? "" : "s"}
-                </p>
-              </div>
+          <aside className="bg-surface-card overflow-hidden">
+            <div className="px-3.5 py-3 border-b border-line">
+              <h2 className="pk-label">Cocheras</h2>
+              <p className="pk-caption mt-0.5">
+                {plazas.length} vinculada{plazas.length === 1 ? "" : "s"}
+              </p>
             </div>
             {plazas.length === 0 ? (
               <p className="px-3.5 py-4 text-xs text-ink-faint text-center">Sin plazas</p>
@@ -1162,37 +1023,35 @@ export default function PagosAbono() {
                     if (vNum != null && String(vNum) === String(num)) return true;
                     return false;
                   });
-                  const vinculo = vehiculoFijo
-                    ? vehiculoFijo.patente || "Sin patente"
-                    : "Flexible";
-
                   return (
                     <li key={p.abonoPlazaId ?? p.cocheraId ?? num}>
                       <button
                         type="button"
                         onClick={() => navigate("/cocheras")}
-                        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-surface-muted transition-colors group"
+                        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left hover:bg-surface-page"
                         title="Ir a cocheras"
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-ink tabular-nums leading-none">
                             {num}
                           </p>
-                          <p className="text-[10px] text-ink-muted mt-1 truncate">
+                          <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
                             {vehiculoFijo ? (
-                              <span className="font-mono font-semibold text-ink">
-                                {vinculo}
-                                {nombreTipoVehiculo(vehiculoFijo)
-                                  ? ` · ${nombreTipoVehiculo(vehiculoFijo)}`
-                                  : ""}
-                          </span>
+                              <>
+                                {vehiculoFijo.patente ? (
+                                  <Patente valor={vehiculoFijo.patente} size="sm" />
+                                ) : (
+                                  <span className="pk-caption">Sin patente</span>
+                                )}
+                                {nombreTipoVehiculo(vehiculoFijo) && (
+                                  <span className="pk-caption truncate">{nombreTipoVehiculo(vehiculoFijo)}</span>
+                                )}
+                              </>
                             ) : (
-                              <span className="font-semibold text-warning-ink">Flexible</span>
+                              <span className="pk-caption font-semibold text-warning-ink">Flexible</span>
                             )}
-                            {cat ? (
-                              <span className="text-ink-faint"> · {cat}</span>
-                            ) : null}
-                          </p>
+                            {cat ? <span className="pk-caption truncate">· {cat}</span> : null}
+                          </div>
                         </div>
                         <ChevronRight
                           size={14}

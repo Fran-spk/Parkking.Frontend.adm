@@ -23,6 +23,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [ok, setOk] = useState(null);
+  const [restablecer, setRestablecer] = useState(false);
 
   useEffect(() => {
     applyColorMarca(COLOR_MARCA_DEFAULT);
@@ -37,6 +39,7 @@ export default function Login() {
 
     setLoading(true);
     setError(null);
+    setOk(null);
 
     try {
       await authService.login(loginInput, password);
@@ -44,6 +47,28 @@ export default function Login() {
     } catch (err) {
       console.error(err);
       setError(err.message || "Usuario o contraseña incorrectos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestablecer = async (e) => {
+    e.preventDefault();
+    if (!loginInput.trim()) {
+      setError("Indicá el usuario para enviarte una contraseña al mail.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setOk(null);
+
+    try {
+      const mensaje = await authService.restablecerClave(loginInput);
+      setOk(mensaje);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "No se pudo restablecer la contraseña.");
     } finally {
       setLoading(false);
     }
@@ -64,9 +89,13 @@ export default function Login() {
 
         <div className="w-full space-y-8">
           <div className="space-y-2">
-            <h1 className="pk-title text-[1.75rem]">Bienvenido de vuelta</h1>
+            <h1 className="pk-title text-[1.75rem]">
+              {restablecer ? "Restablecer contraseña" : "Bienvenido de vuelta"}
+            </h1>
             <p className="pk-desc">
-              Ingresá tus credenciales para acceder a la administración.
+              {restablecer
+                ? "Te mandamos una contraseña nueva al mail del usuario. Después cambiala en Mi perfil."
+                : "En el teléfono se abre el modo playa (ingreso, buscar y cobro). En escritorio, el panel completo."}
             </p>
           </div>
 
@@ -77,7 +106,14 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {ok && (
+            <div className="bg-success-muted text-success-ink text-xs px-4 py-3 flex items-start gap-2.5">
+              <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+              <span>{ok}</span>
+            </div>
+          )}
+
+          <form onSubmit={restablecer ? handleRestablecer : handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <label className="pk-label block">Usuario</label>
               <div className="relative group">
@@ -97,6 +133,7 @@ export default function Login() {
               </div>
             </div>
 
+            {!restablecer && (
             <div className="space-y-1.5">
               <label className="pk-label block">Contraseña</label>
               <div className="relative group">
@@ -123,6 +160,7 @@ export default function Login() {
                 </button>
               </div>
             </div>
+            )}
 
             <button
               type="submit"
@@ -131,12 +169,27 @@ export default function Login() {
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-brand-foreground border-t-transparent animate-spin" />
+              ) : restablecer ? (
+                <>Enviar contraseña al mail</>
               ) : (
                 <>
                   Iniciar sesión
                   <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                setRestablecer((v) => !v);
+                setError(null);
+                setOk(null);
+              }}
+              className="w-full text-xs font-semibold text-ink-muted hover:text-ink transition-colors disabled:opacity-60"
+            >
+              {restablecer ? "Volver al inicio de sesión" : "Olvidé mi contraseña"}
             </button>
           </form>
         </div>

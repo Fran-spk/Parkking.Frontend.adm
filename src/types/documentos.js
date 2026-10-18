@@ -5,6 +5,7 @@
  * @property {string} numeroFormateado
  * @property {number} pagoId
  * @property {number} abonoId
+ * @property {string} [origen]
  * @property {string} fechaEmision
  * @property {number} monto
  * @property {number} recargo

@@ -4,7 +4,9 @@ import {
   Menu,
   RefreshCcw,
   LogOut,
+  Smartphone,
 } from "lucide-react";
+import { setPrefierePlaya } from "../../utils/playa";
 import { authService } from "../../services/authService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 
@@ -164,6 +166,20 @@ export default function Navbar({ onMenuClick }) {
         </time>
 
         <div className="hidden sm:block h-5 w-px bg-white/25 mx-1" />
+
+        <button
+          type="button"
+          onClick={() => {
+            setPrefierePlaya(true);
+            navigate("/playa");
+          }}
+          className="flex items-center gap-1.5 py-1.5 px-3 text-[11px] font-semibold text-brand-foreground hover:bg-white/10"
+          aria-label="Modo playa"
+          title="Modo playa"
+        >
+          <Smartphone size={15} />
+          <span className="hidden sm:inline tracking-tight">Playa</span>
+        </button>
 
         <button
           onClick={handleLogout}

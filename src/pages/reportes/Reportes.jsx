@@ -1,33 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  FileSpreadsheet,
-  FileText,
-  Download,
-  Loader2,
-  CalendarRange,
-  Mail,
-  X,
-  Building2,
-  User,
-} from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2, Mail, X } from "lucide-react";
+import PageHeader from "../../components/layout/PageHeader";
+import FilterSelect, { fieldClass } from "../../components/layout/FilterSelect";
+import FiltroSegmentado from "../../components/layout/FiltroSegmentado";
 import { reportesService } from "../../services/reportesService";
+import { dashboardService } from "../../services/dashboardService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { usuarioService } from "../../services/usuarioService";
-import FilterSelect, { fieldClass } from "../../components/layout/FilterSelect";
+import { plata } from "../../utils/clienteHelpers";
 
 /** @typedef {import("../../types").UsuarioResumen} UsuarioResumen */
+/** @typedef {import("../../types").Dashboard} Dashboard */
 
 function todayYmd() {
   const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function firstOfMonthYmd() {
   const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-01`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
 function msgFromError(e, fallback) {
@@ -36,6 +28,12 @@ function msgFromError(e, fallback) {
   return e?.message || fallback;
 }
 
+const ORIGENES = [
+  { value: "ambos", label: "Ambos" },
+  { value: "abonos", label: "Abonos" },
+  { value: "estadias", label: "Estadías" },
+];
+
 export default function Reportes() {
   const [desde, setDesde] = useState(firstOfMonthYmd);
   const [hasta, setHasta] = useState(todayYmd);
@@ -43,33 +41,31 @@ export default function Reportes() {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [error, setError] = useState(null);
   const [okMsg, setOkMsg] = useState(null);
-
   const [emailAvisos, setEmailAvisos] = useState("");
   const [usuarios, setUsuarios] = useState(/** @type {UsuarioResumen[]} */ ([]));
-  const [mailModal, setMailModal] = useState(null); // "dashboard" | "pagos" | null
+  const [mailModal, setMailModal] = useState(null);
   const [destino, setDestino] = useState("estacionamiento");
   const [usuarioId, setUsuarioId] = useState("");
   const [enviandoMail, setEnviandoMail] = useState(false);
+  const [resumen, setResumen] = useState(/** @type {Dashboard | null} */ (null));
+  const [origen, setOrigen] = useState("ambos");
 
-  const rangoInvalido = useMemo(() => {
-    if (!desde || !hasta) return false;
-    return desde > hasta;
-  }, [desde, hasta]);
+  const rangoInvalido = useMemo(() => Boolean(desde && hasta && desde > hasta), [desde, hasta]);
 
   useEffect(() => {
     Promise.all([
       estacionamientoService.get().catch(() => null),
       usuarioService.listarDelEstacionamiento().catch(() => []),
-    ]).then(([est, usus]) => {
+      dashboardService.getSummary().catch(() => null),
+    ]).then(([est, usus, dash]) => {
       setEmailAvisos(est?.emailAvisos?.trim() || "");
       setUsuarios(Array.isArray(usus) ? usus : []);
+      setResumen(dash);
     });
   }, []);
 
-  const usuariosConMail = useMemo(
-    () => usuarios.filter((u) => (u.mail || "").trim()),
-    [usuarios]
-  );
+  const usuariosConMail = useMemo(() => usuarios.filter((u) => (u.mail || "").trim()), [usuarios]);
+  const ingresos = resumen?.detalleIngresos;
 
   function abrirMail(tipo) {
     setError(null);
@@ -97,19 +93,14 @@ export default function Reportes() {
       setEnviandoMail(true);
       setError(null);
       setOkMsg(null);
-      const payload = {
-        destino,
-        usuarioId: destino === "usuario" ? Number(usuarioId) : null,
-      };
+      const payload = { destino, usuarioId: destino === "usuario" ? Number(usuarioId) : null, origen };
       const res =
         mailModal === "pagos"
           ? await reportesService.enviarPagosEmail({ ...payload, desde, hasta })
           : await reportesService.enviarDashboardEmail(payload);
 
       if (res?.simulado) {
-        setOkMsg(
-          `Simulado → ${res.destinatario} (SMTP deshabilitado). Cuando actives Email:Enabled se enviará de verdad.`
-        );
+        setOkMsg(`Simulado → ${res.destinatario}. Cuando actives el SMTP se envía de verdad.`);
       } else {
         setOkMsg(`Reporte enviado a ${res?.destinatario || "el destinatario"}.`);
       }
@@ -126,8 +117,8 @@ export default function Reportes() {
       setError(null);
       setOkMsg(null);
       setLoadingPdf(true);
-      await reportesService.downloadDashboardPdf();
-      setOkMsg("PDF del dashboard descargado.");
+      await reportesService.downloadDashboardPdf(origen);
+      setOkMsg("PDF del resumen descargado.");
     } catch (e) {
       setError(e.message || "No se pudo generar el PDF");
     } finally {
@@ -144,8 +135,14 @@ export default function Reportes() {
       setError(null);
       setOkMsg(null);
       setLoadingExcel(true);
-      await reportesService.downloadPagosExcel(desde, hasta);
-      setOkMsg("Excel de pagos descargado.");
+      await reportesService.downloadPagosExcel(desde, hasta, origen);
+      setOkMsg(
+        origen === "abonos"
+          ? "Excel de abonos descargado."
+          : origen === "estadias"
+            ? "Excel de estadías descargado."
+            : "Excel de pagos descargado (abonos y estadías)."
+      );
     } catch (e) {
       setError(e.message || "No se pudo generar el Excel");
     } finally {
@@ -153,134 +150,110 @@ export default function Reportes() {
     }
   }
 
-  const tituloMail =
-    mailModal === "pagos" ? "Enviar Excel de pagos" : "Enviar PDF del dashboard";
-
   return (
-    <div className="space-y-5 animate-fade-in-up max-w-5xl">
-      <div>
-        <h1 className="pk-title">Reportes</h1>
-        <p className="pk-desc mt-1">
-          Descargá o enviá por mail resúmenes operativos y listados de pagos.
-        </p>
-      </div>
+    <div className="space-y-5 pb-12 animate-fade-in-up">
+      <PageHeader
+        title="Reportes"
+        description="Resumen operativo para bajar o mandar por mail. Elegí abonos, estadías o ambos."
+        stats={
+          resumen
+            ? [
+                { label: "Ocupación", value: `${resumen.porcentajeOcupacion ?? 0}%` },
+                { label: "Rotativo adentro", value: resumen.rotativosAdentro ?? 0 },
+                { label: "Recaudado mes", value: plata(ingresos?.totalRecaudadoMensualReal) },
+                {
+                  label: "Deudores",
+                  value: resumen.alertasDeudores?.length ?? 0,
+                  tone: (resumen.alertasDeudores?.length ?? 0) > 0 ? "danger" : "default",
+                },
+              ]
+            : null
+        }
+      />
 
-      {error && (
-        <div className="px-4 py-3 bg-rose-50 text-rose-700 text-sm rounded-xl border border-rose-100">
-          {error}
-        </div>
-      )}
-      {okMsg && (
-        <div className="px-4 py-3 bg-emerald-50 text-emerald-700 text-sm rounded-xl border border-emerald-100">
-          {okMsg}
-        </div>
-      )}
+      <FiltroSegmentado ariaLabel="Origen" value={origen} onChange={setOrigen} opciones={ORIGENES} />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* PDF dashboard */}
-        <section className="relative overflow-hidden rounded-3xl border border-transparent bg-white  p-6 sm:p-7 flex flex-col">
-          <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
-          <div className="flex items-start gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center shadow-lg shadow-slate-900/20 shrink-0">
-              <FileText size={20} />
-            </div>
-            <div className="min-w-0">
-              <p className="pk-label mb-1">PDF</p>
-              <h2 className="pk-heading">Resumen del dashboard</h2>
-              <p className="pk-desc mt-1">
-                Misma información que Mi estacionamiento: KPIs, deudores, vehículos,
-                ingresos y mapa de cocheras.
-              </p>
-            </div>
+      {error && <p className="px-4 py-3 bg-danger-muted text-danger-ink text-sm">{error}</p>}
+      {okMsg && <p className="px-4 py-3 bg-success-muted text-success-ink text-sm">{okMsg}</p>}
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <section className="bg-surface-card flex flex-col">
+          <div className="px-4 pt-3 pb-2 border-b border-line flex items-baseline justify-between gap-3">
+            <h2 className="pk-label text-ink-muted">PDF · Resumen</h2>
+            <FileText size={14} className="text-ink-faint" />
           </div>
-          <div className="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="px-4 py-4 flex-1">
+            <p className="text-sm text-ink-muted">
+              {origen === "abonos"
+                ? "Ocupación, deudores, vehículos y mapa de cocheras."
+                : origen === "estadias"
+                  ? "Rotativo adentro, entradas del día e ingresos de estadía."
+                  : "Ocupación, rotativo adentro, deudores, ingresos y mapa de cocheras."}
+            </p>
+          </div>
+          <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handlePdf}
               disabled={loadingPdf}
-              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-slate-900/15 transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-xs font-semibold px-4 py-2.5"
             >
-              {loadingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {loadingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               {loadingPdf ? "Generando…" : "Descargar"}
             </button>
             <button
               type="button"
               onClick={() => abrirMail("dashboard")}
-              className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-3 rounded-xl transition-all"
+              className="inline-flex items-center justify-center gap-2 border border-line-strong text-ink text-xs font-semibold px-4 py-2.5 hover:bg-surface-muted"
             >
-              <Mail size={16} />
+              <Mail size={14} />
               Enviar por mail
             </button>
           </div>
         </section>
 
-        {/* Excel pagos */}
-        <section className="relative overflow-hidden rounded-3xl border border-transparent bg-white  p-6 sm:p-7 flex flex-col">
-          <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
-          <div className="flex items-start gap-4 mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-brand text-brand-foreground flex items-center justify-center shadow-lg shadow-indigo-600/20 shrink-0">
-              <FileSpreadsheet size={20} />
-            </div>
-            <div className="min-w-0">
-              <p className="pk-label mb-1">Excel</p>
-              <h2 className="pk-heading">Pagos por fecha</h2>
-              <p className="pk-desc mt-1">
-                Listado de pagos registrados en el rango, con cliente, plazas, montos y
-                método.
-              </p>
-            </div>
+        <section className="bg-surface-card flex flex-col">
+          <div className="px-4 pt-3 pb-2 border-b border-line flex items-baseline justify-between gap-3">
+            <h2 className="pk-label text-ink-muted">Excel · Pagos</h2>
+            <FileSpreadsheet size={14} className="text-ink-faint" />
           </div>
-
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div>
-              <label className="pk-label mb-1.5 block">Desde</label>
-              <div className="relative">
-                <CalendarRange
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className={`${fieldClass} pl-9`}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="pk-label mb-1.5 block">Hasta</label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-          </div>
-
-          {rangoInvalido && (
-            <p className="text-[11px] text-rose-600 font-medium mb-3">
-              Revisá el rango: hasta debe ser ≥ desde.
+          <div className="px-4 py-4 space-y-3 flex-1">
+            <p className="text-sm text-ink-muted">
+              {origen === "abonos"
+                ? "Hoja de pagos de abono, por fecha de cobro."
+                : origen === "estadias"
+                  ? "Hoja de pagos de estadía, por fecha de cobro."
+                  : "Dos hojas: abonos y estadías, por fecha de cobro."}
             </p>
-          )}
-
-          <div className="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="pk-caption font-semibold">
+                Desde
+                <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={`${fieldClass} mt-1`} />
+              </label>
+              <label className="pk-caption font-semibold">
+                Hasta
+                <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={`${fieldClass} mt-1`} />
+              </label>
+            </div>
+            {rangoInvalido && <p className="text-xs text-danger-ink">Hasta tiene que ser ≥ desde.</p>}
+          </div>
+          <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handleExcel}
               disabled={loadingExcel || rangoInvalido}
-              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-sm font-semibold px-4 py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-strong disabled:opacity-50 text-brand-foreground text-xs font-semibold px-4 py-2.5"
             >
-              {loadingExcel ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {loadingExcel ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               {loadingExcel ? "Generando…" : "Descargar"}
             </button>
             <button
               type="button"
               onClick={() => abrirMail("pagos")}
               disabled={rangoInvalido}
-              className="inline-flex items-center justify-center gap-2 border border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-sm font-semibold px-4 py-3 rounded-xl transition-all disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 border border-line-strong text-ink text-xs font-semibold px-4 py-2.5 hover:bg-surface-muted disabled:opacity-50"
             >
-              <Mail size={16} />
+              <Mail size={14} />
               Enviar por mail
             </button>
           </div>
@@ -288,75 +261,32 @@ export default function Reportes() {
       </div>
 
       {mailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]">
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div>
-                <p className="pk-label mb-0.5">Email</p>
-                <h3 className="text-base font-bold text-slate-900 tracking-tight">{tituloMail}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMailModal(null)}
-                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-50"
-              >
-                <X size={18} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div role="dialog" aria-modal="true" className="w-full max-w-md bg-surface-card border border-line">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+              <h3 className="text-sm font-bold text-ink">
+                {mailModal === "pagos" ? "Enviar Excel de pagos" : "Enviar PDF del resumen"}
+              </h3>
+              <button type="button" onClick={() => setMailModal(null)} className="p-1 text-ink-faint hover:text-ink" aria-label="Cerrar">
+                <X size={16} />
               </button>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
-              <p className="text-sm text-slate-500">
-                Elegí a quién enviamos el archivo adjunto.
-              </p>
+            <div className="px-4 py-4 space-y-3">
+              <p className="text-sm text-ink-muted">¿A quién se lo mandamos?</p>
 
-              <label
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
-                  destino === "estacionamiento"
-                    ? "border-brand bg-slate-50"
-                    : "border-slate-200 hover:bg-slate-50/60"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="destino-reporte"
-                  className="mt-1"
-                  checked={destino === "estacionamiento"}
-                  onChange={() => setDestino("estacionamiento")}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <Building2 size={15} />
-                    Email del estacionamiento
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 truncate">
-                    {emailAvisos || "Sin email de avisos configurado"}
-                  </p>
+              <label className={`flex items-start gap-3 p-3 border cursor-pointer ${destino === "estacionamiento" ? "border-ink bg-surface-muted" : "border-line"}`}>
+                <input type="radio" name="destino-reporte" className="mt-1" checked={destino === "estacionamiento"} onChange={() => setDestino("estacionamiento")} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-ink">Email del estacionamiento</p>
+                  <p className="pk-caption mt-0.5 truncate">{emailAvisos || "Sin email de avisos configurado"}</p>
                 </div>
               </label>
 
-              <label
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
-                  destino === "usuario"
-                    ? "border-brand bg-slate-50"
-                    : "border-slate-200 hover:bg-slate-50/60"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="destino-reporte"
-                  className="mt-1"
-                  checked={destino === "usuario"}
-                  onChange={() => setDestino("usuario")}
-                />
+              <label className={`flex items-start gap-3 p-3 border cursor-pointer ${destino === "usuario" ? "border-ink bg-surface-muted" : "border-line"}`}>
+                <input type="radio" name="destino-reporte" className="mt-1" checked={destino === "usuario"} onChange={() => setDestino("usuario")} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <User size={15} />
-                    Un usuario
-                  </div>
+                  <p className="text-sm font-semibold text-ink">Un usuario</p>
                   {destino === "usuario" && (
                     <FilterSelect
                       className="mt-2 w-full"
@@ -373,33 +303,23 @@ export default function Reportes() {
                     />
                   )}
                   {destino === "usuario" && usuariosConMail.length === 0 && (
-                    <p className="text-xs text-rose-600 mt-2">
-                      No hay usuarios con email en este estacionamiento.
-                    </p>
+                    <p className="text-xs text-danger-ink mt-2">No hay usuarios con email en este estacionamiento.</p>
                   )}
                 </div>
               </label>
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-100 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMailModal(null)}
-                className="flex-1 text-sm text-slate-600 border border-slate-200 rounded-xl py-2.5 hover:bg-slate-50"
-              >
+            <div className="px-4 py-3 border-t border-line flex gap-2">
+              <button type="button" onClick={() => setMailModal(null)} className="flex-1 text-sm font-semibold text-ink-muted border border-line-strong py-2.5 hover:bg-surface-muted">
                 Cancelar
               </button>
               <button
                 type="button"
                 disabled={enviandoMail}
                 onClick={confirmarMail}
-                className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-strong disabled:opacity-50 rounded-xl py-2.5"
+                className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-strong disabled:opacity-50 py-2.5"
               >
-                {enviandoMail ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Mail size={16} />
-                )}
+                {enviandoMail ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
                 {enviandoMail ? "Enviando…" : "Enviar"}
               </button>
             </div>

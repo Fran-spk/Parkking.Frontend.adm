@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, Lock, Save, CheckCircle, AtSign } from "lucide-react";
 import PageHeader, { PageHeaderAction } from "../../components/layout/PageHeader";
+import { fieldClass } from "../../components/layout/FilterSelect";
 import { usuarioService } from "../../services/usuarioService";
 
 function errMsg(err, fallback) {
@@ -131,41 +132,27 @@ export default function Perfil() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <form onSubmit={guardarDatos} className="bg-surface-card p-5 space-y-4">
-          <h3 className="text-sm font-bold text-ink border-b border-line-subtle pb-2">
-            Información personal
-          </h3>
+          <h3 className="pk-label pb-2 border-b border-line-subtle">Información personal</h3>
 
           <div className="space-y-3">
             <label className="block space-y-1">
-              <span className="pk-label">Usuario</span>
+              <span className="pk-caption font-semibold">Usuario</span>
               <div className="relative">
                 <AtSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-                <input
-                  type="text"
-                  value={usuarioRO}
-                  readOnly
-                  disabled
-                  className="w-full pl-10 pr-3 py-2.5 bg-surface-muted border border-line-subtle text-sm text-ink-faint cursor-not-allowed"
-                />
+                <input type="text" value={usuarioRO} readOnly disabled className={`${fieldClass} pl-10 cursor-not-allowed`} />
               </div>
             </label>
 
             <label className="block space-y-1">
-              <span className="pk-label">Correo electrónico</span>
+              <span className="pk-caption font-semibold">Correo electrónico</span>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-                <input
-                  type="email"
-                  value={mailRO}
-                  readOnly
-                  disabled
-                  className="w-full pl-10 pr-3 py-2.5 bg-surface-muted border border-line-subtle text-sm text-ink-faint cursor-not-allowed"
-                />
+                <input type="email" value={mailRO} readOnly disabled className={`${fieldClass} pl-10 cursor-not-allowed`} />
               </div>
             </label>
 
             <label className="block space-y-1">
-              <span className="pk-label">Nombre completo</span>
+              <span className="pk-caption font-semibold">Nombre completo</span>
               <div className="relative">
                 <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -176,14 +163,14 @@ export default function Perfil() {
                     setErrorDatos("");
                   }}
                   required
-                  className="w-full pl-10 pr-3 py-2.5 border border-line-strong text-sm text-ink focus:outline-none focus:border-brand"
+                  className={`${fieldClass} pl-10`}
                   placeholder="Ej. Juan Pérez"
                 />
               </div>
             </label>
 
             <label className="block space-y-1">
-              <span className="pk-label">Teléfono</span>
+              <span className="pk-caption font-semibold">Teléfono</span>
               <div className="relative">
                 <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -193,7 +180,7 @@ export default function Perfil() {
                     setTelefono(e.target.value);
                     setErrorDatos("");
                   }}
-                  className="w-full pl-10 pr-3 py-2.5 border border-line-strong text-sm text-ink focus:outline-none focus:border-brand"
+                  className={`${fieldClass} pl-10`}
                   placeholder="Ej. +54 9 11 ..."
                 />
               </div>
@@ -218,12 +205,12 @@ export default function Perfil() {
         </form>
 
         <form onSubmit={cambiarPassword} className="bg-surface-card p-5 space-y-4">
-          <h3 className="text-sm font-bold text-ink border-b border-line-subtle pb-2">Contraseña</h3>
-          <p className="text-[11px] text-ink-faint">Completá solo si querés cambiarla.</p>
+          <h3 className="pk-label pb-2 border-b border-line-subtle">Contraseña</h3>
+          <p className="pk-caption">Completá solo si querés cambiarla.</p>
 
           <div className="space-y-3">
             <label className="block space-y-1">
-              <span className="pk-label">Contraseña actual</span>
+              <span className="pk-caption font-semibold">Contraseña actual</span>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -233,7 +220,7 @@ export default function Perfil() {
                     setCurrentPassword(e.target.value);
                     setErrorPass("");
                   }}
-                  className="w-full pl-10 pr-3 py-2.5 border border-line-strong text-sm text-ink focus:outline-none focus:border-brand"
+                  className={`${fieldClass} pl-10`}
                   placeholder="••••••••"
                   autoComplete="current-password"
                 />
@@ -241,7 +228,7 @@ export default function Perfil() {
             </label>
 
             <label className="block space-y-1">
-              <span className="pk-label">Nueva contraseña</span>
+              <span className="pk-caption font-semibold">Nueva contraseña</span>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -251,7 +238,7 @@ export default function Perfil() {
                     setNewPassword(e.target.value);
                     setErrorPass("");
                   }}
-                  className="w-full pl-10 pr-3 py-2.5 border border-line-strong text-sm text-ink focus:outline-none focus:border-brand"
+                  className={`${fieldClass} pl-10`}
                   placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
                 />
@@ -259,7 +246,7 @@ export default function Perfil() {
             </label>
 
             <label className="block space-y-1">
-              <span className="pk-label">Confirmar nueva</span>
+              <span className="pk-caption font-semibold">Confirmar nueva</span>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -269,7 +256,7 @@ export default function Perfil() {
                     setConfirmPassword(e.target.value);
                     setErrorPass("");
                   }}
-                  className="w-full pl-10 pr-3 py-2.5 border border-line-strong text-sm text-ink focus:outline-none focus:border-brand"
+                  className={`${fieldClass} pl-10`}
                   placeholder="Repetí la nueva contraseña"
                   autoComplete="new-password"
                 />

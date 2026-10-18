@@ -31,6 +31,22 @@ export const authService = {
   },
 
   /**
+   * Pide una clave nueva al backend. Se genera, se hashea y se manda al mail del usuario.
+   * @param {string} login UsuarioName único.
+   * @returns {Promise<string>}
+   */
+  async restablecerClave(login) {
+    try {
+      const response = await api.post("/Auth/restablecer-clave", { login });
+      const data = response?.data ?? response;
+      if (typeof data === "string" && data.trim()) return data;
+      return "Si el usuario existe, te mandamos una contraseña nueva al mail.";
+    } catch (error) {
+      throw new Error(apiErrorMessage(error, "No se pudo restablecer la contraseña"));
+    }
+  },
+
+  /**
    * Usuario + permisos del estacionamiento activo (si hay tenant cookie válida).
    * @returns {Promise<{ id: number, nombre?: string, email?: string, permisos?: object }>}
    */
