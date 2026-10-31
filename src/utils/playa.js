@@ -19,10 +19,10 @@ export function esIos() {
 }
 
 export function prefierePlaya() {
+  if (!esMovil()) return false;
   const saved = localStorage.getItem(KEY);
-  if (saved === "1") return true;
   if (saved === "0") return false;
-  return esStandalone() || esMovil();
+  return true;
 }
 
 export function setPrefierePlaya(on) {

@@ -1,4 +1,4 @@
-const CACHE = "parkking-playa-v1";
+const CACHE = "parkking-playa-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -194,8 +194,7 @@ export default function Login() {
           </form>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-ink-faint pt-6 border-t border-line">
-          <span>&copy; {new Date().getFullYear()} Parkking</span>
+        <div className="flex items-center justify-end text-xs text-ink-faint pt-6 border-t border-line">
           <span className="flex items-center gap-1.5">
             <ShieldCheck size={14} className="text-success" />
             Acceso seguro

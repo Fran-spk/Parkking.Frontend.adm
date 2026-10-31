@@ -95,6 +95,52 @@
   --pk-font-sans: "Plus Jakarta Sans", ui-sans-serif, sans-serif;
 }
 
+@keyframes pk-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.pk-marquee-track {
+  animation: pk-marquee 36s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-marquee-track {
+    animation: none;
+  }
+}
+
+.pk-land-hero {
+  background-image:
+    linear-gradient(rgba(198, 161, 90, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(198, 161, 90, 0.16) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.pk-land-gold {
+  color: #c6a15a;
+}
+
+.pk-land-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pk-land-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 3px 0 0 #c6a15a;
+}
+
+.pk-land-faq {
+  border-left: 2px solid transparent;
+  padding-left: 0.75rem;
+  margin-left: -0.75rem;
+  transition: border-color 0.2s ease;
+}
+
+.pk-land-faq:hover {
+  border-left-color: #c6a15a;
+}
+
 @layer base {
   body {
     @apply bg-surface-page text-ink antialiased font-sans;

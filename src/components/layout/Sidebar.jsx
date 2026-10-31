@@ -33,8 +33,8 @@ const sections = [
   {
     title: "Rotativo",
     links: [
-      { to: "/rotativo", label: "Ingreso y salida", icon: Clock, end: true },
-      { to: "/rotativo/historico", label: "Estadías", icon: History },
+      { to: "/rotativo", label: "Ingreso y salida", icon: Clock, end: true, anyOf: [ACCIONES.VerEstadias, ACCIONES.IngresarEstadias, ACCIONES.CobrarEstadias] },
+      { to: "/rotativo/historico", label: "Estadías", icon: History, anyOf: [ACCIONES.VerEstadias] },
     ],
   },
   {
@@ -49,7 +49,7 @@ const sections = [
   {
     title: "Operaciones diarias",
     links: [
-      { to: "/buscar-patente", label: "Buscar patente", icon: Search, anyOf: [ACCIONES.VerAbonos] },
+      { to: "/buscar-patente", label: "Buscar patente", icon: Search, anyOf: [ACCIONES.VerAbonos, ACCIONES.VerEstadias] },
       { to: "/pagos-pendientes", label: "Pagos pendientes", icon: Clock, anyOf: [ACCIONES.VerPagos, ACCIONES.Cobrar] },
       { to: "/pagos", label: "Pagos", icon: CreditCard, anyOf: [ACCIONES.VerPagos, ACCIONES.Cobrar] },
       { to: "/recibos", label: "Recibos", icon: Receipt, anyOf: [ACCIONES.VerPagos] },
@@ -76,8 +76,8 @@ const sections = [
 const CONFIG_ITEMS = [
   { to: "/configuracion/perfil", label: "Mi perfil", icon: User },
   { to: "/configuracion/general", label: "Estacionamiento", icon: SlidersHorizontal },
-  { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign },
-  { to: "/configuracion/zonas", label: "Zonas", icon: Map },
+  { to: "/configuracion/tarifas", label: "Tarifas", icon: DollarSign, anyOf: [ACCIONES.VerTarifas, ACCIONES.AdministrarTarifas, ACCIONES.AdministrarTarifasEstadia] },
+  { to: "/configuracion/zonas", label: "Zonas", icon: Map, anyOf: [ACCIONES.VerCocheras, ACCIONES.AdministrarCocheras, ACCIONES.AdministrarZonasRotativo] },
   { to: "/configuracion/catalogos", label: "Catálogos", icon: Tags },
   { to: "/configuracion/finanzas", label: "Finanzas", icon: Layers },
   { to: "/configuracion/accesos", label: "Accesos", icon: UserCog },

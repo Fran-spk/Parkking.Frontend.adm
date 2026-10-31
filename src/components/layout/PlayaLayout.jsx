@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Clock, LogOut, MoreHorizontal, RefreshCcw, Search, Smartphone, User, Wallet, LayoutGrid, Download, Share } from "lucide-react";
 import { authService } from "../../services/authService";
 import { estacionamientoService } from "../../services/estacionamientoService";
 import { applyColorMarca } from "../../theme/parkking.theme.js";
-import { esIos, esStandalone, setPrefierePlaya } from "../../utils/playa";
+import { esIos, esMovil, esStandalone, setPrefierePlaya } from "../../utils/playa";
+import { ACCIONES, permisosStore } from "../../utils/permisosStore";
 
 const TABS = [
-  { to: "/playa", label: "Ingreso", icon: Clock, end: true },
-  { to: "/playa/buscar", label: "Buscar", icon: Search },
-  { to: "/playa/cobrar", label: "Cobrar", icon: Wallet },
+  { to: "/playa", label: "Ingreso", icon: Clock, end: true, anyOf: [ACCIONES.VerEstadias, ACCIONES.IngresarEstadias] },
+  { to: "/playa/buscar", label: "Buscar", icon: Search, anyOf: [ACCIONES.VerEstadias, ACCIONES.VerAbonos] },
+  { to: "/playa/cobrar", label: "Cobrar", icon: Wallet, anyOf: [ACCIONES.CobrarEstadias] },
 ];
 
 export default function PlayaLayout() {
@@ -19,8 +20,24 @@ export default function PlayaLayout() {
   const [puedeCambiar, setPuedeCambiar] = useState(false);
   const [ahora, setAhora] = useState(() => new Date());
   const [instalar, setInstalar] = useState(null);
+  const permisosVersion = useSyncExternalStore(permisosStore.subscribe, permisosStore.getSnapshot);
+  const tabs = useMemo(
+    () => TABS.filter((t) => !t.anyOf?.length || permisosStore.tieneAlgun(...t.anyOf)),
+    [permisosVersion]
+  );
 
   useEffect(() => {
+    const salirSiEscritorio = () => {
+      if (!esMovil()) navigate("/mi-estacionamiento", { replace: true });
+    };
+    salirSiEscritorio();
+    const mq = window.matchMedia("(max-width: 767px)");
+    mq.addEventListener("change", salirSiEscritorio);
+    return () => mq.removeEventListener("change", salirSiEscritorio);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!esMovil()) return undefined;
     setPrefierePlaya(true);
     (async () => {
       try {
@@ -183,7 +200,7 @@ export default function PlayaLayout() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Playa"
       >
-        {TABS.map(({ to, label, icon: Icon, end }) => (
+        {tabs.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

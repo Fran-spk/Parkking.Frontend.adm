@@ -35,6 +35,7 @@ import PagosAbono from "./pages/PagosAbono";
 import CargoAbono from "./pages/CargoAbono";
 import ReintegroAbono from "./pages/ReintegroAbono";
 import Login from "./pages/Login";
+import Landing from "./pages/Landing";
 import SeleccionEstacionamientos from "./pages/SeleccionEstacionamientos";
 import AuthGuard from "./components/layout/AuthGuard";
 import PlayaLayout from "./components/layout/PlayaLayout";
@@ -48,6 +49,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
         <Route path="/seleccion-estacionamientos" element={<AuthGuard><SeleccionEstacionamientos /></AuthGuard>} />
@@ -58,8 +60,7 @@ export default function App() {
           <Route path="cobrar" element={<PagosPendientes />} />
         </Route>
 
-        <Route path="/" element={<AuthGuard><Layout /></AuthGuard>}>
-          <Route index element={<Navigate to="/mi-estacionamiento" replace />} />
+        <Route element={<AuthGuard><Layout /></AuthGuard>}>
           <Route path="mi-estacionamiento" element={<Dashboard />} />
           <Route path="dashboard" element={<Navigate to="/mi-estacionamiento" replace />} />
           <Route path="cocheras" element={<Cocheras />} />
